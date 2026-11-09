@@ -43,9 +43,19 @@ bash deploy/test-server/ci-build.sh
 
 ## 日常发版
 
-Jenkins → `cyt-oa-deploy` → 选分支 → 立即构建。任务会：从 GitHub 取源码 → 服务器构建镜像推仓库 →
+任务地址 `http://192.168.1.182:8090/job/cyt-oa-deploy/`，和 CS 的 `cyt-cs-deploy` 并列。
+Jenkins → `cyt-oa-deploy` → 选参数 → 立即构建。任务会：从 GitHub 取源码 → 服务器构建镜像推仓库 →
 `docker compose pull && up -d` → 等页面 200 且 `/api/auth/login` 用 admin 登录成功。
-`SKIP_DEPLOY=true` 只推镜像不重启容器。
+
+| 参数 | 取值 | 说明 |
+| --- | --- | --- |
+| `BRANCH` | `main` | `git-hub.sh` 走 GitHub REST + codeload 取源码，服务器不留 `.git` |
+| `TARGET` | `all` / `api` / `web` | 构建哪些镜像 |
+| `SKIP_DEPLOY` | 勾选 / 不勾选 | 勾选只推镜像、不重建容器（Jenkins 布尔参数传 `true`） |
+
+任务通过 Jenkins REST 热创建，不需要重启 Jenkins（重启会打断别的发版）。Jenkins 以 root 运行，
+读 `/opt/jenkins/github_token`（GitHub PAT）与 `/opt/1panel/docker/compose/oa/.env`；
+每次构建临时源码放在 `/tmp/cyt-oa-build-$$`，结束后自动删除。
 
 手动跑也一样（在源码根目录）：`bash deploy/test-server/ci-build.sh`；只发一端用
 `TARGET=api bash deploy/test-server/ci-build.sh`。
