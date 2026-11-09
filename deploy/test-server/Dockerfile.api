@@ -1,0 +1,22 @@
+# CYT-OA 后端镜像：Maven 打包 Spring Boot JAR → JRE 运行。
+# build context 必须是【仓库根目录】：
+#   docker build -f deploy/test-server/Dockerfile.api -t 192.168.1.182:5000/cyt-oa-api:latest .
+# BASE_REGISTRY：Docker Hub 直连慢时用的加速前缀，默认走 daocloud。
+ARG BASE_REGISTRY=docker.m.daocloud.io/
+
+FROM ${BASE_REGISTRY}library/maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY cyt-oa-backend/pom.xml ./pom.xml
+COPY cyt-oa-backend/lombok.config ./lombok.config
+COPY cyt-oa-backend/src ./src
+COPY deploy/test-server/settings.xml /root/.m2/settings.xml
+RUN mvn -B -q -Dmaven.test.skip=true package
+
+FROM ${BASE_REGISTRY}library/eclipse-temurin:21-jre-noble
+WORKDIR /app
+COPY --from=build /build/target/cyt-oa-backend-1.0.0.jar /app/app.jar
+# 首次部署要按 README 顺序导入建表脚本，镜像里带一份，避免服务器另存源码
+COPY cyt-oa-backend/src/main/resources/db /app/db
+ENV TZ=Asia/Shanghai
+EXPOSE 48081
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

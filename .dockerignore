@@ -1,0 +1,14 @@
+.git
+.idea
+.workbuddy-ai
+**/node_modules
+**/dist
+**/target
+**/target-parameter-check
+**/*.log
+**/*.tsbuildinfo
+_*.txt
+**/application-local.yml
+**/.env.local
+**/.env.*.local
+deploy/test-server/.env
