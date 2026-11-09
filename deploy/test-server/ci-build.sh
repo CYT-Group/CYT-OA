@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # Jenkins「cyt-oa-deploy」构建步骤总入口。工作区 = 从 GitHub 取下的临时源码目录。
-#   BRANCH 由任务参数给出；SKIP_DEPLOY=1 只构建推镜像、不重启容器。
+#   SKIP_DEPLOY=1 / true 只构建推镜像、不重启容器（Jenkins 布尔参数传的是 true/false）。
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
@@ -18,10 +18,12 @@ TARGET="${TARGET:-all}"
 echo "==> 1/2 构建并推送镜像（$TARGET）"
 bash "$ROOT/deploy/test-server/build-on-server.sh" "$ROOT" "$TARGET"
 
-if [[ "${SKIP_DEPLOY:-0}" == "1" ]]; then
-  echo "==> SKIP_DEPLOY=1，跳过重启，容器仍在跑旧镜像"
-  exit 0
-fi
+case "${SKIP_DEPLOY:-0}" in
+  1|true|TRUE|yes|YES)
+    echo "==> SKIP_DEPLOY=${SKIP_DEPLOY}，跳过重启，容器仍在跑旧镜像"
+    exit 0
+    ;;
+esac
 
 echo "==> 2/2 重建容器 + 健康检查"
 bash "$ROOT/deploy/test-server/redeploy.sh" "$ROOT"
