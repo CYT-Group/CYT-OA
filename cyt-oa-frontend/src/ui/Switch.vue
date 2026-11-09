@@ -1,0 +1,27 @@
+<template>
+  <SwitchRoot
+    :model-value="modelValue"
+    :disabled="disabled"
+    :class="
+      cn(
+        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
+        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-input',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'disabled:cursor-not-allowed disabled:opacity-50'
+      )
+    "
+    @update:model-value="emit('update:modelValue', $event === true)"
+  >
+    <SwitchThumb
+      class="pointer-events-none block size-4 rounded-full bg-white shadow-sm ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
+    />
+  </SwitchRoot>
+</template>
+
+<script setup lang="ts">
+import { SwitchRoot, SwitchThumb } from 'reka-ui'
+import { cn } from '../lib/utils'
+
+defineProps<{ modelValue?: boolean; disabled?: boolean }>()
+const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
+</script>

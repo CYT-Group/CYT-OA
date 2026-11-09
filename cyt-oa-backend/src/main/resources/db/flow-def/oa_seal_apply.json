@@ -1,0 +1,70 @@
+{
+  "flowCode": "oa_seal_apply",
+  "flowName": "用印申请",
+  "category": "OA",
+  "nodeList": [
+    {
+      "nodeType": 0,
+      "nodeCode": "start",
+      "nodeName": "发起申请",
+      "coordinate": "60,240",
+      "skipList": [
+        {
+          "nowNodeCode": "start",
+          "nextNodeCode": "manager_approve",
+          "skipName": "提交申请",
+          "skipType": "PASS"
+        }
+      ]
+    },
+    {
+      "nodeType": 1,
+      "nodeCode": "manager_approve",
+      "nodeName": "部门主管审批",
+      "permissionFlag": "role:manager@@role:admin",
+      "coordinate": "300,240",
+      "skipList": [
+        {
+          "nowNodeCode": "manager_approve",
+          "nextNodeCode": "boss_approve",
+          "skipName": "通过",
+          "skipType": "PASS"
+        },
+        {
+          "nowNodeCode": "manager_approve",
+          "nextNodeCode": "end",
+          "skipName": "退回",
+          "skipType": "REJECT"
+        }
+      ]
+    },
+    {
+      "nodeType": 1,
+      "nodeCode": "boss_approve",
+      "nodeName": "总经理审批",
+      "permissionFlag": "role:admin",
+      "coordinate": "540,240",
+      "skipList": [
+        {
+          "nowNodeCode": "boss_approve",
+          "nextNodeCode": "end",
+          "skipName": "通过",
+          "skipType": "PASS"
+        },
+        {
+          "nowNodeCode": "boss_approve",
+          "nextNodeCode": "end",
+          "skipName": "退回",
+          "skipType": "REJECT"
+        }
+      ]
+    },
+    {
+      "nodeType": 2,
+      "nodeCode": "end",
+      "nodeName": "结束",
+      "coordinate": "780,240",
+      "skipList": []
+    }
+  ]
+}

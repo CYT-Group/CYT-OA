@@ -1,0 +1,15 @@
+dist
+node_modules
+*.log
+
+# 编辑器与本机构建产物
+.idea/
+.vscode/
+*.tsbuildinfo
+
+# 本机环境变量覆盖文件
+.env.local
+.env.*.local
+
+# 助手临时目录
+/.workbuddy-ai/

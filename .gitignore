@@ -1,0 +1,28 @@
+# IDE 与编辑器
+.idea/
+.vscode/
+*.iml
+
+# 各子工程的构建产物与依赖（子目录内另有自己的 .gitignore）
+**/target/
+**/target2/
+**/target-parameter-check/
+**/node_modules/
+**/dist/
+*.class
+*.log
+*.tsbuildinfo
+
+# 本机配置：只提交 .example
+**/application-local.yml
+**/.env.local
+**/.env.*.local
+
+# 开发时的临时抓取产物（见 cyt-oa-backend/docs/development.md）
+_*.txt
+
+# 工具遗留的临时副本（内容含旧目录名，不属于项目代码）
+**/.codex-*
+
+# 助手工作数据，不属于项目代码
+.workbuddy-ai/

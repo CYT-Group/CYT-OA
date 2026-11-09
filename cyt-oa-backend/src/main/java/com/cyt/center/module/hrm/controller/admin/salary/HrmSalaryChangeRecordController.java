@@ -1,0 +1,90 @@
+package com.cyt.center.module.hrm.controller.admin.salary;
+
+import cn.dev33.satoken.annotation.SaCheckPermission;
+
+import com.cyt.center.core.result.Result;
+import com.cyt.center.framework.common.util.object.BeanUtils;
+import com.cyt.center.module.hrm.controller.admin.salary.vo.changerecord.HrmSalaryChangeRecordRespVO;
+import com.cyt.center.module.hrm.dal.dataobject.salary.employee.HrmSalaryChangeRecordDO;
+import com.cyt.center.module.hrm.enums.salary.employee.HrmSalaryChangeRecordTypeEnum;
+import com.cyt.center.module.hrm.service.salary.employee.HrmSalaryChangeRecordService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.Resource;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+
+import static com.cyt.center.core.result.Result.success;
+import static com.cyt.center.framework.common.util.collection.CollectionUtils.convertList;
+
+@Tag(name = "管理后台 - HRM 定薪/调薪记录")
+@RestController
+@RequestMapping("/hrm/salary/change-record")
+@Validated
+public class HrmSalaryChangeRecordController {
+
+    @Resource
+    private HrmSalaryChangeRecordService salaryChangeRecordService;
+
+    @GetMapping("/get")
+    @Operation(summary = "获得定薪/调薪记录")
+    @Parameter(name = "id", description = "记录编号", required = true, example = "1024")
+    @SaCheckPermission("hrm:salary:employee-info:query")
+    public Result<HrmSalaryChangeRecordRespVO> getSalaryChangeRecord(@RequestParam("id") Long id) {
+        return success(buildSalaryChangeRecordRespVO(
+                salaryChangeRecordService.getSalaryChangeRecord(id)));
+    }
+
+    @GetMapping("/list")
+    @Operation(summary = "获得定薪/调薪记录列表")
+    @Parameter(name = "employeeId", description = "员工编号", required = true, example = "1024")
+    @SaCheckPermission("hrm:salary:employee-info:query")
+    public Result<List<HrmSalaryChangeRecordRespVO>> getSalaryChangeRecordList(
+            @RequestParam("employeeId") Long employeeId) {
+        return success(convertList(salaryChangeRecordService.getSalaryChangeRecordList(employeeId),
+                this::buildSalaryChangeRecordRespVO));
+    }
+
+    @PutMapping("/cancel")
+    @Operation(summary = "取消定薪/调薪记录")
+    @Parameter(name = "id", description = "记录编号", required = true, example = "1024")
+    @SaCheckPermission("hrm:salary:employee-info:update")
+    public Result<Boolean> cancelSalaryChangeRecord(@RequestParam("id") Long id) {
+        salaryChangeRecordService.cancelSalaryChangeRecord(id);
+        return success(true);
+    }
+
+    @DeleteMapping("/delete")
+    @Operation(summary = "删除定薪/调薪记录")
+    @Parameter(name = "id", description = "记录编号", required = true, example = "1024")
+    @SaCheckPermission("hrm:salary:change-record:delete")
+    public Result<Boolean> deleteSalaryChangeRecord(@RequestParam("id") Long id) {
+        salaryChangeRecordService.deleteSalaryChangeRecord(id);
+        return success(true);
+    }
+
+    // ==================== 拼接 VO ====================
+
+    private HrmSalaryChangeRecordRespVO buildSalaryChangeRecordRespVO(
+            HrmSalaryChangeRecordDO changeRecord) {
+        if (changeRecord == null) {
+            return null;
+        }
+        HrmSalaryChangeRecordRespVO respVO = BeanUtils.toBean(changeRecord, HrmSalaryChangeRecordRespVO.class);
+        respVO.setRecordType(changeRecord.getType());
+        respVO.setChangeReason(changeRecord.getReason());
+        HrmSalaryChangeRecordTypeEnum recordType =
+                HrmSalaryChangeRecordTypeEnum.valueOf(changeRecord.getType());
+        respVO.setRecordTypeName(recordType == null ? null : recordType.getName());
+        return respVO;
+    }
+
+}

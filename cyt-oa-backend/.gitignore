@@ -1,0 +1,17 @@
+target/
+target2/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/
+
+# 迁移脚本跑出来的缓存
+__pycache__/
+*.pyc
+
+# 助手临时目录
+/.workbuddy-ai/
+
+# 本机配置带真实库口令，只提交 .example
+src/main/resources/application-local.yml

@@ -1,0 +1,104 @@
+server:
+  port: ${CYT_CENTER_PORT:48081}
+  servlet:
+    session:
+      cookie:
+        http-only: true
+        same-site: lax
+
+spring:
+  application:
+    name: cyt-oa-center
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+  datasource:
+    url: jdbc:mysql://${CYT_MYSQL_HOST:127.0.0.1}:${CYT_MYSQL_PORT:3306}/${CYT_MYSQL_DATABASE:cyt_oa_center}?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: ${CYT_MYSQL_USERNAME:root}
+    password: ${CYT_MYSQL_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      # 连接工厂由 Redisson 提供（见 redisson-spring-boot-starter），Lettuce 已在 pom 里排除
+      # 默认用 1 号库：本机与线上都和旧单体的 0 号库共用实例，隔开免得单号自增、缓存键互相污染
+      host: ${CYT_REDIS_HOST:127.0.0.1}
+      port: ${CYT_REDIS_PORT:6379}
+      database: ${CYT_REDIS_DATABASE:1}
+      password: ${CYT_REDIS_PASSWORD:}
+      timeout: 5s
+      repositories:
+        enabled: false # 项目不用 Spring Data Redis 的 Repository，关掉省下启动扫描时间
+  cache:
+    type: caffeine
+    # 移植的 @Cacheable 只缓存第三方页面的社保标准数据，上游 TTL 为 7 天
+    caffeine:
+      spec: expireAfterWrite=7d
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+
+warm-flow:
+  banner: false
+  # 办理人权限与全局监听器由本项目代码提供（warm-flow 按全类名反射实例化，不走 Spring 容器）。
+  # 不配置 design 端点相关组件：流程定义由 db/flow-def/*.json 持有，启动时由 BpmFlowDefinitionLoader 导入
+  permission-handler-path: com.cyt.center.module.bpm.framework.flow.core.BpmPermissionHandler
+  global-listener-path: com.cyt.center.module.bpm.framework.flow.core.BpmFlowEventListener
+
+sa-token:
+  token-name: cyt-token
+  timeout: ${cyt.auth.token-timeout}
+  active-timeout: -1
+  # 同一账号可在企微前台与管理控制台同时在线，必须每次登录发新令牌
+  is-concurrent: true
+  is-share: false
+  is-read-header: true
+  is-read-cookie: true
+  is-read-body: false
+  token-style: uuid
+  is-print: false
+  cookie:
+    path: /
+    http-only: true
+    same-site: lax
+    secure: ${CYT_COOKIE_SECURE:false}
+
+cyt:
+  auth:
+    # 线上只允许企微登录；本机联调在 application-local.yml 里打开密码登录
+    password-login-enabled: ${CYT_PASSWORD_LOGIN_ENABLED:false}
+    dev-identity-enabled: ${CYT_DEV_IDENTITY_ENABLED:false}
+    admin-userids: ${CYT_ADMIN_USERIDS:}
+    token-timeout: ${CYT_TOKEN_TIMEOUT:604800}
+  sso:
+    enabled: ${CYT_SSO_ENABLED:false}
+    portal-base-url: ${CYT_SSO_PORTAL_BASE_URL:}
+    portal-public-base-url: ${CYT_SSO_PORTAL_PUBLIC_BASE_URL:}
+    endpoint-prefix: ${CYT_SSO_ENDPOINT_PREFIX:/api/portal/auth/sso/oa}
+    audience: ${CYT_SSO_AUDIENCE:cyt-oa-center}
+    state-prefix: ${CYT_SSO_STATE_PREFIX:oa.}
+    code-prefix: ${CYT_SSO_CODE_PREFIX:oa_}
+    return-base-url: ${CYT_SSO_RETURN_BASE_URL:}
+  wecom:
+    gateway-url: ${CYT_WECOM_GATEWAY_URL:}
+    api-key: ${CYT_WECOM_API_KEY:}
+    system-id: ${CYT_WECOM_SYSTEM_ID:portal}
+    allow-dev-identity: ${CYT_WECOM_ALLOW_DEV_IDENTITY:false}
+    corp-id: ${CYT_WECOM_CORP_ID:}
+    # 请假审批在 common-api 里绑定的业务模板别名，不是企微 template_id
+    leave-template: ${CYT_WECOM_LEAVE_TEMPLATE:leave}
+  directory:
+    hr-sync-enabled: ${CYT_WECOM_HR_SYNC_ENABLED:true}
+    hr-sync-cron: ${CYT_WECOM_HR_SYNC_CRON:0 40 6 * * *}
+    sync-enabled: ${CYT_DIRECTORY_SYNC_ENABLED:true}
+    sync-cron: ${CYT_DIRECTORY_SYNC_CRON:0 30 6 * * ?}
+  web:
+    allowed-origins: ${CYT_ALLOWED_ORIGINS:}
+  oa:
+    work-report:
+      # 工作汇报 PDF 导出的中文字体；留空则按常见系统路径回退（Windows simhei / Linux Noto CJK）
+      pdf-font: ${CYT_OA_WORK_REPORT_PDF_FONT:}
