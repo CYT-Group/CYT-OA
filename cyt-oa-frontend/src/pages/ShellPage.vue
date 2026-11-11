@@ -2,103 +2,23 @@
   <div class="workspace" :class="{ 'workspace-collapsed': sidebarCollapsed }">
     <a href="#main-content" class="skip-link">跳转到内容</a>
     <aside class="workspace-sidebar">
-      <router-link to="/" class="workspace-brand">
-        <span class="brand-mark"> OA </span>
-        <span class="sidebar-label min-w-0">
-          <b
-            class="block truncate text-sm font-semibold text-sidebar-foreground"
-            >CYT</b
-          >
-          <small class="block text-[10px] text-sidebar-muted"
-            >个人办公与企业协作</small
-          >
+      <router-link to="/" class="workspace-brand" aria-label="CTY OA 首页">
+        <span class="brand-mark" aria-hidden="true"
+          ><PanelsTopLeft :size="19" :stroke-width="1.8"
+        /></span>
+        <span class="sidebar-label workspace-brand-copy">
+          <span class="workspace-brand-name">CTY <span>OA</span></span>
+          <span class="workspace-brand-description">企业协同办公</span>
         </span>
       </router-link>
-
-      <div class="workspace-identity">
-        <DropdownMenu side="right" align="start" class="workspace-account-menu">
-          <template #trigger>
-            <button
-              type="button"
-              aria-label="账号菜单"
-              class="workspace-account-trigger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            >
-              <Avatar
-                :name="session.name"
-                class="workspace-identity-avatar ring-0"
-              />
-              <span class="sidebar-label min-w-0 flex-1">
-                <b
-                  class="block truncate text-[13px] font-medium leading-tight text-sidebar-foreground"
-                >
-                  {{ session.name || "未登录" }}
-                </b>
-                <small class="block truncate text-[11px] text-sidebar-muted">
-                  {{ deptName }}
-                </small>
-                <span class="workspace-identity-role">{{
-                  session.isAdmin ? "管理员" : "员工"
-                }}</span>
-              </span>
-              <ChevronsUpDown
-                class="sidebar-label size-3.5 shrink-0 text-sidebar-muted"
-              />
-              <span class="workspace-identity-tier sidebar-label"
-                ><span aria-hidden="true">{{
-                  session.canAccessConsole ? "🛡️" : "👤"
-                }}</span
-                >{{
-                  session.isAdmin
-                    ? "系统管理员"
-                    : session.canAccessConsole
-                      ? "管理员"
-                      : "普通员工"
-                }}</span
-              >
-            </button>
-          </template>
-          <div class="workspace-account-summary">
-            <Avatar :name="session.name" />
-            <div class="min-w-0">
-              <strong>{{ session.name || "未登录" }}</strong
-              ><span
-                >{{ session.isAdmin ? "管理员" : "员工" }} ·
-                {{ deptName }}</span
-              >
-            </div>
-          </div>
-          <DropdownMenuSeparator class="ui-menu-separator" />
-          <DropdownMenuItem @select="router.push('/me/profile')">
-            <User class="text-muted-foreground" />
-            个人资料
-          </DropdownMenuItem>
-          <DropdownMenuItem @select="toggleTheme">
-            <Moon v-if="!isDark" class="text-muted-foreground" />
-            <Sun v-else class="text-muted-foreground" />
-            {{ isDark ? "切换到浅色" : "切换到深色" }}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator class="ui-menu-separator" />
-          <DropdownMenuItem destructive @select="logout">
-            <LogOut />
-            退出登录
-          </DropdownMenuItem>
-        </DropdownMenu>
-      </div>
 
       <div class="workspace-navigation">
         <AppNav :zones="navigationZones" :collapsed="sidebarCollapsed" />
       </div>
 
-      <button
-        type="button"
-        class="workspace-sidebar-footer text-left transition-colors hover:bg-sidebar-accent hover:text-destructive"
-        aria-label="退出登录"
-        @click="logout"
-      >
-        <LogOut class="size-3.5 shrink-0" /><span class="sidebar-label"
-          >退出登录</span
-        >
-      </button>
+      <div class="workspace-account-footer">
+        <AccountMenu :user="accountUser" @logout="logout" />
+      </div>
     </aside>
 
     <div class="workspace-content">
@@ -173,15 +93,9 @@
               class="absolute right-1.5 top-1 size-1.5 rounded-full bg-destructive ring-2 ring-card"
             />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="lg:hidden"
-            aria-label="账号菜单"
-            @click="drawerOpen = true"
-          >
-            <Avatar :name="session.name" size="sm" />
-          </Button>
+          <div class="lg:hidden">
+            <AccountMenu :user="accountUser" compact @logout="logout" />
+          </div>
         </div>
       </header>
 
@@ -217,25 +131,11 @@
 
     <Sheet
       v-model:open="drawerOpen"
-      title="CYT"
+      title="CTY OA"
       description="导航与账号"
       side="left"
       tone="sidebar"
     >
-      <div class="border-b border-sidebar-border px-4 py-3">
-        <div class="flex items-center gap-2.5">
-          <Avatar :name="session.name" size="sm" />
-          <div class="min-w-0">
-            <b
-              class="block truncate text-sm font-medium text-sidebar-foreground"
-              >{{ session.name || "未登录" }}</b
-            >
-            <small class="block truncate text-xs text-sidebar-muted">
-              {{ session.isAdmin ? "管理员" : "员工" }} · {{ deptName }}
-            </small>
-          </div>
-        </div>
-      </div>
       <div class="px-2.5 py-3">
         <AppNav
           :zones="navigationZones"
@@ -243,25 +143,15 @@
           @navigate="drawerOpen = false"
         />
       </div>
-      <div class="space-y-0.5 border-t border-sidebar-border p-2">
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          @click="toggleTheme"
-        >
-          <Sun v-if="isDark" class="size-4" />
-          <Moon v-else class="size-4" />
-          {{ isDark ? "切换到浅色模式" : "切换到深色模式" }}
-        </button>
-        <button
-          type="button"
-          class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-destructive hover:bg-destructive/10"
-          @click="logout"
-        >
-          <LogOut class="size-4" />
-          退出登录
-        </button>
-      </div>
+      <template #footer>
+        <AccountMenu
+          :user="accountUser"
+          side="top"
+          class="w-full"
+          @logout="logout"
+          @navigate="drawerOpen = false"
+        />
+      </template>
     </Sheet>
 
     <CommandPalette
@@ -275,24 +165,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {
-  ChevronsUpDown,
-  LogOut,
-  Menu,
-  Moon,
-  PanelLeft,
-  Sun,
-  User,
-} from "@lucide/vue";
-import { DropdownMenuSeparator } from "reka-ui";
+import { Menu, PanelLeft, PanelsTopLeft } from "@lucide/vue";
+import AccountMenu from "../components/AccountMenu.vue";
 import AppNav from "../components/AppNav.vue";
 import CommandPalette from "../components/CommandPalette.vue";
-import Avatar from "../ui/Avatar.vue";
 import Button from "../ui/Button.vue";
 import PortalToastNotify from "./portal/editor/legacy/components/ToastNotify.vue";
 import PortalConfirmHost from "./portal/editor/legacy/components/ui/GlobalConfirmHost.vue";
-import DropdownMenu from "../ui/DropdownMenu.vue";
-import DropdownMenuItem from "../ui/DropdownMenuItem.vue";
 import Sheet from "../ui/Sheet.vue";
 import { navZones, type NavZone } from "../configs/nav";
 import { filterPortalNavigation } from "../lib/portal-access";
@@ -301,7 +180,6 @@ import { loadPortalRollout } from "../lib/portal-rollout";
 import { pageConfigs, tabbedPages } from "../configs/pages";
 import { session } from "../lib/session";
 import { meSummary, loadMeSummary } from "../lib/me";
-import { isDark, toggleTheme } from "../lib/theme";
 
 const route = useRoute();
 const router = useRouter();
@@ -321,6 +199,15 @@ const navigationZones = computed<NavZone[]>(() => {
     ...visibleZones.value.filter((zone) => zone.adminOnly),
   ];
 });
+const accountUser = computed(() => ({
+  name: session.name,
+  department: meSummary.deptName,
+  role: session.isAdmin
+    ? "系统管理员"
+    : session.canAccessConsole
+      ? "管理成员"
+      : "员工",
+}));
 const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 
 function toggleSidebar() {
@@ -343,8 +230,6 @@ const visibleZones = computed<NavZone[]>(() =>
     .filter((zone) => zone.items.length > 0),
 );
 
-const deptName = computed(() => meSummary.deptName || "未分配部门");
-
 const crumbs = computed<string[]>(() => {
   const match = findNavigationMatch(navigationZones.value, route.fullPath);
   if (match)
@@ -360,7 +245,7 @@ const crumbs = computed<string[]>(() => {
       (tabbedPages[key] ?? pageConfigs[key])?.title ?? "未找到页面",
     ];
   }
-  return ["CYT"];
+  return ["CTY OA"];
 });
 
 function navigateTo(path: string) {

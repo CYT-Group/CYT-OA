@@ -10,8 +10,8 @@
     /></Button>
     <main class="login-reference-main">
       <header class="login-reference-heading">
-        <span class="brand-mark">OA</span>
-        <h1>CYT</h1>
+        <span class="brand-mark" aria-hidden="true"><PanelsTopLeft :size="19" :stroke-width="1.8" /></span>
+        <h1>CTY OA</h1>
         <p>个人办公与企业管理</p>
       </header>
       <section
@@ -217,7 +217,7 @@
         </template>
       </section>
       <p class="mt-7 text-center text-[11px] text-muted-foreground">
-        © {{ year }} CYT
+        © {{ year }} CTY OA
       </p>
     </main>
   </div>
@@ -238,6 +238,7 @@ import {
   RefreshCw,
   ArrowRight,
   ArrowUpRight,
+  PanelsTopLeft,
 } from "@lucide/vue";
 import type { WWLoginInstance, WWLoginParams } from "@wecom/jssdk";
 import { api } from "../lib/api";

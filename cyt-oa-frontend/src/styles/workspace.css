@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  height: 74px;
+  height: 80px;
   padding: 0 20px;
   flex-shrink: 0;
 }
@@ -29,13 +29,36 @@
   display: grid;
   place-items: center;
   width: 34px;
-  height: 36px;
+  height: 34px;
   flex-shrink: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, #4f46e5, #06b6d4);
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-foreground);
   font-size: 12px;
   font-weight: 700;
+}
+.workspace-brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.workspace-brand-name {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+.workspace-brand-name > span {
+  margin-left: 3px;
+  color: var(--sidebar-muted);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.workspace-brand-description {
+  color: var(--sidebar-muted);
+  font-size: 11px;
+  line-height: 1.5;
 }
 .workspace-switch {
   display: flex;
@@ -46,66 +69,72 @@
   background: var(--muted);
   border: 1px solid var(--sidebar-border);
 }
-.workspace-identity {
+.workspace-account-footer {
   flex-shrink: 0;
-  margin: 14px 14px 14px;
+  padding: 12px;
+  border-top: 1px solid var(--sidebar-border);
 }
-.workspace-identity .workspace-account-trigger {
+.workspace-account-trigger {
   display: flex;
-  flex-wrap: wrap;
   width: 100%;
+  min-width: 0;
   align-items: center;
   gap: 10px;
-  padding: 14px 12px;
-  border: 1px solid color-mix(in srgb, var(--primary) 8%, transparent);
-  border-radius: 12px;
-  background: var(--sidebar-active);
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--sidebar-foreground);
   text-align: left;
-  transition:
-    border-color 150ms ease,
-    background-color 150ms ease;
+  transition: background-color 150ms ease;
 }
-.workspace-identity-avatar {
-  background: linear-gradient(135deg, #4f46e5, #06b6d4);
-  color: #fff;
+.workspace-account-trigger:hover,
+.workspace-account-trigger[data-state="open"] {
+  background: var(--sidebar-accent);
 }
-.workspace-identity-tier {
+.workspace-account-trigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.workspace-account-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--sidebar-active);
+  color: var(--primary);
+  font-size: 13px;
+}
+.account-trigger-copy {
   display: flex;
-  flex: 0 0 100%;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-  min-height: 26px;
-  padding: 3px 8px;
-  border: 1px dashed color-mix(in srgb, var(--primary) 12%, transparent);
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--card) 65%, transparent);
-  color: var(--primary);
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.account-trigger-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 19px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-trigger-department {
+  overflow: hidden;
   font-size: 11px;
-}
-.workspace-identity .workspace-account-trigger:hover {
-  border-color: color-mix(in srgb, var(--primary) 26%, transparent);
-  background: color-mix(in srgb, var(--primary) 10%, var(--card));
-}
-.workspace-identity-role {
-  display: inline-flex;
-  margin-top: 7px;
-  padding: 1px 6px;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--card) 70%, transparent);
-  color: var(--primary);
-  font-size: 10px;
   line-height: 17px;
-}
-.workspace-sidebar-footer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  padding: 14px 22px;
-  border-top: 1px solid var(--sidebar-border);
-  font-size: 11px;
   color: var(--sidebar-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-trigger-compact {
+  width: 36px;
+  height: 36px;
+  padding: 3px;
+}
+.account-trigger-compact .workspace-account-avatar {
+  width: 30px;
+  height: 30px;
 }
 .workspace-switch a {
   display: flex;
@@ -630,16 +659,13 @@
     justify-content: center;
     padding: 12px 0;
   }
-  .workspace-collapsed .workspace-identity {
-    margin: 0 12px 14px;
+  .workspace-collapsed .workspace-account-footer {
+    padding: 12px 10px;
   }
   .workspace-collapsed .workspace-account-trigger {
     justify-content: center;
-    padding: 10px 0;
-  }
-  .workspace-collapsed .workspace-sidebar-footer {
-    justify-content: center;
-    padding: 14px 0;
+    gap: 0;
+    padding: 8px 0;
   }
   .workspace-topbar {
     padding: 0 25px;
