@@ -45,6 +45,8 @@ system-schema.sql → dict-seed.sql → permission-seed.sql → system-seed.sql
 → local-demo-seed.sql（仅本机演示）
 ```
 
+人事工作区（招聘、入离职文书、合同模板、员工生命周期）的数据库升级与授权见[人事工作区](docs/hr-workspace.md)。
+
 已有数据库启用企微花名册同步前，需额外执行 `src/main/resources/db/wecom-hr-sync-schema.sql`。
 新库的 `hrm-schema.sql` 已包含该表；此升级脚本仅创建缺失的同步基线表，不修改员工日期。
 

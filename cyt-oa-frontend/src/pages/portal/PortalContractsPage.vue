@@ -1,6 +1,7 @@
 <template>
   <div class="min-w-0 space-y-4">
     <PageHeader title="劳动合同生成" description="选择签约主体，填写员工、岗位及薪酬信息，生成 Word 合同。"><template #actions><Button variant="outline" size="sm" :disabled="busy" @click="openEntity()"><Building2 />新增签约主体</Button></template></PageHeader>
+    <HrEmploymentNavigation />
     <Callout v-if="loadError" tone="destructive" title="合同配置加载失败">{{ loadError }}<template #action><Button variant="outline" size="sm" @click="loadConfig">重试</Button></template></Callout>
     <p v-if="loading" class="panel p-6 text-sm text-muted-foreground">正在加载合同模板配置…</p>
     <nav v-if="!loading" aria-label="合同填写分区" class="flex flex-wrap gap-1 border-b pb-3"><a v-for="section in contractSections" :key="section.id" :href="`#${section.id}`" class="rounded-lg px-3 py-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{{ section.label }}</a></nav>
@@ -48,6 +49,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import HrEmploymentNavigation from '../../components/HrEmploymentNavigation.vue'
 import { Building2, FileDown } from '@lucide/vue'
 import { api } from '../../lib/api'
 import { portalFile, savePortalFile } from '../../lib/portal-files'

@@ -34,9 +34,11 @@ export function allowed(item: {
 
 export function filterPortalNavigation(zones: NavZone[]): NavZone[] {
   return zones
+    .filter(zone => !session.isHrOnly || zone.adminOnly)
     .map((zone) => ({
       ...zone,
       items: zone.items.flatMap((item) => {
+        if (session.isHrOnly && item.key !== "people-management") return [];
         if (zone.adminOnly && item.key === "console" && !session.isAdmin)
           return [];
         if (item.systemOnly && !session.isAdmin) return [];

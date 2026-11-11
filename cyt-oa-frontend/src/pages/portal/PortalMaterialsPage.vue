@@ -33,6 +33,18 @@
       :items="tabs"
       @update:model-value="changeTab"
     />
+    <section v-if="tab === 'inventory'" class="mt-4" aria-label="全局库存概况">
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-sm font-semibold">库存概况</h2>
+        <p class="text-xs text-muted-foreground">{{ isOffice ? '办公用品' : '样品' }}{{ summaryArchived ? '已归档' : '正常' }}台账，不受下方筛选影响</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div v-for="metric in stockMetrics" :key="metric.label" class="panel p-4">
+          <p class="text-xs text-muted-foreground">{{ metric.label }}</p>
+          <p class="mt-2 text-2xl font-semibold tabular-nums">{{ loading ? '…' : (metric.value ?? '—') }}</p>
+        </div>
+      </div>
+    </section>
     <Callout
       v-if="optionsError"
       title="基础信息加载失败"
@@ -84,10 +96,7 @@
     <section v-else class="panel mt-4 overflow-hidden">
       <form
         class="table-toolbar flex flex-wrap gap-2"
-        @submit.prevent="
-          page = 1;
-          load();
-        "
+        @submit.prevent="applyFilters"
       >
         <Input
           v-model="search"
@@ -105,9 +114,40 @@
           ]"
           aria-label="归档状态"
           class="sm:w-36"
+        /><Select
+          v-if="tab !== 'applies'"
+          v-model="categoryFilter"
+          :options="[{ value: '', label: '全部分类' }, ...categoryOptions]"
+          aria-label="按物资分类筛选"
+          class="sm:w-36"
+        /><Select
+          v-if="tab !== 'applies'"
+          v-model="brandFilter"
+          :options="brandOptions"
+          aria-label="按品牌筛选"
+          class="sm:w-36"
+        /><Select
+          v-if="tab !== 'owners'"
+          v-model="siteFilter"
+          :options="[{ value: '', label: '全部城市' }, ...sites]"
+          aria-label="按物资城市筛选"
+          class="sm:w-36"
+        /><Select
+          v-if="tab === 'inventory'"
+          v-model="stockFilter"
+          :options="[{ value: '', label: '全部库存' }, { value: 'available', label: '有可用库存' }, { value: 'out', label: '库存为零' }]"
+          aria-label="按库存状态筛选"
+          class="sm:w-40"
+        /><Select
+          v-if="tab === 'applies'"
+          v-model="statusFilter"
+          :options="applyStatusOptions"
+          aria-label="按物资单据状态筛选"
+          class="sm:w-36"
         /><Button type="submit" variant="outline" :disabled="loading"
           ><Search class="size-4" />查询</Button
-        >
+        ><Button v-if="hasFilters" variant="ghost" :disabled="loading" @click="resetFilters">重置</Button>
+        <span class="ml-auto self-center whitespace-nowrap text-xs text-muted-foreground">共 {{ loadError ? '—' : total }} 条</span>
       </form>
       <Callout
         v-if="loadError"
@@ -159,6 +199,7 @@
             <tr v-for="row in rows" :key="row.id">
               <template v-if="tab === 'products'"
                 ><td>
+                  <img v-if="row.imageUrls?.[0]" :src="row.imageUrls[0]" :alt="`${row.name}留底图`" class="float-left mr-3 size-10 rounded-md border object-cover" loading="lazy" />
                   <b class="portal-table-title font-medium" :title="row.name">{{
                     row.name
                   }}</b>
@@ -175,6 +216,7 @@
                 </td></template
               ><template v-else-if="tab === 'inventory'"
                 ><td>
+                  <img v-if="row.imageUrls?.[0]" :src="row.imageUrls[0]" :alt="`${row.name}留底图`" class="float-left mr-3 size-10 rounded-md border object-cover" loading="lazy" />
                   <b class="portal-table-title font-medium" :title="row.name">{{
                     row.name
                   }}</b>
@@ -275,10 +317,8 @@
         :page="page"
         :page-size="20"
         :total="total"
-        @update:page="
-          page = $event;
-          load();
-        "
+        :disabled="loading"
+        @update:page="changePage"
       />
     </section>
   </div>
@@ -786,14 +826,14 @@ const kind = computed(() =>
     route.query.kind === "office" ? "office" : "sample",
   ),
   isOffice = computed(() => kind.value === "office");
-const tabs = [
-  { value: "inventory", label: "规格库存" },
-  { value: "products", label: "商品档案" },
-  { value: "applies", label: "申请与借还" },
+const tabs = computed(() => [
+  { value: "products", label: isOffice.value ? "用品目录" : "样品目录" },
+  { value: "inventory", label: isOffice.value ? "库存管理" : "台账盘点" },
+  { value: "applies", label: isOffice.value ? "领用记录" : "借用归还" },
   { value: "owners", label: "站点负责人" },
-];
+]);
 const tab = computed(() =>
-  tabs.some((v) => v.value === route.query.tab)
+  tabs.value.some((v) => v.value === route.query.tab)
     ? String(route.query.tab)
     : "inventory",
 );
@@ -806,7 +846,7 @@ const canConfigureOwners = computed(() =>
   ),
   canDelete = computed(() => session.has("can_delete")),
   canApproveAny = computed(() => session.has("can_approve_any_material_apply"));
-const options = ref<MaterialOptions>({
+const options = ref<MaterialOptions & { brands?: string[] }>({
     users: [],
     owners: [],
     products: [],
@@ -833,6 +873,19 @@ const userOptions = computed(() =>
       label: category.name,
     })),
   );
+const brandOptions = computed(() => [
+  { value: '', label: '全部品牌' },
+  ...[...new Set([...(options.value.brands ?? []), ...(brandFilter.value ? [brandFilter.value] : [])])].sort().map(brand => ({ value: brand, label: brand })),
+]);
+interface MaterialSummary { productCount?: number; skuCount?: number; stockQty?: number; borrowedQty?: number; outOfStockCount?: number }
+const stockSummary = ref<MaterialSummary | null>(null);
+const summaryArchived = ref(false);
+const stockMetrics = computed(() => [
+  { label: '商品数', value: stockSummary.value?.productCount },
+  { label: '规格数', value: stockSummary.value?.skuCount },
+  { label: '可用库存', value: stockSummary.value?.stockQty },
+  { label: isOffice.value ? '零库存规格' : '在借数量', value: isOffice.value ? stockSummary.value?.outOfStockCount : stockSummary.value?.borrowedQty },
+]);
 const rows = ref<MaterialRow[]>([]),
   page = ref(1),
   total = ref(0),
@@ -841,8 +894,53 @@ const rows = ref<MaterialRow[]>([]),
   loading = ref(false),
   loadError = ref(""),
   busy = ref(false);
+const categoryFilter = ref(''), brandFilter = ref(''), siteFilter = ref(''),
+  stockFilter = ref(''), statusFilter = ref('');
+const applyStatusOptions = computed(() => [
+  { value: '', label: '全部状态' }, { value: 'pending', label: '待审批' },
+  ...(isOffice.value ? [{ value: 'issued', label: '已发放' }] : [{ value: 'borrowed', label: '借用中' }, { value: 'returned', label: '已归还' }]),
+  { value: 'rejected', label: '已驳回' }, { value: 'closed', label: '已关闭' },
+]);
+const hasFilters = computed(() => Boolean(search.value || categoryFilter.value || brandFilter.value || siteFilter.value || stockFilter.value || statusFilter.value || archiveFilter.value === 'true'));
+function readFilters() {
+  const text = (key: string) => typeof route.query[key] === 'string' ? String(route.query[key]) : '';
+  search.value = text('q');
+  categoryFilter.value = /^[1-9]\d*$/.test(text('categoryId')) ? text('categoryId') : '';
+  brandFilter.value = text('brand');
+  siteFilter.value = sites.some(site => site.value === text('site')) ? text('site') : '';
+  stockFilter.value = ['available', 'out'].includes(text('stockState')) ? text('stockState') : '';
+  statusFilter.value = applyStatusOptions.value.some(status => status.value === text('status')) ? text('status') : '';
+  archiveFilter.value = text('archived') === 'true' ? 'true' : 'false';
+  page.value = /^[1-9]\d{0,6}$/.test(text('page')) ? Number(text('page')) : 1;
+}
+readFilters();
+function applyFilters() {
+  const query: Record<string, string> = { kind: kind.value, tab: tab.value };
+  if (search.value.trim()) query.q = search.value.trim();
+  if (tab.value !== 'applies') {
+    if (archiveFilter.value === 'true') query.archived = 'true';
+    if (categoryFilter.value) query.categoryId = categoryFilter.value;
+    if (brandFilter.value.trim()) query.brand = brandFilter.value.trim();
+  }
+  if (siteFilter.value) query.site = siteFilter.value;
+  if (tab.value === 'inventory' && stockFilter.value) query.stockState = stockFilter.value;
+  if (tab.value === 'applies' && statusFilter.value) query.status = statusFilter.value;
+  const target = router.resolve({ query });
+  if (target.fullPath === route.fullPath) void load();
+  else void router.push({ query });
+}
+function resetFilters() {
+  search.value = categoryFilter.value = brandFilter.value = siteFilter.value = stockFilter.value = statusFilter.value = '';
+  archiveFilter.value = 'false';
+  applyFilters();
+}
+function changePage(value: number) {
+  void router.push({ query: { ...route.query, page: value > 1 ? String(value) : undefined } });
+}
 let loadRequest = 0,
-  optionRequest = 0;
+  optionRequest = 0,
+  inventoryRequest = 0,
+  detailRequest = 0;
 async function loadOptions() {
   const id = ++optionRequest;
   optionsLoading.value = true;
@@ -862,7 +960,8 @@ async function loadOptions() {
 }
 async function load() {
   const id = ++loadRequest;
-  if (tab.value === "owners") return;
+  const requestedArchived = archiveFilter.value === 'true';
+  if (tab.value === "owners") { loading.value = false; return; }
   loading.value = true;
   loadError.value = "";
   try {
@@ -871,18 +970,28 @@ async function load() {
       resource: tab.value,
       q: search.value || undefined,
       archived: archiveFilter.value,
+      categoryId: tab.value !== 'applies' ? categoryFilter.value || undefined : undefined,
+      brand: tab.value !== 'applies' ? brandFilter.value.trim() || undefined : undefined,
+      site: siteFilter.value || undefined,
+      stockState: tab.value === 'inventory' ? stockFilter.value || undefined : undefined,
+      status: tab.value === 'applies' ? statusFilter.value || undefined : undefined,
       pageNo: page.value,
       pageSize: 20,
     });
     if (id === loadRequest) {
       rows.value = result.list;
       total.value = result.total;
+      stockSummary.value = (result as typeof result & { summary?: MaterialSummary }).summary ?? null;
+      summaryArchived.value = requestedArchived;
+      const lastPage = Math.max(1, Math.ceil(Number(result.total) / 20));
+      if (page.value > lastPage) changePage(lastPage);
     }
   } catch (e) {
     if (id === loadRequest) {
       loadError.value = errText(e);
       rows.value = [];
       total.value = 0;
+      stockSummary.value = null;
     }
   } finally {
     if (id === loadRequest) loading.value = false;
@@ -892,7 +1001,7 @@ async function reload() {
   await Promise.allSettled([loadOptions(), load()]);
 }
 function changeTab(value: string) {
-  router.push({ query: { ...route.query, tab: value } });
+  router.push({ query: { kind: kind.value, tab: value } });
 }
 function siteName(value?: string) {
   return sites.find((site) => site.value === value)?.label ?? value ?? "—";
@@ -1134,6 +1243,7 @@ const inventoryOptions = computed(() =>
   })),
 );
 async function loadInventory() {
+  const request = ++inventoryRequest, requestedKind = kind.value;
   inventoryLoading.value = true;
   try {
     const all: MaterialRow[] = [];
@@ -1141,21 +1251,24 @@ async function loadInventory() {
       count = 0;
     do {
       const result = await materialApi.page({
-        kind: kind.value,
+        kind: requestedKind,
         resource: "inventory",
         pageNo: no++,
         pageSize: 200,
       });
+      if (request !== inventoryRequest || requestedKind !== kind.value) return;
       count = result.total;
       all.push(...result.list);
       if (!result.list.length) break;
     } while (all.length < count);
-    inventoryRows.value = all;
+    if (request === inventoryRequest) inventoryRows.value = all;
   } catch (e) {
-    createError.value = errText(e);
-    inventoryRows.value = [];
+    if (request === inventoryRequest) {
+      createError.value = errText(e);
+      inventoryRows.value = [];
+    }
   } finally {
-    inventoryLoading.value = false;
+    if (request === inventoryRequest) inventoryLoading.value = false;
   }
 }
 function openCreateApply() {
@@ -1225,16 +1338,18 @@ const canHandleDetail = computed(
       )),
 );
 async function openDetail(id: number) {
+  const request = ++detailRequest;
   detailOpen.value = true;
   detail.value = undefined;
   detailLoading.value = true;
   detailError.value = "";
   try {
-    detail.value = await materialApi.detail(id);
+    const result = await materialApi.detail(id);
+    if (request === detailRequest) detail.value = result;
   } catch (e) {
-    detailError.value = errText(e);
+    if (request === detailRequest) detailError.value = errText(e);
   } finally {
-    detailLoading.value = false;
+    if (request === detailRequest) detailLoading.value = false;
   }
 }
 const applyActionOpen = ref(false),
@@ -1291,6 +1406,8 @@ async function performApplyAction() {
     const items = actionItems.value
       .map((item) => ({ id: item.id, quantity: Number(item.quantity) }))
       .filter((item) => applyAction.value !== "return" || item.quantity > 0);
+    if (applyAction.value === 'return' && !items.length)
+      throw new Error('请填写至少一项正整数归还数量');
     await materialApi.action({
       id: detail.value.id,
       action: applyAction.value,
@@ -1308,15 +1425,25 @@ async function performApplyAction() {
     busy.value = false;
   }
 }
-watch([kind, tab], ([nextKind], [previousKind]) => {
-  page.value = 1;
-  search.value = "";
-  archiveFilter.value = "false";
-  editOpen.value = false;
-  createOpen.value = false;
-  detailOpen.value = false;
-  if (nextKind !== previousKind) loadOptions();
-  load();
+let contextKind = kind.value, contextTab = tab.value;
+watch(() => route.fullPath, () => {
+  const changedKind = kind.value !== contextKind;
+  if (changedKind || tab.value !== contextTab) {
+    editOpen.value = createOpen.value = detailOpen.value = applyActionOpen.value = false;
+    inventoryRequest++;
+    detailRequest++;
+    inventoryLoading.value = detailLoading.value = false;
+    inventoryRows.value = [];
+    stockSummary.value = null;
+  }
+  if (changedKind) {
+    options.value = { users: [], owners: [], products: [], categories: [] };
+    void loadOptions();
+  }
+  contextKind = kind.value;
+  contextTab = tab.value;
+  readFilters();
+  void load();
 });
 onMounted(reload);
 </script>

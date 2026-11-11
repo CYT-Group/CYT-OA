@@ -22,6 +22,9 @@ class DirectoryArchivePurgeMapperTest {
                 .getBoundSql(Map.of("table", "hrm_employee_wecom_sync", "ids", List.of(42L)));
         assertTrue(details.getSql().startsWith("DELETE FROM hrm_employee_wecom_sync WHERE employee_id IN"));
         assertEquals(1, details.getParameterMappings().size());
+        var employmentDocuments = config.getMappedStatement(prefix + "deleteDetails")
+                .getBoundSql(Map.of("table", "hrm_employment_document", "ids", List.of(42L)));
+        assertTrue(employmentDocuments.getSql().startsWith("DELETE FROM hrm_employment_document WHERE employee_id IN"));
     }
     @Test void detailSqlRejectsTablesOutsideTheExplicitArchiveList() {
         assertThrows(IllegalArgumentException.class, () -> DirectoryArchivePurgeMapper.Sql.deleteDetails(

@@ -1,5 +1,6 @@
 <template>
   <nav
+    ref="navElement"
     class="app-navigation"
     :class="{ 'nav-collapsed': collapsed }"
     aria-label="系统导航"
@@ -9,25 +10,31 @@
         class="nav-zone-title"
         :class="{ 'nav-zone-management': zone.adminOnly }"
       >
-        <span v-if="zone.glyph" aria-hidden="true">{{ zone.glyph }} </span
-        >{{ zone.title }}
+        <span v-if="zone.glyph" aria-hidden="true">{{ zone.glyph }}</span>
+        {{ zone.title }}
       </h2>
-      <div v-for="item in zone.items" :key="item.key" class="nav-item-row">
+      <div
+        v-for="item in zone.items"
+        :key="item.key"
+        class="nav-item-row"
+        :data-nav-key="item.key"
+      >
         <DropdownMenu
           v-if="collapsed && item.children?.length"
           side="right"
           align="start"
         >
-          <template #trigger
-            ><button
+          <template #trigger>
+            <button
               type="button"
               class="nav-item nav-item-header"
               :class="{ 'nav-item-active': active?.item.key === item.key }"
               :aria-label="item.title"
               :title="item.title"
             >
-              <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" /></button
-          ></template>
+              <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" />
+            </button>
+          </template>
           <p class="px-2 py-2 text-xs font-semibold text-muted-foreground">
             {{ item.title }}
           </p>
@@ -35,33 +42,49 @@
             v-for="child in item.children"
             :key="child.to"
             @select="navigate(child.to)"
-            ><NavIcon
+          >
+            <NavIcon
               v-if="child.glyph || child.icon"
               :name="child.icon"
               :glyph="child.glyph ?? ''"
-            />{{ child.title }}</DropdownMenuItem
-          >
+            />
+            {{ child.title }}
+          </DropdownMenuItem>
         </DropdownMenu>
         <template v-else>
-          <button
+          <div
             v-if="item.children?.length"
-            type="button"
-            class="nav-item nav-item-header"
+            class="nav-item nav-item-header nav-parent"
             :class="{ 'nav-item-active': active?.item.key === item.key }"
-            :aria-expanded="isOpen(item.key)"
-            :aria-controls="`nav-submenu-${item.key}`"
-            @click="activate(item)"
           >
-            <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" />
-            <span class="nav-item-label">{{ item.title }}</span>
-            <span v-if="item.automatic" class="nav-automatic">自动</span>
-            <span v-if="badgeOf(item)" class="nav-count">{{
-              badgeOf(item)
-            }}</span>
-            <span class="nav-arrow" aria-hidden="true">{{
-              isOpen(item.key) ? "▼" : "▶"
-            }}</span>
-          </button>
+            <button
+              type="button"
+              class="nav-parent-link"
+              :aria-label="item.title"
+              :aria-expanded="isOpen(item.key)"
+              :aria-controls="submenuId(item.key)"
+              @click="activate(item)"
+            >
+              <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" />
+              <span class="nav-item-label">{{ item.title }}</span>
+              <span v-if="item.automatic" class="nav-automatic">自动</span>
+              <span v-if="badgeOf(item)" class="nav-count">
+                {{ badgeOf(item) }}
+              </span>
+            </button>
+            <button
+              type="button"
+              class="nav-parent-toggle"
+              :aria-label="`${isOpen(item.key) ? '收起' : '展开'}${item.title}`"
+              :aria-expanded="isOpen(item.key)"
+              :aria-controls="submenuId(item.key)"
+              @click="expand(item.key, !isOpen(item.key))"
+            >
+              <span class="nav-arrow" aria-hidden="true">
+                {{ isOpen(item.key) ? "▼" : "▶" }}
+              </span>
+            </button>
+          </div>
           <router-link
             v-else
             :to="item.to"
@@ -72,16 +95,15 @@
             :title="collapsed ? item.title : undefined"
             @click="emit('navigate')"
           >
-            <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" /><span
-              class="nav-item-label"
-              >{{ item.title }}</span
-            ><span v-if="badgeOf(item) && !collapsed" class="nav-count">{{
-              badgeOf(item)
-            }}</span>
+            <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" />
+            <span class="nav-item-label">{{ item.title }}</span>
+            <span v-if="badgeOf(item) && !collapsed" class="nav-count">
+              {{ badgeOf(item) }}
+            </span>
           </router-link>
           <div
             v-if="item.children?.length && isOpen(item.key) && !collapsed"
-            :id="`nav-submenu-${item.key}`"
+            :id="submenuId(item.key)"
             class="nav-submenu"
           >
             <router-link
@@ -105,7 +127,8 @@
                 v-if="child.glyph || child.icon"
                 :name="child.icon"
                 :glyph="child.glyph ?? ''"
-              /><span>{{ child.title }}</span>
+              />
+              <span>{{ child.title }}</span>
             </router-link>
           </div>
         </template>
@@ -115,7 +138,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useId,
+  watch,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { NavItem, NavZone } from "../configs/nav";
 import { findNavigationMatch } from "../lib/navigation";
@@ -132,10 +163,22 @@ const emit = defineEmits<{ navigate: [] }>();
 const route = useRoute(),
   router = useRouter();
 const active = computed(() => findNavigationMatch(props.zones, route.fullPath));
+const navElement = ref<HTMLElement | null>(null);
+const instanceId = useId();
+const submenuId = (key: string) => `${instanceId}-submenu-${key}`;
 const open = ref(new Set<string>());
 const isOpen = (key: string) => open.value.has(key);
 function expand(key: string, on: boolean) {
   open.value = new Set<string>(on ? [key] : []);
+  if (on) void nextTick(revealExpanded);
+}
+function revealExpanded() {
+  if (props.collapsed) return;
+  const key = [...open.value][0];
+  const row = Array.from(
+    navElement.value?.querySelectorAll<HTMLElement>(".nav-item-row") ?? [],
+  ).find((element) => element.dataset.navKey === key);
+  row?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 function badgeOf(item: NavItem): number | "" {
   return item.badge
@@ -147,14 +190,9 @@ function navigate(path: string) {
   emit("navigate");
 }
 function activate(item: NavItem) {
-  if (isOpen(item.key)) {
-    expand(item.key, false);
-    return;
-  }
   expand(item.key, true);
-  // 展开当前模块时保留正在阅读的二级页，其他模块进入第一个可访问入口。
-  if (!props.expandOnly && active.value?.item.key !== item.key)
-    navigate(item.to);
+  // 对齐 demo：点击父级标题进入默认子页；箭头独立控制展开，手机抽屉先展开供选择。
+  if (!props.expandOnly) navigate(item.to);
 }
 watch(
   () => active.value?.item.key,
@@ -164,4 +202,17 @@ watch(
   },
   { immediate: true },
 );
+// 团队菜单异步出现、字体加载或窗口缩放后，仍让展开组完整露出。
+watch(
+  () => [props.zones, props.collapsed],
+  () => {
+    void nextTick(revealExpanded);
+  },
+  { flush: "post" },
+);
+onMounted(() => {
+  void document.fonts.ready.then(revealExpanded);
+  window.addEventListener("resize", revealExpanded);
+});
+onBeforeUnmount(() => window.removeEventListener("resize", revealExpanded));
 </script>

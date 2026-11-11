@@ -1,11 +1,11 @@
 <template>
   <div v-if="session.has('hrm:employee:update')" class="mt-4">
     <div class="flex flex-wrap gap-2">
-      <Button v-if="employee.entryStatus === 2" variant="outline" size="sm" @click="begin('confirm-entry')">确认入职</Button>
+      <Button v-if="employee.entryStatus === 2" variant="outline" size="sm" @click="startEmployment('onboard')">确认入职</Button>
       <Button v-if="employee.entryStatus === 1 && employee.status === 2" variant="outline" size="sm" @click="begin('regular')">办理转正</Button>
       <Button v-if="employee.entryStatus === 1" variant="outline" size="sm" @click="begin('transfer')">登记任职调整</Button>
       <Button v-if="employee.entryStatus === 1" variant="outline" size="sm" @click="begin('promote')">办理晋升</Button>
-      <Button v-if="employee.entryStatus === 1" variant="outline" size="sm" @click="begin('quit')">办理离职</Button>
+      <Button v-if="employee.entryStatus === 1" variant="outline" size="sm" @click="startEmployment('offboard')">办理离职</Button>
       <Button v-if="employee.entryStatus === 3" variant="outline" size="sm" @click="begin('cancel-quit')">取消待离职</Button>
       <Button v-if="employee.entryStatus === 4" variant="outline" size="sm" @click="begin('rehire')">办理再入职</Button>
     </div>
@@ -97,6 +97,7 @@
 <script setup lang="ts">
 import { LoaderCircle } from '@lucide/vue'
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '../lib/api'
 import { session } from '../lib/session'
 import Button from '../ui/Button.vue'
@@ -110,6 +111,11 @@ interface Employee { id: string; entryStatus: number | null; status: number | nu
 
 const props = defineProps<{ employee: Employee }>()
 const emit = defineEmits<{ updated: [] }>()
+const router = useRouter()
+function startEmployment(mode: 'onboard' | 'offboard') {
+  if (session.has('hrm:contract-template:query')) void router.push({ path: '/hr/employment', query: { mode, employeeId: props.employee.id } })
+  else begin(mode === 'onboard' ? 'confirm-entry' : 'quit')
+}
 
 const labels: Record<string, string> = {
   'confirm-entry': '确认入职',

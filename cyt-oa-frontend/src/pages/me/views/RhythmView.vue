@@ -13,7 +13,7 @@
         class="w-36"
         @update:model-value="onKind"
       />
-      <Button variant="outline" size="sm" @click="load">
+      <Button variant="outline" size="sm" :disabled="loading" @click="load">
         <RefreshCw class="size-3.5" />
         刷新
       </Button>
@@ -21,6 +21,7 @@
     </div>
 
     <Callout v-if="loadError" tone="destructive" title="加载失败">{{ loadError }}</Callout>
+    <p v-else-if="loading" class="py-10 text-center text-sm text-muted-foreground" role="status">正在读取活动节点…</p>
 
     <template v-else>
       <section v-if="tab === 'calendar'" class="panel">
@@ -186,7 +187,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { CalendarRange, ChevronLeft, ChevronRight, Megaphone, RefreshCw } from '@lucide/vue'
 import UiIcon from '../../../components/UiIcon.vue'
 import { meApi, type RhythmNode } from '../../../lib/me-api'
-import { daysBetween, todayISO } from '../../../lib/format'
+import { daysBetween } from '../../../lib/format'
+import { todayShanghai } from '../../../lib/hr-workspace'
 import { toast, errText } from '../../../lib/toast'
 import { loadMeSummary } from '../../../lib/me'
 import PageHeader from '../../../ui/PageHeader.vue'
@@ -228,12 +230,13 @@ const kind = computed(() => ['sale', 'new', 'event'].includes(String(route.query
 const picked = ref<RhythmNode | null>(null)
 const remindBefore = ref(3)
 const loadError = ref('')
+const loading = ref(false)
 
-const today = todayISO()
-const cellYear = ref(new Date().getFullYear())
-const cellMonth = ref(new Date().getMonth())
+const today = todayShanghai()
+const cellYear = ref(Number(today.slice(0, 4)))
+const cellMonth = ref(Number(today.slice(5, 7)) - 1)
 
-const tab = computed(() => String(route.query.tab ?? 'now'))
+const tab = computed(() => TABS.some(item => item.key === route.query.tab) ? String(route.query.tab) : 'now')
 
 const shown = computed(() => {
   if (tab.value === 'all') return nodes.value
@@ -342,9 +345,9 @@ function moveMonth(step: number) {
 }
 
 function backToday() {
-  const now = new Date()
-  cellYear.value = now.getFullYear()
-  cellMonth.value = now.getMonth()
+  const now = todayShanghai()
+  cellYear.value = Number(now.slice(0, 4))
+  cellMonth.value = Number(now.slice(5, 7)) - 1
 }
 
 function select(key: string, value: string) {
@@ -355,19 +358,29 @@ function onKind(value: string | number | null | undefined) {
   select('kind', value == null ? '' : String(value))
 }
 
+let listRequest = 0
 async function load() {
+  const request = ++listRequest
+  loading.value = true
   loadError.value = ''
   try {
-    nodes.value = await meApi.rhythmNodes(kind.value ? { kind: kind.value } : undefined)
+    const params: { kind?: string; from?: string; to?: string } = kind.value ? { kind: kind.value } : {}
+    if (tab.value === 'calendar') {
+      const prefix = `${cellYear.value}-${String(cellMonth.value + 1).padStart(2, '0')}`
+      params.from = `${prefix}-01`
+      params.to = `${prefix}-${new Date(Date.UTC(cellYear.value, cellMonth.value + 1, 0)).getUTCDate()}`
+    }
+    const result = await meApi.rhythmNodes(params)
+    if (request === listRequest) nodes.value = result
   } catch (e) {
-    loadError.value = errText(e)
+    if (request === listRequest) { nodes.value = []; loadError.value = errText(e) }
+  } finally {
+    if (request === listRequest) loading.value = false
   }
 }
 
-watch(tab, (value) => {
-  if (value === 'calendar' && !nodes.value.length) void load()
-})
-watch(kind, load)
+watch([tab, kind], load)
+watch([cellYear, cellMonth], () => { if (tab.value === 'calendar') void load() })
 
 onMounted(load)
 </script>

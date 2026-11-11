@@ -202,6 +202,7 @@
 </template>
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from 'vue-router';
 import { RefreshCw, Download } from "@lucide/vue";
 import PageHeader from "../../ui/PageHeader.vue";
 import Button from "../../ui/Button.vue";
@@ -219,8 +220,14 @@ import {
   type SignoffStats,
 } from "../../lib/portal-hr";
 import { errText } from "../../lib/toast";
-const selected = ref(""),
-  version = ref(""),
+const route = useRoute(), router = useRouter();
+function routeDocument() {
+  if (/^[1-9]\d{0,18}$/.test(String(route.query.documentId ?? ''))) return `id:${route.query.documentId}`;
+  if (['incentive', 'handbook'].includes(String(route.query.document))) return `legacy:${route.query.document}`;
+  return '';
+}
+const selected = ref(routeDocument()),
+  version = ref(typeof route.query.version === 'string' ? route.query.version : ''),
   loading = ref(true),
   error = ref(""),
   stats = ref<SignoffStats | null>(null);
@@ -293,7 +300,14 @@ watch([search, department], () => {
 });
 let request = 0;
 async function load() {
+  if (!selected.value) return;
   const current = ++request;
+  const next = { ...route.query };
+  delete next.documentId; delete next.document; delete next.version;
+  if (selected.value.startsWith('id:')) next.documentId = selected.value.slice(3);
+  else next.document = selected.value.slice(7);
+  if (version.value.trim()) next.version = version.value.trim();
+  if (router.resolve({ query: next }).fullPath !== route.fullPath) void router.replace({ query: next });
   loading.value = true;
   error.value = "";
   stats.value = null;
@@ -318,7 +332,8 @@ async function load() {
   }
 }
 async function notify() {
-  if (!stats.value || notifying.value) return;
+  if (!stats.value || notifying.value || notifyUnavailable.value || !stats.value.not_signed_count) return;
+  const targetDocument = selected.value, targetVersion = stats.value.version;
   notifying.value = true;
   notifyResult.value = "";
   try {
@@ -329,10 +344,12 @@ async function notify() {
       ...docRef,
       version: stats.value.version,
     });
+    if (selected.value !== targetDocument || stats.value?.version !== targetVersion) return;
     notifyFailed.value = result.failed > 0;
     notifyResult.value = `目标 ${result.targetCount} 人，成功发送 ${result.sent} 人，失败 ${result.failed} 人。${result.errors?.length ? result.errors.join("；") : ""}`;
     notifyOpen.value = false;
   } catch (e) {
+    if (selected.value !== targetDocument || stats.value?.version !== targetVersion) return;
     notifyFailed.value = true;
     notifyResult.value = errText(e);
     notifyOpen.value = false;
@@ -340,6 +357,15 @@ async function notify() {
     notifying.value = false;
   }
 }
+watch(() => [route.query.documentId, route.query.document, route.query.version], () => {
+  const fromRoute = routeDocument();
+  const nextVersion = typeof route.query.version === 'string' ? route.query.version : '';
+  if ((!fromRoute || fromRoute === selected.value) && nextVersion === version.value) return;
+  if (fromRoute) selected.value = fromRoute;
+  version.value = nextVersion;
+  notifyOpen.value = false;
+  void load();
+});
 async function loadDocuments() {
   documentsError.value = "";
   try {

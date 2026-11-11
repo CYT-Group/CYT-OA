@@ -1,7 +1,9 @@
 <template>
   <div>
-    <PageHeader title="员工档案" description="管理员工任职、直属上级与人事资料，企微资料随同步更新。">
+    <PageHeader title="花名册" description="在职、离职员工与完整档案集中查询，企微资料随同步更新。">
       <template #actions>
+        <Button v-if="session.has('hrm:employee:export')" variant="outline" size="sm" @click="exportEmployees">导出花名册</Button>
+        <Button v-if="session.has('hrm:employee:update') && session.has('hrm:contract-template:query')" size="sm" @click="router.push('/hr/employment?mode=onboard')">办理入职</Button>
         <Button
           v-if="session.has('hrm:employee:query') && canEdit"
           variant="outline"
@@ -12,12 +14,22 @@
           <LoaderCircle v-if="hrSyncing" class="size-3.5 animate-spin" />
           {{ hrSyncing ? '正在读取企微花名册…' : '同步企微花名册' }}
         </Button>
-        <Button variant="outline" size="sm" @click="router.push('/org')">
+        <Button v-if="session.isAdmin" variant="outline" size="sm" @click="router.push('/org')">
           <Network class="size-3.5" />
           组织架构
         </Button>
       </template>
     </PageHeader>
+    <SegmentedTabs class="mt-4" :model-value="roster || (statusCategory === 2 ? 'probation' : 'all')" :items="[{ value: 'active', label: '在职员工' }, { value: 'probation', label: '试用员工' }, { value: 'left', label: '离职员工' }, { value: 'all', label: '全部档案' }]" @update:model-value="setRoster" />
+
+    <Callout v-if="hrSyncError" class="mt-4" tone="destructive" title="企微花名册同步失败">
+      {{ hrSyncError }}
+      <template #action><Button variant="ghost" size="sm" :disabled="hrSyncing" @click="syncHr">重试同步</Button></template>
+    </Callout>
+    <Callout v-if="departmentError" class="mt-4" tone="warning" title="部门选项未加载">
+      {{ departmentError }}
+      <template #action><Button variant="ghost" size="sm" @click="loadDepartments">重试部门选项</Button></template>
+    </Callout>
 
     <section
       v-if="hrResult"
@@ -66,6 +78,7 @@
             data-page-search
           />
           <Select
+            v-if="!roster && !statusCategory"
             size="sm"
             class="w-40"
             aria-label="任职状态"
@@ -73,6 +86,7 @@
             :options="entryFilterOptions"
             @update:model-value="onEntryStatus"
           />
+          <Select v-model="department" :options="departmentOptions" aria-label="员工部门" size="sm" class="w-40" />
           <Button type="submit" size="sm">
             <Search class="size-3.5" />
             查询
@@ -225,6 +239,7 @@
             :employee="detail"
             @updated="refreshDetail"
           />
+          <div class="mt-3 flex flex-wrap gap-2"><Button variant="outline" size="sm" @click="router.push(`/hr/lifecycle?employeeId=${detail.id}`)">员工生命周期与合同</Button><Button v-if="detail.entryStatus === 4" variant="outline" size="sm" @click="downloadCertificate">下载离职证明</Button></div>
 
           <h3 class="mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             企微资料
@@ -389,6 +404,7 @@ import { useRoute, useRouter } from 'vue-router'
 import EmployeeLifecycleActions from '../components/EmployeeLifecycleActions.vue'
 import { api } from '../lib/api'
 import { session } from '../lib/session'
+import { hrBase, textDownload, downloadHrFile } from '../lib/hr-workspace'
 import { useTableSort } from '../lib/useTableSort'
 import Avatar from '../ui/Avatar.vue'
 import Badge from '../ui/Badge.vue'
@@ -467,8 +483,27 @@ const changeLabels: Record<number, string> = {
 
 const route = useRoute()
 const router = useRouter()
+const roster = computed(() => ['active', 'left'].includes(String(route.query.roster)) ? String(route.query.roster) : '')
+const statusCategory = computed(() => roster.value === 'active' ? 11 : roster.value === 'left' ? 15 : route.query.statusCategory === '2' ? 2 : undefined)
+function setRoster(value: string) {
+  const query = { ...route.query }
+  for (const key of ['roster', 'statusCategory', 'entryStatus', 'surveyType', 'todoType', 'employeeId']) delete query[key]
+  if (value === 'probation') query.statusCategory = '2'
+  else if (value !== 'all') query.roster = value
+  void router.replace({ query })
+}
+const department = ref('')
+const departmentError = ref('')
+const departmentOptions = ref([{ value: '', label: '全部部门' }])
+async function loadDepartments() {
+  departmentError.value = ''
+  try {
+    const items = await api.get<{ value: string; label: string }[]>(`${hrBase}/departments`)
+    departmentOptions.value = [{ value: '', label: '全部部门' }, ...items]
+  } catch (e) { departmentError.value = e instanceof Error ? e.message : '部门选项加载失败' }
+}
 const search = ref(''),
-  entryStatus = ref(''),
+  entryStatus = ref(String(route.query.entryStatus || '')),
   page = ref(1),
   total = ref(0),
   loading = ref(false),
@@ -559,18 +594,20 @@ interface HrResult {
   failures: { employeeId: string; name: string; reason: string }[]
 }
 const hrSyncing = ref(false),
+  hrSyncError = ref(''),
   hrResult = ref<HrResult | null>(null)
 
 async function syncHr() {
+  if (hrSyncing.value) return
   hrSyncing.value = true
-  error.value = ''
+  hrSyncError.value = ''
   hrResult.value = null
   try {
     hrResult.value = await api.post<HrResult>('/admin-api/hrm/employee/wecom/sync', undefined, 220000)
     await load()
     if (detail.value) await open(detail.value.id)
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '企微花名册同步失败'
+    hrSyncError.value = e instanceof Error ? e.message : '企微花名册同步失败'
   } finally {
     hrSyncing.value = false
   }
@@ -608,24 +645,42 @@ function go(next: number) {
   void load()
 }
 
+let employeeListRequest = 0
 async function load() {
+  const request = ++employeeListRequest
   loading.value = true
   error.value = ''
   try {
     const r = await api.get<{ list: Employee[]; total: number }>('/admin-api/hrm/employee/page', {
       search: search.value || undefined,
-      entryStatus: entryStatus.value || undefined,
+      deptId: department.value || undefined,
+      entryStatus: statusCategory.value ? undefined : entryStatus.value || undefined,
+      statusCategory: statusCategory.value,
+      surveyType: route.query.surveyType || undefined,
+      todoType: route.query.todoType || undefined,
       pageNo: page.value,
       pageSize: 20
     })
+    if (request !== employeeListRequest) return
     rows.value = r.list
     total.value = Number(r.total)
   } catch (e) {
+    if (request !== employeeListRequest) return
     rows.value = []
     error.value = e instanceof Error ? e.message : '员工加载失败'
   } finally {
-    loading.value = false
+    if (request === employeeListRequest) loading.value = false
   }
+}
+
+async function exportEmployees() {
+  try { await downloadHrFile('/admin-api/hrm/employee/export-excel', { search: search.value || undefined, deptId: department.value || undefined, statusCategory: statusCategory.value, entryStatus: statusCategory.value ? undefined : entryStatus.value || undefined, surveyType: route.query.surveyType || undefined, todoType: route.query.todoType || undefined }, '员工花名册.xlsx') }
+  catch (e) { error.value = e instanceof Error ? e.message : '导出失败' }
+}
+async function downloadCertificate() {
+  if (!detail.value) return
+  try { const r = await api.get<{ content: string }>(`${hrBase}/certificate`, { employeeId: detail.value.id }); textDownload(`${detail.value.name}-离职证明.txt`, r.content) }
+  catch (e) { detailError.value = e instanceof Error ? e.message : '离职证明生成失败' }
 }
 
 async function open(id: string) {
@@ -723,8 +778,10 @@ watch(
     if (id && id !== detail.value?.id) void open(String(id))
   }
 )
+watch(() => [route.query.roster, route.query.statusCategory, route.query.entryStatus, route.query.surveyType, route.query.todoType], () => { page.value = 1; entryStatus.value = String(route.query.entryStatus || ''); void load() })
 onMounted(() => {
   void load()
+  void loadDepartments()
   if (route.query.employeeId) void open(String(route.query.employeeId))
 })
 </script>

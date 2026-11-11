@@ -19,11 +19,13 @@
 
     <section class="panel">
       <div class="panel-header">
-        <div class="panel-title"><CalendarRange class="size-4 text-muted-foreground" />近 12 周提交轨迹</div>
+        <div class="panel-title"><CalendarRange class="size-4 text-muted-foreground" />近 12 {{ trackType === 3 ? '个月' : trackType === 1 ? '天' : '周' }}提交轨迹</div>
         <Select :model-value="trackType" :options="TRACK_TYPE_OPTIONS" size="sm" class="w-28" @update:model-value="onTrackType" />
       </div>
       <div class="p-4">
-        <EmptyState v-if="!track.length" title="还没有可统计的周期" description="提交或保存草稿后，这里会生成轨迹" :icon="CalendarRange" compact />
+        <Callout v-if="trackError" tone="destructive" title="提交轨迹未读取">{{ trackError }}</Callout>
+        <p v-else-if="trackLoading" class="py-6 text-center text-sm text-muted-foreground" role="status">正在读取轨迹…</p>
+        <EmptyState v-else-if="!track.length" title="还没有可统计的周期" description="提交或保存草稿后，这里会生成轨迹" :icon="CalendarRange" compact />
         <div v-else>
           <div class="grid grid-cols-6 gap-2 sm:grid-cols-12">
             <button
@@ -54,6 +56,7 @@
     </section>
 
     <Callout v-if="loadError" tone="destructive" title="加载失败">{{ loadError }}</Callout>
+    <p v-else-if="loading" class="py-10 text-center text-sm text-muted-foreground" role="status">正在读取报告…</p>
 
     <template v-else-if="tab === 'draft'">
       <section class="panel">
@@ -126,9 +129,10 @@
       <section class="panel">
         <div class="panel-header">
           <div class="panel-title"><MessageSquareQuote class="size-4 text-muted-foreground" />收到的点评</div>
+          <span class="text-xs text-muted-foreground">按已提交报告分页查看</span>
         </div>
         <div class="space-y-4 p-3 sm:p-4">
-          <EmptyState v-if="!reviewed.length" title="暂时没收到点评" description="上级点评你的报告后会显示在这里" :icon="MessageSquareQuote" compact />
+          <EmptyState v-if="!reviewed.length" title="当前页报告暂无点评" description="上级点评报告后会显示在这里；可切换报告页查看其他记录" :icon="MessageSquareQuote" compact />
           <div v-for="row in reviewed" :key="row.id" class="space-y-2.5">
             <div
               class="flex cursor-pointer flex-wrap items-center gap-3 rounded-xl border border-border/70 bg-muted/30 px-3 py-2.5"
@@ -159,6 +163,7 @@
             </div>
           </div>
         </div>
+        <div v-if="total > 50" class="border-t p-4"><Pagination :page="pageNo" :page-size="50" :total="total" @update:page="go" /></div>
       </section>
     </template>
 
@@ -187,6 +192,7 @@
             <Badge v-if="row.comments.length" variant="outline">{{ row.comments.length }} 条点评</Badge>
           </div>
         </div>
+        <div v-if="total > pageSize" class="border-t p-4"><Pagination :page="pageNo" :page-size="pageSize" :total="total" @update:page="go" /></div>
       </section>
     </template>
 
@@ -365,7 +371,7 @@ const TRACK_TYPE_OPTIONS = [
   { label: '日报', value: 1 }
 ]
 
-const tab = computed(() => String(route.query.tab ?? 'draft'))
+const tab = computed(() => TABS.some(item => item.key === route.query.tab) ? String(route.query.tab) : 'draft')
 const reportType = computed(() => [1, 2, 3].includes(Number(route.query.type)) ? Number(route.query.type) : undefined)
 const trackType = ref(reportType.value ?? 2)
 const track = ref<TrackCell[]>([])
@@ -375,6 +381,9 @@ const total = ref(0)
 const pageNo = ref(1)
 const pageSize = 10
 const loadError = ref('')
+const loading = ref(false)
+const trackLoading = ref(false)
+const trackError = ref('')
 const busy = ref(false)
 const form = ref<null | { id?: string; type: number; title: string; summary: string; plan: string; problem: string; remark: string }>(null)
 const detail = ref<Report | null>(null)
@@ -396,31 +405,46 @@ function onTrackType(value: string | number | null | undefined) {
   pick('type', String(value == null ? 2 : Number(value)))
 }
 
+let trackRequest = 0
 async function loadTrack() {
+  const request = ++trackRequest
+  trackLoading.value = true
+  trackError.value = ''
   try {
-    track.value = await meApi.reportTrack({ type: trackType.value, weeks: 12 })
+    const result = await meApi.reportTrack({ type: trackType.value, weeks: 12 })
+    if (request === trackRequest) track.value = result
   } catch (e) {
-    loadError.value = errText(e)
+    if (request === trackRequest) { track.value = []; trackError.value = errText(e) }
+  } finally {
+    if (request === trackRequest) trackLoading.value = false
   }
 }
 
+let listRequest = 0
 async function load() {
+  const request = ++listRequest
+  loading.value = true
   loadError.value = ''
   try {
     if (tab.value === 'draft') {
       const all = await meApi.reportDrafts()
+      if (request !== listRequest) return
       drafts.value = reportType.value ? all.filter(row => row.type === reportType.value) : all
     } else if (tab.value === 'review') {
-      const data = await meApi.reports({ type: reportType.value, status: REPORT_SUBMITTED, pageNo: 1, pageSize: 50 })
+      const data = await meApi.reports({ type: reportType.value, status: REPORT_SUBMITTED, pageNo: pageNo.value, pageSize: 50 })
+      if (request !== listRequest) return
       rows.value = data.list ?? []
       total.value = Number(data.total ?? 0)
     } else {
       const data = await meApi.reports({ type: reportType.value, pageNo: pageNo.value, pageSize })
+      if (request !== listRequest) return
       rows.value = data.list ?? []
       total.value = Number(data.total ?? 0)
     }
   } catch (e) {
-    loadError.value = errText(e)
+    if (request === listRequest) loadError.value = errText(e)
+  } finally {
+    if (request === listRequest) loading.value = false
   }
 }
 
@@ -464,10 +488,11 @@ function compose(row?: Report) {
 }
 
 async function save(submitAfter: boolean) {
-  if (!form.value) return
+  if (!form.value || busy.value) return
   busy.value = true
   try {
     const id = await meApi.saveDraft({ ...form.value })
+    if (form.value) form.value.id = String(id)
     if (submitAfter) await meApi.submitReport(String(id))
     toast(submitAfter ? '已提交' : '草稿已保存')
     form.value = null

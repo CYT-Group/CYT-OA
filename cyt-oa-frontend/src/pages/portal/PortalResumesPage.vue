@@ -1,6 +1,7 @@
 <template>
   <div class="min-w-0 space-y-4">
     <PageHeader title="简历识别" description="上传候选人简历，AI 提取后由 HR 校对确认。"><template #actions><Button size="sm" @click="uploadOpen = true"><Upload />上传简历</Button></template></PageHeader>
+    <HrRecruitNavigation />
     <section class="panel overflow-hidden">
       <form class="table-toolbar flex-wrap gap-2" @submit.prevent="search"><Input v-model="filter.q" class="h-9 w-full text-[13px] sm:w-64" aria-label="候选人关键词" placeholder="搜索姓名、电话或邮箱" /><Select v-model="filter.status" size="sm" class="w-40" aria-label="简历状态" :options="[{ value: '', label: '全部状态' }, { value: 'parsed', label: '待校对' }, { value: 'confirmed', label: '已确认' }, { value: 'failed', label: '识别失败' }]" /><Button type="submit" size="sm" :disabled="loading"><Search />查询</Button><Button variant="ghost" size="sm" :disabled="loading" @click="reset">重置</Button><Button variant="ghost" size="icon-sm" class="ml-auto" aria-label="刷新简历" :disabled="loading" @click="load"><RefreshCw /></Button></form>
       <Callout v-if="loadError" tone="destructive" title="简历列表加载失败" class="m-5">{{ loadError }}<template #action><Button size="sm" variant="outline" @click="load">重试</Button></template></Callout><div v-else-if="loading" class="space-y-2 border-t p-4"><Skeleton v-for="i in 4" :key="i" class="h-14 w-full" /></div><EmptyState v-else-if="!rows.length" :title="applied.q || applied.status ? '没有匹配的简历' : '还没有候选人简历'" description="上传简历后，校对识别结果并安排面试。" :icon="FileText"><Button v-if="applied.q || applied.status" size="sm" variant="outline" @click="reset">清除筛选</Button><Button v-else size="sm" @click="uploadOpen = true"><Upload />上传简历</Button></EmptyState>
@@ -40,6 +41,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import HrRecruitNavigation from '../../components/HrRecruitNavigation.vue'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { Download, FileText, MoreHorizontal, Plus, RefreshCw, Search, Trash2, Upload } from '@lucide/vue'
 import { api } from '../../lib/api'

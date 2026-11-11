@@ -21,7 +21,7 @@ public class PortalEntryRolloutController {
 
     public record Save(
             @NotNull Long revision,
-            @NotNull @Size(min = 1, max = 20) Map<String, Object> entries) {}
+            @NotNull @Size(min = 1, max = 64) Map<String, Object> entries) {}
 
     @GetMapping("/entries")
     public Result<PortalEntryRolloutService.Entries> entries() {

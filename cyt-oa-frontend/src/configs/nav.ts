@@ -11,15 +11,22 @@ export interface NavSub {
   anyPermissions?: string[];
   allPermissions?: string[];
   systemOnly?: boolean;
+  requiresTeam?: boolean;
+  requiresApprover?: boolean;
+  requiresMaterialsApprover?: boolean;
   aliases?: string[];
+  /** 已有页签的快捷入口保留在搜索中，侧栏归并到同一业务入口。 */
+  sidebarParent?: string;
+  section?: string;
 }
 export interface NavItem extends NavSub {
   key: string;
   icon: string;
   badge?: string;
   children?: NavSub[];
-  requiresTeam?: boolean;
   automatic?: boolean;
+  /** 工具入口直接打开总览，完整目录仍供总览、搜索和面包屑使用。 */
+  sidebarLink?: boolean;
 }
 export interface NavZone {
   key: string;
@@ -78,6 +85,7 @@ const personal: NavItem[] = [
     icon: "home",
     glyph: "🏠",
     to: "/me/overview",
+    aliases: ["/admin"],
   },
   group(
     "rhythm",
@@ -101,15 +109,20 @@ const personal: NavItem[] = [
       { title: "我要办事", glyph: "📤", to: "/me/apply?view=start" },
       { title: "我的申请", glyph: "📌", to: "/me/apply?view=mine" },
       { title: "历史记录", glyph: "✅", to: "/me/apply?view=history" },
+      { title: "待我审批", glyph: "📥", to: "/me/requests?view=pending", requiresApprover: true },
+      { title: "门户申请", glyph: "📑", to: "/me/requests?view=mine" },
     ],
-    ["/me/apply"],
+    ["/me/apply", "/me/requests"],
   ),
   group("claims", "申领记录", "📦", [
     {
       title: "办公用品申领记录",
       glyph: "🗂",
-      to: "/me/apply?view=mine&type=supply",
+      to: "/me/records?tab=office",
+      aliases: ["/me/apply?view=mine&type=supply"],
     },
+    { title: "样品申领记录", glyph: "🧪", to: "/me/records?tab=sample" },
+    { title: "审批记录", glyph: "📒", to: "/me/records?tab=approvals", requiresMaterialsApprover: true },
   ]),
   {
     ...group(
@@ -117,9 +130,20 @@ const personal: NavItem[] = [
       "报告中心",
       "📊",
       [
-        { title: "周报", glyph: "📅", to: "/me/report?type=2" },
+        {
+          key: "report-weekly",
+          title: "周报",
+          glyph: "📅",
+          to: "/me/report?type=2",
+        },
         { title: "月报", glyph: "🗓", to: "/me/report?type=3" },
-        { title: "日报", icon: "file", to: "/me/report?type=1" },
+        { title: "述职报告", glyph: "🎤", to: "/me/review-reports" },
+        {
+          title: "日报",
+          icon: "file",
+          to: "/me/report?type=1",
+          sidebarParent: "report",
+        },
       ],
       ["/me/report"],
     ),
@@ -132,8 +156,11 @@ const personal: NavItem[] = [
       "👥",
       [
         { title: "团队看板", glyph: "📊", to: "/me/team?tab=board" },
+        { title: "团队祝贺", glyph: "🎉", to: "/me/team?tab=milestone" },
         { title: "团队成员", glyph: "👥", to: "/me/team?tab=members" },
-        { title: "待我点评", icon: "message", to: "/me/team?tab=review" },
+        { title: "团队考勤", glyph: "⏰", to: "/me/team-attendance" },
+        { title: "团队审批", glyph: "📥", to: "/me/requests?view=team" },
+        { title: "待我点评", icon: "message", to: "/me/team?tab=review", sidebarParent: "team" },
       ],
       ["/me/team"],
     ),
@@ -148,42 +175,63 @@ const personal: NavItem[] = [
       {
         title: "建议箱",
         glyph: "📬",
-        to: "/me/profile?tab=voice&channel=suggestion",
-        aliases: ["/me/profile?tab=voice"],
+        to: "/me/voice?channel=suggestion",
+        aliases: ["/me/profile?tab=voice", "/me/profile?tab=voice&channel=suggestion"],
       },
       {
         title: "CEO信箱",
         glyph: "✈️",
-        to: "/me/profile?tab=voice&channel=ceo",
+        to: "/me/voice?channel=ceo",
+        aliases: ["/me/profile?tab=voice&channel=ceo"],
       },
+      { title: "匿名吐槽", glyph: "📢", to: "/me/voice?channel=anon" },
+      { title: "满意度调研", glyph: "✅", to: "/me/voice?channel=survey" },
     ],
     ["/me/profile?tab=voice"],
   ),
+  group("okr", "目标·OKR", "🎯", [
+    { title: "我的目标", glyph: "🎯", to: "/me/okr?tab=my" },
+    { title: "对齐视图", glyph: "🔗", to: "/me/okr?tab=align" },
+  ], ["/me/okr"]),
   group("profile", "我的资料", "👤", [
-    { title: "基本信息", glyph: "📋", to: "/me/profile" },
+    { key: "profile-base", title: "基本信息", glyph: "📋", to: "/me/profile" },
+    { title: "我的祝贺", glyph: "🎉", to: "/me/records?tab=celebrations" },
+    { title: "考勤与请假", glyph: "⏰", to: "/me/records?tab=attendance" },
+    { title: "培训记录", glyph: "📚", to: "/me/records?tab=training" },
     { title: "操作足迹", glyph: "👣", to: "/me/profile?tab=footprint" },
-    { title: "提醒偏好", icon: "bell", to: "/me/profile?tab=preference" },
-    { title: "收到的认可", icon: "heart", to: "/me/profile?tab=recognition" },
+    {
+      title: "提醒偏好",
+      icon: "bell",
+      to: "/me/profile?tab=preference",
+      sidebarParent: "profile",
+    },
+    {
+      title: "收到的认可",
+      icon: "heart",
+      to: "/me/profile?tab=recognition",
+      sidebarParent: "profile",
+    },
+    { key: "reminder", title: "我的提醒", icon: "bell", to: "/me/reminder" },
   ]),
-  {
-    key: "reminder",
-    title: "我的提醒",
-    icon: "bell",
-    to: "/me/reminder",
-    badge: "reminder",
-  },
 ];
 
 const management: NavItem[] = [
   group("permissions", "权限管理", "🔐", [
     existing("portal-roles", { title: "账号与权限", glyph: "🎭" }),
     existing("sys-users", { title: "账号分配", glyph: "🧩" }),
+    existing("portal-workspace-rules", { title: "数据权限", glyph: "🗄", to: "/portal/workspace-rules?section=scope", systemOnly: true }),
   ]),
   group("approval-templates", "审批流程配置", "✅", [
     existing("wecom-templates", { title: "流程模板", glyph: "🔀" }),
+    existing("portal-workspace-rules", { title: "节点与规则", glyph: "⚙️", to: "/portal/workspace-rules?section=flow&tab=leave" }),
   ]),
   group("attendance-rules", "考勤与报销规则", "📊", [
-    existing("hrm-group", { title: "考勤规则", glyph: "⏰" }),
+    existing("portal-workspace-rules", { title: "考勤规则", glyph: "⏰", to: "/portal/workspace-rules?tab=attendance" }),
+    existing("portal-workspace-rules", { title: "请假额度", glyph: "🏖", to: "/portal/workspace-rules?tab=leave" }),
+    existing("portal-workspace-rules", { title: "报销标准", glyph: "💰", to: "/portal/workspace-rules?tab=expense" }),
+    existing("hrm-group", { title: "打卡排班", glyph: "⏱" }),
+    existing("hrm-clock", { sidebarParent: "hrm-group" }),
+    existing("hrm-holiday", { sidebarParent: "hrm-group" }),
   ]),
   group(
     "office-materials",
@@ -256,30 +304,154 @@ const management: NavItem[] = [
     existing("portal-events", { title: "活动排期上传", glyph: "🗓" }),
     existing("portal-products", { title: "新品链接维护", glyph: "🆕" }),
   ]),
+  group("voice-management", "发声管理", "🗣", [
+    existing("portal-voice", { title: "建议箱管理", glyph: "📬", to: "/portal/voice?tab=suggestion" }),
+    existing("portal-voice", { title: "CEO信箱管理", glyph: "✈️", to: "/portal/voice?tab=ceo", systemOnly: true }),
+    existing("portal-voice", { title: "吐槽审核", glyph: "📢", to: "/portal/voice?tab=anon" }),
+    existing("portal-voice", { title: "问卷配置", glyph: "📝", to: "/portal/voice?tab=questionnaire" }),
+    existing("portal-voice", { title: "发布管理", glyph: "🚀", to: "/portal/voice?tab=release" }),
+    existing("portal-voice", { title: "调研结果", glyph: "📊", to: "/portal/voice?tab=results" }),
+  ], ["/portal/voice"]),
+  group("celebrations", "祝贺管理", "🎉", [
+    existing("portal-celebrations", { title: "生日祝贺", glyph: "🎂", to: "/portal/celebrations?tab=settings&template=birthday" }),
+    existing("portal-celebrations", { title: "入职周年祝贺", glyph: "🎊", to: "/portal/celebrations?tab=settings&template=anniversary" }),
+    existing("portal-celebrations", { title: "祝贺日历", glyph: "🗓", sidebarParent: "portal-celebrations" }),
+    existing("portal-employee-info", {
+      title: "员工与祝贺偏好",
+      glyph: "👥",
+      sidebarParent: "portal-celebrations",
+    }),
+  ]),
   group("people-management", "人事管理", "👥", [
-    existing("org"),
-    existing("hrm-employee"),
-    existing("hrm-clock"),
-    existing("hrm-holiday"),
+    {
+      key: "hr-workbench",
+      title: "人事工作台",
+      glyph: "🏠",
+      to: "/hr/workbench",
+      permission: "hrm:home:hr-query",
+    },
+    {
+      key: "hr-candidates",
+      title: "招聘管理",
+      glyph: "🧑‍💼",
+      to: "/hr/recruit?tab=candidates",
+      permission: "hrm:recruit:candidate:query",
+    },
+    {
+      key: "hr-interviews",
+      title: "面试安排与记录",
+      glyph: "🗓",
+      to: "/hr/recruit?tab=interviews",
+      permission: "hrm:recruit:interview:query",
+      sidebarParent: "hr-candidates",
+    },
+    {
+      key: "hr-posts",
+      title: "招聘职位",
+      glyph: "📋",
+      to: "/hr/recruit?tab=posts",
+      permission: "hrm:recruit:post:query",
+      sidebarParent: "hr-candidates",
+    },
+    existing("portal-resumes", { sidebarParent: "hr-candidates" }),
+    existing("hrm-employee", {
+      title: "花名册",
+      glyph: "📒",
+      to: "/page/hrm-employee?roster=active",
+      aliases: ["/page/hrm-employee"],
+      permission: "hrm:employee:query",
+      systemOnly: false,
+    }),
+    {
+      key: "hr-roster-active",
+      title: "在职员工",
+      glyph: "👥",
+      to: "/page/hrm-employee?roster=active",
+      permission: "hrm:employee:query",
+      sidebarParent: "hrm-employee",
+    },
+    {
+      key: "hr-roster-left",
+      title: "离职员工",
+      glyph: "🚪",
+      to: "/page/hrm-employee?roster=left",
+      permission: "hrm:employee:query",
+      sidebarParent: "hrm-employee",
+    },
+    {
+      key: "hr-onboard",
+      title: "入离职与合同",
+      glyph: "📄",
+      to: "/hr/employment?mode=onboard",
+      permission: "hrm:employee:update",
+      allPermissions: ["hrm:employee:query", "hrm:contract-template:query"],
+    },
+    {
+      key: "hr-offboard",
+      title: "离职办理",
+      glyph: "📤",
+      to: "/hr/employment?mode=offboard",
+      permission: "hrm:employee:update",
+      allPermissions: ["hrm:employee:query", "hrm:contract-template:query"],
+      sidebarParent: "hr-onboard",
+    },
+    {
+      key: "hr-templates",
+      title: "合同模板",
+      glyph: "📑",
+      to: "/hr/templates",
+      permission: "hrm:contract-template:query",
+      sidebarParent: "hr-onboard",
+    },
+    existing("portal-contracts", { sidebarParent: "hr-onboard" }),
+    {
+      key: "hr-lifecycle",
+      title: "员工生命周期",
+      glyph: "🔄",
+      to: "/hr/lifecycle",
+      permission: "hrm:employee:query",
+    },
   ]),
 ];
 
-// 设计稿没有的能力保持原有分组、名称与 Lucide 图标。
-const remaining: NavItem[] = menuGroups.flatMap((group) => {
-  const items = group.items.filter((item) => !consumed.has(item.key));
-  return items.length
-    ? [
-        {
-          key: group.group,
-          title: group.group,
-          icon: items[0]!.icon,
-          to: leafTarget(items[0]!),
-          systemOnly: !group.portal,
-          children: items.map((item) => ({ ...item, to: leafTarget(item) })),
-        },
-      ]
-    : [];
-});
+// 辅助工具统一归入总览，避免把旧目录再次追加到侧栏。
+const toolSection = (key: string) => {
+  if (
+    [
+      "portal-wiki",
+      "portal-brand-docs",
+      "portal-training",
+      "portal-categories",
+    ].includes(key)
+  )
+    return "内容与培训";
+  if (["portal-ai", "portal-api-costs", "portal-analytics"].includes(key))
+    return "数据与 AI";
+  if (key === "portal-import") return "批量导入";
+  if (key.startsWith("oa-")) return "原有业务台账";
+  return "系统设置";
+};
+const tools: NavSub[] = [
+  existing("portal-hub", { title: "管理工具总览", to: "/portal?view=tools" }),
+  ...menuGroups.flatMap((source) =>
+    source.items
+      .filter((item) => !consumed.has(item.key))
+      .map((item) => ({
+        ...item,
+        to: leafTarget(item),
+        systemOnly: !source.portal,
+        section: toolSection(item.key),
+      })),
+  ),
+  {
+    key: "console",
+    title: "企业工作台",
+    icon: "trending-up",
+    to: "/admin",
+    systemOnly: true,
+    section: "系统设置",
+  },
+];
 export const navZones: NavZone[] = [
   { key: "me", title: "个人办公", items: personal },
   {
@@ -290,13 +462,9 @@ export const navZones: NavZone[] = [
     items: [
       ...management,
       {
-        key: "console",
-        title: "企业工作台",
-        icon: "trending-up",
-        to: "/admin",
-        systemOnly: true,
+        ...group("management-tools", "管理工具", "⚙️", tools),
+        sidebarLink: true,
       },
-      ...remaining,
     ],
   },
 ];

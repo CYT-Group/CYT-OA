@@ -59,9 +59,17 @@ public class PortalMaterialsService {
 
     public Map<String, Object> page(
             String type, String resource, String q, boolean archived, int pageNo, int pageSize) {
+        return page(type, resource, q, archived, pageNo, pageSize, new Filters(null,null,null,null,null));
+    }
+
+    public record Filters(Long categoryId, String brand, String site, String status, String stockState) {}
+
+    public Map<String, Object> page(
+            String type, String resource, String q, boolean archived, int pageNo, int pageSize, Filters filters) {
         manage();
         kind(type);
-        int size = Math.min(200, Math.max(1, pageSize)), offset = (Math.max(1, pageNo) - 1) * size;
+        if(pageNo<1 || pageNo>100000 || pageSize<1 || pageSize>200)throw new BizException("分页参数无效");
+        int size = pageSize, offset = (pageNo - 1) * size;
         String table =
                 switch (resource) {
                     case "products" -> "portal_material_products";
@@ -71,30 +79,58 @@ public class PortalMaterialsService {
                 };
         String where =
                 resource.equals("applies")
-                        ? "apply_type=?"
-                        : "kind=? AND archived_at IS " + (archived ? "NOT NULL" : "NULL");
+                        ? "m.apply_type=?"
+                        : "m.kind=? AND m.archived_at IS " + (archived ? "NOT NULL" : "NULL");
         Object typeValue =
                 resource.equals("applies")
                         ? (type.equals("sample") ? "sample_borrow" : "office_receive")
                         : type;
         String search =
                 resource.equals("applies")
-                        ? "CONCAT_WS(' ',apply_no,applicant_name,purpose)"
-                        : "CONCAT_WS(' ',name,brand)";
+                        ? "CONCAT_WS(' ',m.apply_no,m.applicant_name,m.purpose)"
+                        : "CONCAT_WS(' ',m.name,m.brand)";
+        if(q!=null&&q.length()>200)throw new BizException("搜索内容最多200字");
         String term = "%" + (q == null ? "" : q.trim()) + "%";
+        var args = new ArrayList<Object>();args.add(typeValue);args.add(term);
+        where += " AND " + search + " LIKE ?";
+        if(filters.categoryId()!=null){
+            if(filters.categoryId()<1)throw new BizException("分类编号无效");
+            where += switch(resource){
+                case "products" -> " AND m.category_id=?";
+                case "inventory" -> " AND EXISTS (SELECT 1 FROM portal_material_products p WHERE p.id=m.product_id AND p.category_id=?)";
+                default -> " AND EXISTS (SELECT 1 FROM portal_material_apply_items i JOIN portal_materials s ON s.id=i.material_id JOIN portal_material_products p ON p.id=s.product_id WHERE i.apply_id=m.id AND p.category_id=?)";
+            };args.add(filters.categoryId());
+        }
+        if(filters.brand()!=null&&!filters.brand().isBlank()){
+            if(filters.brand().length()>50)throw new BizException("品牌最多50字");
+            where += resource.equals("applies") ? " AND EXISTS (SELECT 1 FROM portal_material_apply_items i JOIN portal_materials s ON s.id=i.material_id WHERE i.apply_id=m.id AND s.brand=?)" : " AND m.brand=?";
+            args.add(filters.brand().trim());
+        }
+        if(filters.site()!=null&&!filters.site().isBlank()){
+            if(!Set.of("SZ","CD").contains(filters.site()))throw new BizException("站点无效");
+            where += switch(resource){
+                case "inventory" -> " AND m.site=?";
+                case "products" -> " AND EXISTS (SELECT 1 FROM portal_materials s WHERE s.product_id=m.id AND s.site=? AND s.archived_at IS NULL)";
+                default -> " AND EXISTS (SELECT 1 FROM portal_material_apply_items i JOIN portal_materials s ON s.id=i.material_id WHERE i.apply_id=m.id AND s.site=?)";
+            };args.add(filters.site());
+        }
+        if(filters.status()!=null&&!filters.status().isBlank()){
+            if(!resource.equals("applies")||!Set.of("pending","issued","borrowed","returned","rejected","closed").contains(filters.status()))throw new BizException("单据状态无效");
+            where += " AND m.status=?";args.add(filters.status());
+        }
+        if(filters.stockState()!=null&&!filters.stockState().isBlank()){
+            if(!resource.equals("inventory")||!Set.of("available","out").contains(filters.stockState()))throw new BizException("库存状态无效");
+            where += filters.stockState().equals("available") ? " AND m.stock_qty>0" : " AND m.stock_qty=0";
+        }
+        var pageArgs = new ArrayList<>(args);pageArgs.add(size);pageArgs.add(offset);
         var rows =
                 jdbc.queryForList(
-                        "SELECT * FROM "
+                        "SELECT m.* FROM "
                                 + table
-                                + " WHERE "
+                                + " m WHERE "
                                 + where
-                                + " AND "
-                                + search
-                                + " LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?",
-                        typeValue,
-                        term,
-                        size,
-                        offset);
+                                + " ORDER BY m.id DESC LIMIT ? OFFSET ?",
+                        pageArgs.toArray());
         if (resource.equals("inventory"))
             for (var r : rows) {
                 var owners =
@@ -112,14 +148,20 @@ public class PortalMaterialsService {
                 jdbc.queryForObject(
                         "SELECT COUNT(*) FROM "
                                 + table
-                                + " WHERE "
-                                + where
-                                + " AND "
-                                + search
-                                + " LIKE ?",
+                                + " m WHERE "
+                                + where,
                         Long.class,
-                        typeValue,
-                        term));
+                        args.toArray()),
+                "summary", summary(type,archived));
+    }
+
+    /** 全局概况独立于当前表格筛选，按物资类型及归档范围汇总。 */
+    private Map<String,Object> summary(String type,boolean archived){
+        String archive=archived?"IS NOT NULL":"IS NULL";
+        Long products=jdbc.queryForObject("SELECT COUNT(*) FROM portal_material_products WHERE kind=? AND archived_at "+archive,Long.class,type);
+        var stock=jdbc.queryForMap("SELECT COUNT(*) AS skuCount,COALESCE(SUM(stock_qty),0) AS stockQty,COALESCE(SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END),0) AS outOfStockCount FROM portal_materials WHERE kind=? AND archived_at "+archive,type);
+        Long borrowed=type.equals("sample")?jdbc.queryForObject("SELECT COALESCE(SUM(COALESCE(i.approved_qty,i.quantity)-i.returned_quantity),0) FROM portal_material_apply_items i JOIN portal_material_applies a ON a.id=i.apply_id JOIN portal_materials m ON m.id=i.material_id WHERE a.apply_type='sample_borrow' AND a.status='borrowed' AND m.kind=? AND m.archived_at "+archive,Long.class,type):0L;
+        return Map.of("productCount",products==null?0:products,"skuCount",stock.getOrDefault("skuCount",0),"stockQty",stock.getOrDefault("stockQty",0),"borrowedQty",borrowed==null?0:borrowed,"outOfStockCount",stock.getOrDefault("outOfStockCount",0));
     }
 
     public Map<String, Object> options(String type) {
@@ -128,6 +170,8 @@ public class PortalMaterialsService {
         return Map.of(
                 "currentUsername",
                 user.require().username(),
+                "brands",
+                jdbc.queryForList("SELECT brand FROM (SELECT brand FROM portal_material_products WHERE kind=? AND archived_at IS NULL UNION SELECT brand FROM portal_materials WHERE kind=? AND archived_at IS NULL) b WHERE brand IS NOT NULL AND TRIM(brand)<>'' ORDER BY brand",String.class,type,type),
                 "users",
                 camel(
                         jdbc.queryForList(

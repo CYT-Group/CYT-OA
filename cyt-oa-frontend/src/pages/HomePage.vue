@@ -2,26 +2,38 @@
   <div class="space-y-6">
     <OverviewView />
     <section class="space-y-5" aria-label="全公司数据">
-      <h2 class="flex items-center gap-2 text-base font-semibold">
-        <span aria-hidden="true">🛡️</span>全公司数据
-      </h2>
-      <div class="grid gap-4 sm:grid-cols-3">
-        <router-link
+      <div>
+        <h2 class="flex items-center gap-2 text-base font-semibold">
+          <span aria-hidden="true">🛡️</span>全公司数据
+        </h2>
+        <p class="mt-2 text-xs leading-6 text-muted-foreground">
+          审批与报销仅统计门户申请；企业微信审批请从「申请与审批」查看。
+          本月报销按北京时间 {{ currentMonth }} 的申请创建月份汇总已通过金额。
+        </p>
+      </div>
+      <div class="grid grid-cols-2 items-start gap-4 xl:grid-cols-4">
+        <div
           v-for="card in statCards"
           :key="card.key"
-          :to="card.to"
-          class="block rounded-xl focus-visible:outline-2 focus-visible:outline-primary"
+          class="min-w-0 space-y-2"
         >
+          <router-link :to="card.to" class="block rounded-xl focus-visible:outline-2 focus-visible:outline-primary">
           <StatCard
             :title="card.label"
-            :value="stats[card.key] ?? '…'"
+            :value="statsLoading[card.key] ? '…' : (stats[card.key] ?? '—')"
             :hint="card.desc"
             :icon="card.icon"
             :glyph="card.glyph"
             :tone="card.tone"
             class="hover:border-primary/35"
+            :class="card.key === 'expense' ? '[&>p:first-of-type]:break-all [&>p:first-of-type]:text-xl' : ''"
           />
-        </router-link>
+          </router-link>
+          <Callout v-if="statsErrors[card.key]" tone="destructive" :title="`${card.label}未读取`">
+            {{ statsErrors[card.key] }}
+            <template #action><Button variant="ghost" size="sm" :disabled="statsLoading[card.key]" @click="retryStat(card.key)">重试</Button></template>
+          </Callout>
+        </div>
       </div>
     </section>
     <div class="grid items-start gap-5 xl:grid-cols-2">
@@ -138,14 +150,15 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import {
   ArrowRight,
   ChevronRight,
   FileText,
   Megaphone,
-  Package,
+  CircleCheck,
+  Receipt,
   Users,
 } from "@lucide/vue";
 import UiIcon from "../components/UiIcon.vue";
@@ -156,40 +169,55 @@ import EmptyState from "../ui/EmptyState.vue";
 import Skeleton from "../ui/Skeleton.vue";
 import Callout from "../ui/Callout.vue";
 import Dialog from "../ui/Dialog.vue";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { errText } from "../lib/toast";
+import { workspaceApi } from "../lib/workspace-api";
+import { todayShanghai } from "../lib/hr-workspace";
 
 const router = useRouter();
-const stats = ref<Record<string, string>>({});
+type StatKey = 'emp' | 'pending' | 'expense' | 'ann';
+const currentMonth = todayShanghai().slice(0, 7);
+const stats = reactive<Record<StatKey, string | null>>({ emp: null, pending: null, expense: null, ann: null });
+const statsLoading = reactive<Record<StatKey, boolean>>({ emp: true, pending: true, expense: true, ann: true });
+const statsErrors = reactive<Record<StatKey, string>>({ emp: '', pending: '', expense: '', ann: '' });
 const statCards = [
   {
     key: "emp",
-    label: "在册员工",
-    desc: "人事档案 · 查看员工",
+    label: "在职员工",
+    desc: "当前在职人数，包含待离职仍在职员工",
     icon: Users,
     glyph: "👥",
     tone: "primary" as const,
-    to: "/page/hrm-employee",
+    to: "/page/hrm-employee?roster=active",
+  },
+  {
+    key: "pending",
+    label: "门户审批中",
+    desc: "全公司处于审批中的门户申请，不含企业微信审批",
+    icon: CircleCheck,
+    glyph: "📝",
+    tone: "warning" as const,
+    to: "/me/requests?view=company&status=pending",
+  },
+  {
+    key: "expense",
+    label: "本月已批门户报销",
+    desc: `申请创建于北京时间 ${currentMonth} 且已通过的门户报销金额，不含企业微信报销`,
+    icon: Receipt,
+    glyph: "💰",
+    tone: "info" as const,
+    to: `/me/requests?view=company&type=expense&status=approved&month=${currentMonth}`,
   },
   {
     key: "ann",
     label: "已发布公告",
-    desc: "信息传达 · 公司通知",
+    desc: "已发布的公司通知总数",
     icon: Megaphone,
     glyph: "📰",
     tone: "success" as const,
     to: "/page/oa-announcement",
   },
-  {
-    key: "supply",
-    label: "办公用品",
-    desc: "物资管理 · 在库条目",
-    icon: Package,
-    glyph: "📦",
-    tone: "info" as const,
-    to: "/page/oa-supply-item",
-  },
-];
+] satisfies { key: StatKey; label: string; desc: string; icon: unknown; glyph: string; tone: 'primary' | 'warning' | 'info' | 'success'; to: string }[];
 const tiles = [
   {
     key: "employee",
@@ -242,38 +270,78 @@ const announcementsError = ref("");
 async function loadAnnouncements() {
   announcementsLoading.value = true;
   announcementsError.value = "";
+  statsLoading.ann = true;
+  statsErrors.ann = '';
   try {
     const result = await api.get<{ list: Announcement[]; total: number }>(
       "/admin-api/oa/announcement/published-page",
       { pageNo: 1, pageSize: 4 },
     );
     announcements.value = result.list ?? [];
-    stats.value.ann = String(result.total ?? 0);
+    if (result.total === null || result.total === undefined) throw new ApiError(-1, '公告统计未返回总数');
+    stats.ann = String(result.total);
   } catch (e) {
     announcementsError.value = errText(e);
-    stats.value.ann = "–";
+    stats.ann = null;
+    statsErrors.ann = errText(e);
   } finally {
     announcementsLoading.value = false;
+    statsLoading.ann = false;
   }
+}
+async function loadEmployees() {
+  statsLoading.emp = true;
+  statsErrors.emp = '';
+  try {
+    const data = await api.get<{ employeeSurvey: { activeCount: number } }>('/admin-api/hrm/home/hr-statistics-summary');
+    const count = data.employeeSurvey?.activeCount;
+    if (count === null || count === undefined) throw new ApiError(-1, '在职统计未返回人数');
+    stats.emp = String(count);
+  } catch (e) { stats.emp = null; statsErrors.emp = errText(e); }
+  finally { statsLoading.emp = false; }
+}
+function requestMonth(value: string) {
+  if (!value) throw new ApiError(-1, '报销申请缺少创建时间');
+  // 无偏移的 LocalDateTime 来自业务库北京时间；带偏移时转换为北京时间再归月。
+  if (!/(Z|[+-]\d{2}:?\d{2})$/i.test(value)) return value.slice(0, 7);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) throw new ApiError(-1, '报销申请创建时间无效');
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit' }).format(date);
+}
+function moneyInCents(value: unknown) {
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(String(value));
+  if (!match) throw new ApiError(-1, '报销金额格式无效');
+  const fraction = (match[2] || '').padEnd(3, '0');
+  return BigInt(match[1]) * 100n + BigInt(fraction.slice(0, 2)) + (fraction[2] >= '5' ? 1n : 0n);
+}
+function formatMoney(cents: bigint) {
+  const whole = (cents / 100n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `¥${whole}.${(cents % 100n).toString().padStart(2, '0')}`;
+}
+async function loadRequests() {
+  statsLoading.pending = true; statsLoading.expense = true;
+  statsErrors.pending = ''; statsErrors.expense = '';
+  try {
+    const requests = await workspaceApi.requests('company');
+    stats.pending = String(requests.filter(row => row.status === 'pending').length);
+    try {
+      const total = requests.filter(row => row.data.type === 'expense' && row.status === 'approved' && requestMonth(row.createdAt) === currentMonth)
+        .reduce((sum, row) => sum + moneyInCents(row.data.amount), 0n);
+      stats.expense = formatMoney(total);
+    } catch (e) { stats.expense = null; statsErrors.expense = errText(e); }
+  } catch (e) {
+    stats.pending = null; stats.expense = null;
+    statsErrors.pending = errText(e); statsErrors.expense = errText(e);
+  } finally { statsLoading.pending = false; statsLoading.expense = false; }
+}
+function retryStat(key: StatKey) {
+  if (key === 'emp') void loadEmployees();
+  else if (key === 'ann') void loadAnnouncements();
+  else void loadRequests();
 }
 onMounted(() => {
   void loadAnnouncements();
-  const fetchers = {
-    emp: "/admin-api/hrm/employee/page",
-    supply: "/admin-api/oa/supply-item/page",
-  };
-  void Promise.allSettled(
-    Object.entries(fetchers).map(async ([key, url]) => {
-      try {
-        const data = await api.get<{ total: number }>(url, {
-          pageNo: 1,
-          pageSize: 1,
-        });
-        stats.value[key] = String(data?.total ?? 0);
-      } catch {
-        stats.value[key] = "–";
-      }
-    }),
-  );
+  void loadEmployees();
+  void loadRequests();
 });
 </script>

@@ -5,14 +5,15 @@
     description="周报看板、待点评与团队关怀集中在一个视图里"
   >
     <template #actions>
-      <Button variant="outline" size="sm" @click="load">
+      <Button variant="outline" size="sm" :loading="loading || radarLoading" @click="refresh">
         <RefreshCw class="size-3.5" />
         刷新
       </Button>
     </template>
   </PageHeader>
 
-  <div v-if="loadError" class="mt-4">
+  <p v-if="loading && !board" class="py-10 text-center text-sm text-muted-foreground" role="status">正在读取团队…</p>
+  <div v-else-if="loadError" class="mt-4">
     <Callout tone="destructive" title="加载失败">{{ loadError }}</Callout>
   </div>
 
@@ -55,9 +56,14 @@
       </div>
     </div>
 
-    <template v-if="radar.length">
-      <h2 class="mt-6 text-sm font-semibold">团队里程碑雷达 · 该去关怀了</h2>
-      <div class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <SegmentedTabs class="mt-6" :model-value="tab" :items="tabItems" @update:model-value="pick" />
+
+    <template v-if="tab === 'milestone'">
+      <h2 class="mt-5 text-sm font-semibold">团队祝贺与关怀</h2>
+      <Callout v-if="radarError" class="mt-3" title="团队里程碑未读取" tone="destructive">{{ radarError }}</Callout>
+      <p v-else-if="radarLoading" class="py-8 text-center text-sm text-muted-foreground" role="status">正在读取团队里程碑…</p>
+      <EmptyState v-else-if="!radar.length" title="近期暂无团队祝贺与关怀事项" description="团队成员的生日、入职周年和转正评估会显示在这里" compact />
+      <div v-else class="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <div
           v-for="r in radar"
           :key="r.userId + r.type + r.date"
@@ -74,15 +80,13 @@
             v-if="r.action === 'bless'"
             size="sm"
             :variant="r.blessed ? 'outline' : 'default'"
-            :disabled="r.blessed"
+            :disabled="r.blessed || blessingBusy === `${r.userId}:${r.type}:${r.date}`"
             @click="bless(r)"
           >{{ r.blessed ? '已送祝福' : '送祝福' }}</Button>
           <Button v-else variant="outline" size="sm" @click="arrange(r)">去安排</Button>
         </div>
       </div>
     </template>
-
-    <SegmentedTabs class="mt-6" :model-value="tab" :items="tabItems" @update:model-value="pick" />
 
     <!-- 周报看板 -->
     <section v-if="tab === 'board'" class="mt-4 overflow-hidden rounded-xl border bg-card shadow-xs">
@@ -187,8 +191,11 @@
     </section>
 
     <!-- 成员与动态 -->
-    <div v-else class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      <div v-for="m in board.members" :key="m.userId" class="rounded-xl border bg-card p-4 shadow-xs">
+    <section v-else-if="tab === 'members'" class="mt-4 space-y-3">
+      <Input v-model="memberSearch" aria-label="搜索团队成员" placeholder="搜索姓名、部门或岗位" class="sm:max-w-sm" />
+      <EmptyState v-if="!filteredMembers.length" :title="memberSearch ? '没有匹配的团队成员' : '还没有直属下级'" compact />
+      <div v-else class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div v-for="m in filteredMembers" :key="m.userId" class="min-w-0 rounded-xl border bg-card p-4 shadow-xs">
         <div class="flex items-center gap-3">
           <Avatar :name="m.name" />
           <div class="min-w-0">
@@ -215,7 +222,8 @@
           <Button variant="ghost" size="sm" @click="nudge(m)">催一催</Button>
         </div>
       </div>
-    </div>
+      </div>
+    </section>
 
     <!-- 给团队发话 -->
     <section class="mt-6 rounded-xl border bg-card p-4 shadow-xs">
@@ -378,7 +386,8 @@ import Textarea from '../../../ui/Textarea.vue'
 const TABS = [
   { key: 'board', title: '团队周报看板' },
   { key: 'review', title: '待我点评' },
-  { key: 'members', title: '成员与动态' }
+  { key: 'members', title: '团队成员' },
+  { key: 'milestone', title: '团队祝贺' }
 ] as const
 
 const SQ_CHAR: Record<string, string> = { submitted: '✓', draft: '…', missing: '!' }
@@ -392,6 +401,15 @@ const tab = computed(() => normalizeTab(String(route.query.tab ?? 'board')))
 const board = ref<TeamBoard | null>(null)
 const radar = ref<ColleagueMilestone[]>([])
 const loadError = ref('')
+const loading = ref(false)
+const radarLoading = ref(false)
+const radarError = ref('')
+const blessingBusy = ref('')
+const memberSearch = ref('')
+const filteredMembers = computed(() => {
+  const query = memberSearch.value.trim().toLocaleLowerCase()
+  return (board.value?.members ?? []).filter(member => !query || `${member.name} ${member.deptName} ${member.postName}`.toLocaleLowerCase().includes(query))
+})
 const detail = ref<Report | null>(null)
 const grade = ref('')
 const reviewText = ref('')
@@ -472,6 +490,7 @@ function pick(next: string) {
 }
 
 async function load() {
+  loading.value = true
   loadError.value = ''
   try {
     const data = await meApi.teamBoard()
@@ -479,15 +498,21 @@ async function load() {
     pickedUsers.value = data.members.map((m) => m.userId)
   } catch (e) {
     loadError.value = errText(e)
+  } finally {
+    loading.value = false
   }
 }
 
 async function loadRadar() {
+  radarLoading.value = true
+  radarError.value = ''
   try {
     radar.value = await meApi.teamMilestones()
   } catch (e) {
     radar.value = []
-    toast(errText(e), 'bad')
+    radarError.value = errText(e)
+  } finally {
+    radarLoading.value = false
   }
 }
 
@@ -498,12 +523,16 @@ function mileSub(row: ColleagueMilestone) {
 }
 
 async function bless(row: ColleagueMilestone) {
+  if (blessingBusy.value || row.blessed) return
+  blessingBusy.value = `${row.userId}:${row.type}:${row.date}`
   try {
     await meApi.bless({ toUserId: row.userId, type: row.type, date: row.date })
     row.blessed = true
     toast(`已给 ${row.name} 送上${row.typeText}祝福，对方的「收到的认可」里能看到`)
   } catch (e) {
     toast(errText(e), 'bad')
+  } finally {
+    blessingBusy.value = ''
   }
 }
 
@@ -649,7 +678,7 @@ async function sendNote() {
       startTime: iso(start),
       endTime: `${note.endTime}:00`,
       remind: true,
-      participantUserIds: pickedUsers.value.map((u) => Number(u))
+      participantUserIds: pickedUsers.value.map(String)
     })
     toast(`已发给 ${pickedUsers.value.length} 人，对方的提醒里会出现这条`)
     note.title = ''
@@ -661,9 +690,12 @@ async function sendNote() {
   }
 }
 
+async function refresh() {
+  await Promise.allSettled([load(), loadRadar()])
+}
+
 onMounted(() => {
-  void load()
-  void loadRadar()
+  void refresh()
   void loadMeSummary(true)
 })
 </script>

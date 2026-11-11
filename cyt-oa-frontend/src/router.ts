@@ -47,8 +47,21 @@ const router = createRouter({
         { path: 'org', name: 'org', component: () => import('./pages/OrgPage.vue') },
         { path: 'wecom-templates', name: 'wecom-templates', component: () => import('./pages/WecomTemplatePage.vue') },
         { path: 'me/:view', name: 'me', component: () => import('./pages/me/MePage.vue') },
+        { path: 'me/okr', component: () => import('./pages/workspace/ObjectivesPage.vue') },
+        { path: 'me/voice', component: () => import('./pages/workspace/VoicePage.vue') },
+        { path: 'me/requests', component: () => import('./pages/workspace/RequestsPage.vue') },
+        { path: 'me/records', component: () => import('./pages/me/PersonalRecordsPage.vue') },
+        { path: 'me/review-reports', component: () => import('./pages/me/ReviewReportsPage.vue') },
+        { path: 'me/team-attendance', component: () => import('./pages/workspace/TeamAttendancePage.vue') },
+        { path: 'portal/voice', component: () => import('./pages/workspace/VoicePage.vue'), meta: { permission: 'can_manage_voice' } },
+        { path: 'portal/workspace-rules', component: () => import('./pages/workspace/RulesPage.vue'), meta: { permission: 'can_manage_workspace_rules' } },
         { path: 'me', redirect: '/me/overview' },
         { path: 'page/hrm-employee', name: 'employees', component: () => import('./pages/EmployeePage.vue') },
+        { path: 'hr/workbench', component: () => import('./pages/hr/HrWorkbenchPage.vue'), meta: { permission: 'hrm:home:hr-query' } },
+        { path: 'hr/recruit', component: () => import('./pages/hr/HrRecruitPage.vue') },
+        { path: 'hr/employment', component: () => import('./pages/hr/HrEmploymentPage.vue'), meta: { permission: 'hrm:employee:update' } },
+        { path: 'hr/templates', component: () => import('./pages/hr/HrTemplatesPage.vue'), meta: { permission: 'hrm:contract-template:query' } },
+        { path: 'hr/lifecycle', component: () => import('./pages/hr/HrLifecyclePage.vue'), meta: { permission: 'hrm:employee:query' } },
         { path: 'page/sys-users', name: 'accounts', component: () => import('./pages/AccountsPage.vue') },
         { path: 'page/:key', name: 'page', component: () => import('./pages/DataPage.vue'), props: true }
       ]
@@ -57,20 +70,35 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (to.path !== '/login' && !session.token) {
+  const routePath = to.path.toLowerCase().replace(/\/+$/, '') || '/'
+  if (routePath !== '/login' && !session.token) {
     return { path: '/login', query: { from: to.fullPath } }
   }
-  if (to.path === '/login' && session.token && !hasLoginHandoff(to.query)) {
+  if (routePath === '/login' && session.token && !hasLoginHandoff(to.query)) {
     return { path: '/' }
   }
+  const hrTarget = session.hrOnlyRedirect(routePath)
+  if (hrTarget) return hrTarget
+  if (routePath === '/me/profile' && to.query.tab === 'voice') return { path: '/me/voice', query: { channel: to.query.channel || 'suggestion' } }
   if (to.name === 'console' && !session.isAdmin) {
     return { path: session.canManagePortal ? '/portal' : '/me/overview' }
   }
   if (typeof to.meta.permission === 'string' && !session.has(to.meta.permission)) return '/forbidden'
+  if (routePath === '/portal/voice' && to.query.tab === 'ceo' && !session.isAdmin) return '/forbidden'
+  if (routePath === '/portal/workspace-rules' && to.query.section === 'scope' && !session.isAdmin) return '/forbidden'
+  if (to.name === 'employees' && !session.has('hrm:employee:query')) return '/forbidden'
+  if (routePath.startsWith('/hr/')) {
+    if (!session.canAccessConsole) return '/forbidden'
+    if (routePath === '/hr/recruit') {
+      const permission = to.query.tab === 'interviews' ? 'hrm:recruit:interview:query' : to.query.tab === 'posts' ? 'hrm:recruit:post:query' : 'hrm:recruit:candidate:query'
+      if (!session.has(permission)) return '/forbidden'
+    }
+    if (routePath === '/hr/employment' && (!session.has('hrm:employee:query') || !session.has('hrm:contract-template:query'))) return '/forbidden'
+  }
   if (to.meta.adminOnly && !session.isAdmin) return '/forbidden'
   const rolloutEntry = portalEntryForRoute(to.path, to.query)
   if (rolloutEntry && !hasPortalPermission(rolloutEntry)) return '/forbidden'
-  if (session.canAccessConsole && to.path !== '/login' && to.path !== '/portal/rollout' && to.path !== '/portal/unavailable') {
+  if (session.canAccessConsole && routePath !== '/login' && routePath !== '/portal/rollout' && routePath !== '/portal/unavailable') {
     try { await loadPortalRollout(true) }
     catch {
       if (!session.token) return { path: '/login', query: { from: to.fullPath } }
@@ -97,8 +125,8 @@ router.beforeEach(async (to) => {
       return { path: '/portal/hr-documents', query: { ...query, q: legacySlug } }
     }
   }
-  if (to.path.startsWith('/portal')) {
-    const matches = portalMenus.flatMap((g) => g.items).filter((item) => (item.to ?? `/page/${item.key}`).split('?')[0] === to.path)
+  if (routePath.startsWith('/portal')) {
+    const matches = portalMenus.flatMap((g) => g.items).filter((item) => (item.to ?? `/page/${item.key}`).split('?')[0] === routePath)
     if (!session.canAccessConsole || (matches.length && !matches.some(hasPortalPermission))) return '/forbidden'
   }
   if (to.name === 'page') {

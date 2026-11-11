@@ -64,6 +64,8 @@
       </component>
     </div>
 
+    <TodayGreetings />
+
     <div class="dashboard-grid">
       <div class="dashboard-primary">
         <section id="my-todos" class="panel scroll-mt-24 overflow-hidden">
@@ -464,6 +466,7 @@ import {
   Megaphone,
 } from "@lucide/vue";
 import UiIcon from "../../../components/UiIcon.vue";
+import TodayGreetings from "../components/TodayGreetings.vue";
 import NavIcon from "../../../components/NavIcon.vue";
 import {
   meApi,
@@ -703,22 +706,23 @@ async function loadMine() {
   }
 }
 
-const clocks = ref<{ clockTime: string; status: number }[]>([]);
+const clocks = ref<{ attendanceTime: string; type: number; status: number }[]>([]);
 const clockBusy = ref(false);
 const clockError = ref(false);
 
 const CLOCK_STATUS: Record<number, string> = {
-  0: "正常",
-  1: "迟到",
-  2: "早退",
-  3: "缺卡",
+  1: "正常",
+  2: "迟到",
+  3: "早退",
+  4: "请假",
+  5: "出差",
 };
 
 const clockText = computed(() => {
   if (clockError.value) return "打卡记录加载失败，请刷新重试";
   if (!clocks.value.length) return "今天还没有打卡记录";
-  const latest = clocks.value[clocks.value.length - 1];
-  const time = (latest.clockTime || "").slice(11, 16);
+  const latest = [...clocks.value].sort((a, b) => String(b.attendanceTime).localeCompare(String(a.attendanceTime)))[0];
+  const time = (latest.attendanceTime || "").slice(11, 16);
   const status = CLOCK_STATUS[latest.status];
   return `已打卡 ${clocks.value.length} 次 · 最近 ${time}${status ? `（${status}）` : ""}`;
 });
@@ -727,7 +731,7 @@ async function loadClocks() {
   clockError.value = false;
   try {
     clocks.value =
-      (await api.get<{ clockTime: string; status: number }[]>(
+      (await api.get<{ attendanceTime: string; type: number; status: number }[]>(
         "/admin-api/oa/attendance/my-today-list",
       )) ?? [];
   } catch {
@@ -737,6 +741,7 @@ async function loadClocks() {
 }
 
 async function clock() {
+  if (clockBusy.value) return;
   clockBusy.value = true;
   try {
     await api.post("/admin-api/oa/attendance/clock");

@@ -3,11 +3,16 @@
   <PageHeader
     :title="tab === 'voice' ? '我要发声' : '我的资料'"
     description="人事档案、贡献足迹、认可与提醒偏好都汇总在这里"
-  />
+  >
+    <template #actions>
+      <Button variant="outline" :loading="loading" @click="load">刷新</Button>
+    </template>
+  </PageHeader>
 
   <SegmentedTabs class="mt-5" :model-value="tab" :items="tabItems" @update:model-value="pick" />
 
-  <div v-if="loadError" class="mt-4">
+  <p v-if="loading" class="py-10 text-center text-sm text-muted-foreground" role="status">正在读取资料…</p>
+  <div v-else-if="loadError" class="mt-4">
     <Callout tone="destructive" title="加载失败">{{ loadError }}</Callout>
   </div>
 
@@ -20,8 +25,8 @@
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-lg font-semibold tracking-tight">{{ profile.name || '未命名' }}</h2>
-              <Badge v-if="hasValue(profile.status)" variant="success">{{ EMPLOY_STATUS[profile.status] }}</Badge>
-              <Badge v-if="hasValue(profile.entryStatus)" variant="outline">{{ ENTRY_STATUS[profile.entryStatus] }}</Badge>
+              <Badge v-if="hasValue(profile.status)" variant="outline">{{ EMPLOY_STATUS[profile.status] ?? '未分类' }}</Badge>
+              <Badge v-if="hasValue(profile.entryStatus)" :variant="entryTone(profile.entryStatus)">{{ ENTRY_STATUS[profile.entryStatus] ?? '未分类' }}</Badge>
             </div>
             <p class="mt-1 text-sm text-muted-foreground">
               {{ [profile.deptName, profile.postName, profile.postLevel].filter(hasValue).join(' · ') || '部门与岗位待同步' }}
@@ -58,7 +63,8 @@
           <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">近期里程碑</h3>
           <span class="text-[11px] text-muted-foreground">{{ milestones.length }} 条</span>
         </div>
-        <div v-if="!milestones.length" class="py-8 text-center text-xs text-muted-foreground">暂无里程碑记录</div>
+        <Callout v-if="sectionErrors.milestones" class="mt-3" tone="destructive" title="里程碑未读取">{{ sectionErrors.milestones }}</Callout>
+        <div v-else-if="!milestones.length" class="py-8 text-center text-xs text-muted-foreground">暂无里程碑记录</div>
         <ul v-else class="mt-2 divide-y">
           <li
             v-for="m in milestones.slice(0, 5)"
@@ -88,7 +94,7 @@
         v-for="f in FOOTPRINT_CARDS"
         :key="f.key"
         :title="f.label"
-        :value="footprint?.[f.key] ?? 0"
+        :value="footprint?.[f.key] ?? '—'"
         :icon="f.icon"
         :tone="f.tone"
       />
@@ -97,9 +103,10 @@
     <section class="overflow-hidden rounded-xl border bg-card shadow-xs">
       <header class="flex items-center justify-between border-b px-5 py-3.5">
         <h2 class="text-sm font-semibold">里程碑全记录</h2>
-        <span class="text-xs text-muted-foreground">数字均由业务表反查，不是人工登记的荣誉墙</span>
+        <span class="text-xs text-muted-foreground">入职、转正与成长记录</span>
       </header>
-      <EmptyState v-if="!milestones.length" :icon="Award" title="还没有里程碑记录" />
+      <Callout v-if="sectionErrors.milestones" class="m-4" tone="destructive" title="里程碑未读取">{{ sectionErrors.milestones }}</Callout>
+      <EmptyState v-else-if="!milestones.length" :icon="Award" title="还没有里程碑记录" />
       <ul v-else class="divide-y">
         <li v-for="m in milestones" :key="m.id" class="flex items-center gap-3 px-5 py-3">
           <span class="w-20 shrink-0 text-xs tabular-nums text-muted-foreground">{{ fmtDay(m.date) }}</span>
@@ -152,7 +159,7 @@
       <header class="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-3.5">
         <div>
           <h2 class="text-sm font-semibold">我收到的认可</h2>
-          <p class="mt-0.5 text-xs text-muted-foreground">来自同事的点赞与表扬，可在人事档案的绩效记录里追溯</p>
+          <p class="mt-0.5 text-xs text-muted-foreground">查看同事送来的点赞、表扬与祝福</p>
         </div>
         <Select
           class="w-36"
@@ -167,7 +174,7 @@
         v-if="!recognitions.length"
         :icon="Heart"
         title="还没有收到认可"
-        description="先去交一份漂亮的周报，或帮同事推进一件难事"
+        description="同事送来的点赞、表扬与祝福会保留在这里"
       />
       <ul v-else class="divide-y">
         <li v-for="r in recognitions" :key="r.id" class="flex gap-3 px-5 py-4">
@@ -184,7 +191,7 @@
       </ul>
       <footer class="flex items-center gap-1.5 border-t px-5 py-3 text-xs text-muted-foreground">
         <Heart class="size-3.5" />
-        累计收到认可 {{ footprint?.recognitions ?? 0 }} 次
+        累计收到认可 {{ footprint?.recognitions ?? '—' }} 次
       </footer>
     </section>
   </div>
@@ -215,15 +222,17 @@
 
     <section class="rounded-xl border bg-card p-4 shadow-xs">
       <Textarea
+        id="voice-content"
         v-model.trim="content"
         :rows="3"
         maxlength="2000"
         :placeholder="`写给${channelTitle}的内容…`"
+        :aria-label="`${channelTitle}内容`"
       />
       <div class="mt-3 flex flex-wrap items-center gap-3">
         <Checkbox v-model="anonymous">匿名提交</Checkbox>
         <span class="text-xs text-muted-foreground">最多 2000 字 · {{ content.length }}/2000</span>
-        <Button class="ml-auto" size="sm" :disabled="sending" @click="send">
+        <Button class="ml-auto" size="sm" :disabled="sending || !content.trim()" @click="send">
           <LoaderCircle v-if="sending" class="size-3.5 animate-spin" />
           {{ sending ? '提交中…' : '发送' }}
         </Button>
@@ -245,7 +254,7 @@
             <UiIcon :name="v.channel" :size="14" />
           </span>
           <div class="min-w-0 flex-1">
-            <p class="text-sm leading-relaxed">{{ v.content }}</p>
+            <p class="break-words whitespace-pre-wrap text-sm leading-relaxed">{{ v.content }}</p>
             <p class="mt-1 text-[11px] text-muted-foreground">{{ v.channelText }} · {{ v.authorName }}</p>
           </div>
           <Badge :variant="voiceTone(v.status)">{{ STATUS_TEXT[v.status] ?? v.status }}</Badge>
@@ -322,8 +331,8 @@ const FOOTPRINT_CARDS: {
   { key: 'voices', label: '发声条数', icon: Sparkles, tone: 'primary' }
 ]
 
-const EMPLOY_STATUS: Record<number, string> = { 1: '在职', 2: '实习', 3: '离职', 4: '外包' }
-const ENTRY_STATUS: Record<number, string> = { 1: '正式', 2: '试用', 3: '实习' }
+const EMPLOY_STATUS: Record<number, string> = { 1: '正式', 2: '试用', 3: '实习', 4: '兼职', 5: '劳务', 6: '顾问', 7: '返聘', 8: '外包' }
+const ENTRY_STATUS: Record<number, string> = { 0: '待完善', 1: '在职', 2: '待入职', 3: '待离职', 4: '已离职' }
 
 const PREF_FIELDS: { key: keyof ReminderPreference; title: string; desc: string; icon: string }[] = [
   { key: 'reportDue', title: '汇报到期', desc: '本周汇报还没交时提醒', icon: 'file' },
@@ -335,7 +344,7 @@ const PREF_FIELDS: { key: keyof ReminderPreference; title: string; desc: string;
 const CHANNELS = [
   { key: 'suggestion', title: '建议箱', icon: 'suggestion', desc: '给公司提建议' },
   { key: 'ceo', title: 'CEO 信箱', icon: 'ceo', desc: '可实名 / 匿名' },
-  { key: 'survey', title: '满意度调研', icon: 'survey', desc: '季度一次' }
+  { key: 'survey', title: '调研反馈', icon: 'survey', desc: '提交调研意见' }
 ] as const
 
 const STATUS_TEXT: Record<string, string> = { open: '待受理', handling: '处理中', done: '已回复', closed: '已归档' }
@@ -344,12 +353,15 @@ const route = useRoute()
 const router = useRouter()
 
 const tab = computed(() => normalizeTab(String(route.query.tab ?? 'basic')))
-const loadError = ref('')
+const loading = ref(false)
+const sectionErrors = reactive({ profile: '', milestones: '', recognition: '', voice: '' })
+const loadError = computed(() => tab.value === 'recognition' ? sectionErrors.recognition : tab.value === 'voice' ? sectionErrors.voice : sectionErrors.profile)
 const hasValue = (value: unknown) => value !== null && value !== undefined && (typeof value !== 'string' || value.trim() !== '')
 const profile = ref<Profile | null>(null)
 const footprint = ref<Footprint | null>(null)
 const milestones = ref<MilestoneView[]>([])
-const recognitions = ref<RecognitionView[]>([])
+const recognitionRows = ref<RecognitionView[]>([])
+const recognitions = computed(() => period.value ? recognitionRows.value.filter(row => row.period === period.value) : recognitionRows.value)
 const voices = ref<VoiceView[]>([])
 const period = ref('')
 const savingPref = ref(false)
@@ -363,7 +375,7 @@ const anonymous = ref(false)
 const sending = ref(false)
 
 const periods = computed(() => {
-  const set = new Set(recognitions.value.map((r) => r.period).filter(Boolean))
+  const set = new Set(recognitionRows.value.map((r) => r.period).filter(Boolean))
   return [...set].sort().reverse()
 })
 
@@ -375,10 +387,11 @@ const periodOptions = computed(() => [
 const channelTitle = computed(() => CHANNELS.find((c) => c.key === channel.value)?.title ?? '心声')
 
 const probationText = computed(() => {
-  if (!profile.value) return '—'
-  if (profile.value.probation === 1) return '已转正'
-  if (profile.value.probation === 0) return profile.value.regularTime ? `试用期，${fmtDay(profile.value.regularTime)} 转正` : '试用期'
-  return '—'
+  const p = profile.value
+  if (!p || !hasValue(p.probation)) return '—'
+  if (p.probation === 0) return '无试用期'
+  const duration = `${p.probation} 个月`
+  return p.status === 2 && p.regularTime ? `${duration}，计划 ${fmtDay(p.regularTime)} 转正` : duration
 })
 
 const infoItems = computed(() => {
@@ -397,7 +410,8 @@ const infoItems = computed(() => {
   push('我带', p.subCount ? `${p.subCount} 人` : '')
   push('生日', p.birthday ? fmtDay(p.birthday) : '')
   push('入职', p.entryTime ? `${fmtDay(p.entryTime)}${hasValue(p.workAge) ? `（司龄 ${p.workAge} 年）` : ''}` : '')
-  push('转正', probationText.value === '—' ? '' : probationText.value)
+  push('试用安排', probationText.value === '—' ? '' : probationText.value)
+  if (p.status !== 2) push('转正日期', p.regularTime ? fmtDay(p.regularTime) : '')
   return items
 })
 
@@ -406,6 +420,10 @@ function voiceTone(status: string): BadgeTone {
   if (status === 'handling') return 'info'
   if (status === 'done') return 'success'
   return 'outline'
+}
+
+function entryTone(status: number): BadgeTone {
+  return status === 4 ? 'destructive' : status === 3 ? 'warning' : status === 1 ? 'success' : 'outline'
 }
 
 function normalizeTab(value: string) {
@@ -419,19 +437,10 @@ function pick(next: string) {
 
 function onPeriod(value: unknown) {
   period.value = String(value ?? '')
-  void loadRecognitions()
 }
 
 function resetPref() {
   if (profile.value?.preference) Object.assign(pref, profile.value.preference)
-}
-
-async function loadRecognitions() {
-  try {
-    recognitions.value = await meApi.recognitions(period.value || undefined)
-  } catch (e) {
-    toast(errText(e), 'bad')
-  }
 }
 
 async function savePref() {
@@ -448,13 +457,14 @@ async function savePref() {
 }
 
 async function send() {
-  if (!content.value) {
+  if (sending.value) return
+  if (!content.value.trim()) {
     toast('先写点内容', 'bad')
     return
   }
   sending.value = true
   try {
-    await meApi.submitVoice({ channel: channel.value, content: content.value, anonymous: anonymous.value })
+    await meApi.submitVoice({ channel: channel.value, content: content.value.trim(), anonymous: anonymous.value })
     toast('已收到，受理结果会回到列表')
     content.value = ''
     anonymous.value = false
@@ -466,22 +476,29 @@ async function send() {
   }
 }
 
-onMounted(async () => {
-  try {
-    const [data, ms, rs, vs] = await Promise.all([
-      meApi.profile(),
-      meApi.milestones(),
-      meApi.recognitions(),
-      meApi.voices()
-    ])
-    profile.value = data
-    footprint.value = data.footprint
-    if (data.preference) Object.assign(pref, data.preference)
-    milestones.value = ms
-    recognitions.value = rs
-    voices.value = vs
-  } catch (e) {
-    loadError.value = errText(e)
+async function load() {
+  loading.value = true
+  Object.keys(sectionErrors).forEach(key => { sectionErrors[key as keyof typeof sectionErrors] = '' })
+  const [data, ms, rs, vs] = await Promise.allSettled([
+    meApi.profile(), meApi.milestones(), meApi.recognitions(), meApi.voices()
+  ])
+  if (data.status === 'fulfilled') {
+    profile.value = data.value
+    footprint.value = data.value.footprint
+    if (data.value.preference) Object.assign(pref, data.value.preference)
+  } else {
+    profile.value = null
+    footprint.value = null
+    sectionErrors.profile = errText(data.reason)
   }
-})
+  if (ms.status === 'fulfilled') milestones.value = ms.value
+  else { milestones.value = []; sectionErrors.milestones = errText(ms.reason) }
+  if (rs.status === 'fulfilled') recognitionRows.value = rs.value
+  else { recognitionRows.value = []; sectionErrors.recognition = errText(rs.reason) }
+  if (vs.status === 'fulfilled') voices.value = vs.value
+  else { voices.value = []; sectionErrors.voice = errText(vs.reason) }
+  loading.value = false
+}
+
+onMounted(() => void load())
 </script>

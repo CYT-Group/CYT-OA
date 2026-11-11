@@ -21,10 +21,16 @@ public class PortalMaterialsController {
             @RequestParam(defaultValue = "sample") String kind,
             @RequestParam(defaultValue = "inventory") String resource,
             @RequestParam(required = false) String q,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) String site,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String stockState,
             @RequestParam(defaultValue = "false") boolean archived,
             @RequestParam(defaultValue = "1") int pageNo,
             @RequestParam(defaultValue = "20") int pageSize) {
-        return Result.ok(service.page(kind, resource, q, archived, pageNo, pageSize));
+        return Result.ok(service.page(kind, resource, q, archived, pageNo, pageSize,
+                new PortalMaterialsService.Filters(categoryId, brand, site, status, stockState)));
     }
 
     @GetMapping("/options")

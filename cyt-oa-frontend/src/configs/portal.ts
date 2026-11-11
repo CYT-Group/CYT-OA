@@ -102,6 +102,20 @@ export const portalMenus: MenuGroup[] = [
         permission: "can_manage_products",
       },
       {
+        key: "portal-voice",
+        title: "发声管理",
+        icon: "message",
+        to: "/portal/voice",
+        permission: "can_manage_voice",
+      },
+      {
+        key: "portal-workspace-rules",
+        title: "门户流程与规则",
+        icon: "settings",
+        to: "/portal/workspace-rules",
+        permission: "can_manage_workspace_rules",
+      },
+      {
         key: "portal-categories",
         title: "内容分类",
         icon: "folder",

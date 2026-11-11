@@ -12,7 +12,8 @@ public interface DirectoryArchivePurgeMapper {
     Set<String> DETAIL_TABLES = Set.of("hrm_employee_contact", "hrm_employee_file",
             "hrm_employee_personal_note", "hrm_employee_certificate", "hrm_employee_education_experience",
             "hrm_employee_work_experience", "hrm_employee_training_experience", "hrm_employee_contract",
-            "hrm_employee_quit_info", "hrm_employee_salary_card", "hrm_employee_change_record", "hrm_employee_wecom_sync");
+            "hrm_employee_quit_info", "hrm_employee_salary_card", "hrm_employee_change_record", "hrm_employee_wecom_sync",
+            "hrm_employment_document");
 
     @Select("<script>SELECT id FROM hrm_employee WHERE user_id IN " + IDS + "</script>")
     List<Long> selectIdsByUserIds(@Param("ids") List<Long> userIds);

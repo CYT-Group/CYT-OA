@@ -37,7 +37,9 @@ class PortalEntryRolloutServiceTest {
     @Test
     void existingMenusRemainEnabledWithoutConfiguration() {
         var result = service.entries();
-        assertEquals(20, result.entries().size());
+        assertEquals(22, result.entries().size());
+        assertTrue(result.entries().containsKey("portal-voice"));
+        assertTrue(result.entries().containsKey("portal-workspace-rules"));
         assertTrue(result.entries().values().stream().allMatch(Boolean.TRUE::equals));
         verify(repository, never()).initialize();
     }
@@ -52,7 +54,7 @@ class PortalEntryRolloutServiceTest {
                                 "HR",
                                 List.of("hr"),
                                 List.of("can_enter_admin", "can_manage_roles")));
-        assertEquals(20, service.entries().entries().size());
+        assertEquals(22, service.entries().entries().size());
         assertThrows(AuthException.class, service::settings);
         assertThrows(AuthException.class, () -> service.save(0L, Map.of("portal-ai", false)));
         verify(repository, never()).initialize();
@@ -81,7 +83,7 @@ class PortalEntryRolloutServiceTest {
                 .update(
                         argThat(
                                 map ->
-                                        map.size() == 20
+                                        map.size() == 22
                                                 && !map.get("portal-news")
                                                 && !map.get("portal-ai")
                                                 && map.get("portal-signoff")),

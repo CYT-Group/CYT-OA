@@ -57,7 +57,7 @@ test("前后端上线目录一致，恢复入口不能被当作业务开关", ()
     .map((match) => match[1])
     .sort();
   assert.deepEqual([...policy.configurablePortalKeys].sort(), backend);
-  assert.equal(backend.length, 20);
+  assert.equal(backend.length, 22);
   assert.equal(backend.includes("portal-hub"), false);
   assert.equal(backend.includes("portal-rollout"), false);
 });

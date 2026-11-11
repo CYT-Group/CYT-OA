@@ -3,11 +3,14 @@
     <a href="#main-content" class="skip-link">跳转到内容</a>
     <aside class="workspace-sidebar">
       <router-link to="/" class="workspace-brand" aria-label="CTY OA 首页">
-        <span class="brand-mark" aria-hidden="true"
-          ><PanelsTopLeft :size="19" :stroke-width="1.8"
-        /></span>
+        <span class="brand-mark" aria-hidden="true">
+          <PanelsTopLeft :size="19" :stroke-width="1.8" />
+        </span>
         <span class="sidebar-label workspace-brand-copy">
-          <span class="workspace-brand-name">CTY <span>OA</span></span>
+          <span class="workspace-brand-name">
+            CTY
+            <span>OA</span>
+          </span>
           <span class="workspace-brand-description">企业协同办公</span>
         </span>
       </router-link>
@@ -52,8 +55,9 @@
             <span
               v-if="index > 0"
               class="hidden select-none text-border-strong sm:inline"
-              >/</span
             >
+              /
+            </span>
             <span
               :class="
                 index === crumbs.length - 1
@@ -67,9 +71,16 @@
         </nav>
         <span
           class="ml-3 hidden shrink-0 rounded-md bg-primary/8 px-2 py-1 text-[10px] font-medium text-primary sm:inline-flex"
-          ><span class="mr-1" aria-hidden="true">📊</span
-          >{{ route.path.startsWith("/me") ? "个人办公" : "管理中心" }}</span
         >
+          <span class="mr-1" aria-hidden="true">📊</span>
+          {{
+            isHrPage
+              ? "人事管理"
+              : route.path.startsWith("/me")
+                ? "个人办公"
+                : "管理中心"
+          }}
+        </span>
 
         <div class="ml-auto flex shrink-0 items-center gap-1.5">
           <Button
@@ -78,9 +89,11 @@
             aria-label="搜索页面或功能"
             :title="`搜索页面或功能（${shortcutLabel} K）`"
             @click="paletteOpen = true"
-            ><span aria-hidden="true">🔍</span></Button
           >
+            <span aria-hidden="true">🔍</span>
+          </Button>
           <Button
+            v-if="!session.isHrOnly"
             variant="ghost"
             size="icon-sm"
             class="relative"
@@ -175,11 +188,12 @@ import PortalConfirmHost from "./portal/editor/legacy/components/ui/GlobalConfir
 import Sheet from "../ui/Sheet.vue";
 import { navZones, type NavZone } from "../configs/nav";
 import { filterPortalNavigation } from "../lib/portal-access";
-import { findNavigationMatch } from "../lib/navigation";
+import { findNavigationMatch, sidebarNavigation, personalizeNavigation } from "../lib/navigation";
 import { loadPortalRollout } from "../lib/portal-rollout";
 import { pageConfigs, tabbedPages } from "../configs/pages";
 import { session } from "../lib/session";
 import { meSummary, loadMeSummary } from "../lib/me";
+import { workspaceContext, loadWorkspaceContext } from "../lib/workspace-context";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,25 +202,28 @@ const paletteOpen = ref(false);
 const sidebarCollapsed = ref(
   localStorage.getItem("cyt-oa-sidebar-collapsed") === "true",
 );
-const navigationZones = computed<NavZone[]>(() => {
-  const personal = visibleZones.value.filter((zone) => !zone.adminOnly);
-  return [
-    {
-      key: "me",
-      title: "个人办公",
-      items: personal.flatMap((zone) => zone.items),
-    },
-    ...visibleZones.value.filter((zone) => zone.adminOnly),
-  ];
-});
+const isHrPage = computed(
+  () =>
+    session.isHrOnly ||
+    route.path.startsWith("/hr/") ||
+    ["/page/hrm-employee", "/portal/contracts", "/portal/resumes"].includes(
+      route.path,
+    ),
+);
+// 人事页面与其他业务共用同一棵门户目录，只更新父子选中态，不替换侧栏。
+const navigationZones = computed<NavZone[]>(() =>
+  sidebarNavigation(visibleZones.value),
+);
 const accountUser = computed(() => ({
   name: session.name,
   department: meSummary.deptName,
   role: session.isAdmin
     ? "系统管理员"
-    : session.canAccessConsole
-      ? "管理成员"
-      : "员工",
+    : session.isHrOnly
+      ? "HR 管理员"
+      : session.canAccessConsole
+        ? "管理成员"
+        : "员工",
 }));
 const shortcutLabel = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 
@@ -219,19 +236,21 @@ function toggleSidebar() {
 }
 
 const visibleZones = computed<NavZone[]>(() =>
-  filterPortalNavigation(navZones)
-    .filter((zone) => !zone.adminOnly || session.canAccessConsole)
-    .map((zone) => ({
-      ...zone,
-      items: zone.items.filter(
-        (item) => !item.requiresTeam || meSummary.teamCount > 0,
-      ),
-    }))
-    .filter((zone) => zone.items.length > 0),
+  personalizeNavigation(filterPortalNavigation(navZones).filter(zone => !zone.adminOnly || session.canAccessConsole), {
+    teamCount: Number(meSummary.teamCount),
+    isAdmin: session.isAdmin,
+    canAccessConsole: session.canAccessConsole,
+    canApproveMaterials: session.isAdmin || workspaceContext.owner === session.token && workspaceContext.value?.canApproveMaterials === true,
+    canApproveRequests: workspaceContext.owner === session.token && workspaceContext.value?.canApproveRequests === true,
+  }),
 );
 
 const crumbs = computed<string[]>(() => {
-  const match = findNavigationMatch(navigationZones.value, route.fullPath);
+  if (route.path === "/portal")
+    return route.query.view === "tools"
+      ? ["管理中心", "管理工具"]
+      : ["管理中心"];
+  const match = findNavigationMatch(visibleZones.value, route.fullPath);
   if (match)
     return [
       match.zone.title,
@@ -287,12 +306,14 @@ function onKeydown(event: KeyboardEvent) {
 
 onMounted(() => {
   void loadMeSummary();
+  void loadWorkspaceContext();
   window.addEventListener("keydown", onKeydown);
   window.addEventListener("focus", refreshRollout);
 });
 
 function refreshRollout() {
   if (session.canAccessConsole) void loadPortalRollout(true).catch(() => {});
+  void loadWorkspaceContext();
 }
 onBeforeUnmount(() => {
   window.removeEventListener("keydown", onKeydown);

@@ -38,6 +38,8 @@ public class PortalEntryRolloutService {
                     "portal-import",
                     "portal-events",
                     "portal-products",
+                    "portal-voice",
+                    "portal-workspace-rules",
                     "portal-categories",
                     "portal-api-costs",
                     "portal-hr-documents",

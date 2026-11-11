@@ -16,10 +16,7 @@
     <section class="panel mt-4 overflow-hidden">
       <form
         class="table-toolbar flex flex-wrap gap-2"
-        @submit.prevent="
-          page = 1;
-          load();
-        "
+        @submit.prevent="applyFilters"
       >
         <Input
           v-model="query.q"
@@ -182,10 +179,8 @@
         :page-size="20"
         :total="total"
         class="border-t px-5 py-3"
-        @update:page="
-          page = $event;
-          load();
-        "
+        :disabled="loading"
+        @update:page="changePage"
       />
     </section>
   </div>
@@ -727,21 +722,33 @@ const statuses = [
   { value: "rejected", label: "已驳回" },
 ];
 const query = reactive({
-    q: "",
-    status: route.query.status === "pending" ? "pending" : "all",
-    category: "",
-    department: "",
+    q: typeof route.query.q === 'string' ? route.query.q : '',
+    status: statuses.some(status => status.value === route.query.status) ? String(route.query.status) : 'all',
+    category: typeof route.query.category === 'string' ? route.query.category : '',
+    department: typeof route.query.department === 'string' ? route.query.department : '',
   }),
   rows = ref<ContentRecord[]>([]),
   total = ref(0),
-  page = ref(1),
+  page = ref(/^[1-9]\d{0,6}$/.test(String(route.query.page ?? '')) ? Number(route.query.page) : 1),
   loading = ref(false),
   error = ref(""),
   busy = ref(false);
 function resetFilters() {
   Object.assign(query, { q: "", status: "all", category: "", department: "" });
-  page.value = 1;
-  load();
+  applyFilters();
+}
+function applyFilters() {
+  const next = { ...route.query };
+  for (const key of ['q', 'status', 'category', 'department', 'page']) delete next[key];
+  if (query.q.trim()) next.q = query.q.trim();
+  if (query.status !== 'all') next.status = query.status;
+  if (query.category.trim()) next.category = query.category.trim();
+  if (!isNews.value && query.department.trim()) next.department = query.department.trim();
+  if (router.resolve({ query: next }).fullPath === route.fullPath) void load();
+  else void router.push({ query: next });
+}
+function changePage(value: number) {
+  void router.push({ query: { ...route.query, page: value > 1 ? String(value) : undefined } });
 }
 const editing = ref(false),
   recordId = ref<number>(),
@@ -1283,6 +1290,14 @@ watch(editing, value => {
     const next = { ...route.query }; delete next.action;
     void router.replace({ query: next });
   }
+});
+watch(() => [route.query.q, route.query.status, route.query.category, route.query.department, route.query.page], () => {
+  query.q = typeof route.query.q === 'string' ? route.query.q : '';
+  query.status = statuses.some(status => status.value === route.query.status) ? String(route.query.status) : 'all';
+  query.category = typeof route.query.category === 'string' ? route.query.category : '';
+  query.department = typeof route.query.department === 'string' ? route.query.department : '';
+  page.value = /^[1-9]\d{0,6}$/.test(String(route.query.page ?? '')) ? Number(route.query.page) : 1;
+  void load();
 });
 watch(
   () => props.kind,

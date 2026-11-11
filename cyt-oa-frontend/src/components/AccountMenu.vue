@@ -40,7 +40,7 @@
       </div>
     </div>
     <DropdownMenuSeparator class="ui-menu-separator" />
-    <DropdownMenuItem @select="openProfile"
+    <DropdownMenuItem v-if="!session.isHrOnly" @select="openProfile"
       ><User aria-hidden="true" />个人资料</DropdownMenuItem
     >
     <DropdownMenuItem @select="toggleTheme">
@@ -62,6 +62,7 @@ import Avatar from "../ui/Avatar.vue";
 import DropdownMenu from "../ui/DropdownMenu.vue";
 import DropdownMenuItem from "../ui/DropdownMenuItem.vue";
 import { isDark, toggleTheme } from "../lib/theme";
+import { session } from "../lib/session";
 
 defineOptions({ inheritAttrs: false });
 defineProps<{
