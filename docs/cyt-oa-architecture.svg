@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 612" width="680" height="612" role="img">
+<title>新项目 CYT-OA 架构 · 业务视角</title>
+<desc>门户前台与 OA 管理后台两个前端共用同一个 OA 后端和同一份业务数据，图中隐藏了具体技术栈。</desc>
+<style>
+  text{font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",Arial,sans-serif}
+</style>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M2 1L8 5L2 9" fill="none" stroke="#378ADD" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </marker>
+</defs>
+
+<rect x="0" y="0" width="680" height="612" fill="#FFFFFF"/>
+
+<text x="40" y="30" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">新项目 CYT-OA 架构 · 业务视角</text>
+
+<rect x="40" y="52" width="280" height="100" rx="12" fill="#FFFFFF" stroke="#378ADD" stroke-width="1" stroke-dasharray="5 4"/>
+<text x="60" y="78" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">门户前台</text>
+<text x="60" y="104" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">全体员工 · 新闻 / 知识库 / 找资料</text>
+<text x="60" y="130" font-size="12" font-weight="400" fill="#888780" dominant-baseline="central">规划新建</text>
+
+<rect x="360" y="52" width="280" height="100" rx="12" fill="#FFFFFF" stroke="#B4B2A9" stroke-width="1"/>
+<text x="380" y="78" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">OA 管理后台</text>
+<text x="380" y="104" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">管理员 · 配内容 / 管人事 / 审流程</text>
+<text x="380" y="130" font-size="12" font-weight="400" fill="#888780" dominant-baseline="central">现有</text>
+
+<path d="M180 154 L180 192" fill="none" stroke="#378ADD" stroke-width="1.5" marker-end="url(#arrow)"/>
+<path d="M500 154 L500 192" fill="none" stroke="#378ADD" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="192" y="173" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">读取展示内容</text>
+<text x="512" y="173" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">提交管理操作</text>
+
+<rect x="40" y="196" width="600" height="52" rx="10" fill="#F5F6F8" stroke="#85B7EB" stroke-width="1"/>
+<text x="60" y="216" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">统一服务入口</text>
+<text x="60" y="235" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">两个前端的请求都从这里进入，按用途分流</text>
+
+<path d="M340 250 L340 278" fill="none" stroke="#378ADD" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+<rect x="40" y="282" width="600" height="196" rx="20" fill="#F1F3F6" stroke="#85B7EB" stroke-width="1"/>
+<text x="60" y="306" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">OA 后端 · 统一业务服务</text>
+<text x="60" y="325" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">两个前端的所有数据，都由这里提供</text>
+
+<rect x="60" y="340" width="178" height="52" rx="8" fill="#FFFFFF" stroke="#D3D1C7" stroke-width="1"/>
+<text x="76" y="358" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">门户内容</text>
+<text x="76" y="377" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">新闻 · 知识库 · 分类</text>
+
+<rect x="250" y="340" width="178" height="52" rx="8" fill="#FFFFFF" stroke="#D3D1C7" stroke-width="1"/>
+<text x="266" y="358" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">组织人事</text>
+<text x="266" y="377" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">部门 · 员工 · 花名册</text>
+
+<rect x="440" y="340" width="178" height="52" rx="8" fill="#FFFFFF" stroke="#D3D1C7" stroke-width="1"/>
+<text x="456" y="358" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">办公审批</text>
+<text x="456" y="377" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">请假 · 流程 · 待办</text>
+
+<rect x="60" y="402" width="178" height="52" rx="8" fill="#FFFFFF" stroke="#D3D1C7" stroke-width="1"/>
+<text x="76" y="420" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">账号权限</text>
+<text x="76" y="439" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">登录 · 角色 · 菜单</text>
+
+<rect x="250" y="402" width="178" height="52" rx="8" fill="#FFFFFF" stroke="#D3D1C7" stroke-width="1"/>
+<text x="266" y="420" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">个人中心</text>
+<text x="266" y="439" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">我的信息 · 消息</text>
+
+<rect x="440" y="402" width="178" height="52" rx="8" fill="#FFFFFF" stroke="#D3D1C7" stroke-width="1"/>
+<text x="456" y="420" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">外部对接</text>
+<text x="456" y="439" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">企微 · 原门户登录</text>
+
+<path d="M340 480 L340 508" fill="none" stroke="#378ADD" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="352" y="494" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">读写同一份数据</text>
+
+<rect x="40" y="512" width="600" height="60" rx="12" fill="#F5F6F8" stroke="#B4B2A9" stroke-width="1"/>
+<text x="60" y="534" font-size="14" font-weight="500" fill="#2C2C2A" dominant-baseline="central">统一业务数据</text>
+<text x="60" y="553" font-size="12" font-weight="400" fill="#5F5E5A" dominant-baseline="central">一份数据两边共用，不各建一套、不做双写</text>
+
+<text x="40" y="592" font-size="11" font-weight="400" fill="#888780" dominant-baseline="central">虚线 = 规划新建　实线 = 已运行　·　框架、数据库、部署方式等技术细节已隐藏</text>
+</svg>

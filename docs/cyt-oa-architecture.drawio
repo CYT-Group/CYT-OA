@@ -1,0 +1,70 @@
+<mxfile host="app.diagrams.net" agent="WorkBuddy" version="24.7.17" type="device">
+  <diagram id="cyt-oa-arch" name="业务视角架构">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="640" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="新项目 CYT-OA 架构 · 业务视角" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=14;fontStyle=1;fontColor=#2C2C2A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="14" width="600" height="28" as="geometry" />
+        </mxCell>
+
+        <mxCell id="front_portal" value="&lt;b&gt;门户前台&lt;/b&gt;&lt;br&gt;&lt;br&gt;全体员工 · 新闻 / 知识库 / 找资料&lt;br&gt;规划新建" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#378ADD;strokeWidth=1;dashed=1;dashPattern=5 4;align=left;verticalAlign=top;spacingLeft=20;spacingTop=16;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="52" width="280" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="front_admin" value="&lt;b&gt;OA 管理后台&lt;/b&gt;&lt;br&gt;&lt;br&gt;管理员 · 配内容 / 管人事 / 审流程&lt;br&gt;现有" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B4B2A9;strokeWidth=1;align=left;verticalAlign=top;spacingLeft=20;spacingTop=16;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="1">
+          <mxGeometry x="360" y="52" width="280" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="entry" value="&lt;b&gt;统一服务入口&lt;/b&gt;&lt;br&gt;两个前端的请求都从这里进入，按用途分流" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F5F6F8;strokeColor=#85B7EB;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=20;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="196" width="600" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="backend" value="&lt;b&gt;OA 后端 · 统一业务服务&lt;/b&gt;&lt;br&gt;两个前端的所有数据，都由这里提供" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#F1F3F6;strokeColor=#85B7EB;strokeWidth=1;align=left;verticalAlign=top;spacingLeft=20;spacingTop=12;fontSize=12;fontColor=#2C2C2A;container=1;collapsible=0;" vertex="1" parent="1">
+          <mxGeometry x="40" y="282" width="600" height="196" as="geometry" />
+        </mxCell>
+
+        <mxCell id="m1" value="&lt;b&gt;门户内容&lt;/b&gt;&lt;br&gt;新闻 · 知识库 · 分类" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D3D1C7;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=14;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="backend">
+          <mxGeometry x="20" y="58" width="178" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="m2" value="&lt;b&gt;组织人事&lt;/b&gt;&lt;br&gt;部门 · 员工 · 花名册" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D3D1C7;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=14;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="backend">
+          <mxGeometry x="210" y="58" width="178" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="m3" value="&lt;b&gt;办公审批&lt;/b&gt;&lt;br&gt;请假 · 流程 · 待办" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D3D1C7;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=14;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="backend">
+          <mxGeometry x="400" y="58" width="178" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="m4" value="&lt;b&gt;账号权限&lt;/b&gt;&lt;br&gt;登录 · 角色 · 菜单" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D3D1C7;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=14;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="backend">
+          <mxGeometry x="20" y="120" width="178" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="m5" value="&lt;b&gt;个人中心&lt;/b&gt;&lt;br&gt;我的信息 · 消息" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D3D1C7;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=14;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="backend">
+          <mxGeometry x="210" y="120" width="178" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="m6" value="&lt;b&gt;外部对接&lt;/b&gt;&lt;br&gt;企微 · 原门户登录" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D3D1C7;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=14;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="backend">
+          <mxGeometry x="400" y="120" width="178" height="52" as="geometry" />
+        </mxCell>
+
+        <mxCell id="data" value="&lt;b&gt;统一业务数据&lt;/b&gt;&lt;br&gt;一份数据两边共用，不各建一套、不做双写" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F5F6F8;strokeColor=#B4B2A9;strokeWidth=1;align=left;verticalAlign=middle;spacingLeft=20;fontSize=12;fontColor=#2C2C2A;" vertex="1" parent="1">
+          <mxGeometry x="40" y="512" width="600" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="虚线 = 规划新建　实线 = 已运行　·　框架、数据库、部署方式等技术细节已隐藏" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=11;fontColor=#888780;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="600" height="24" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="读取展示内容" style="edgeStyle=none;html=1;strokeColor=#378ADD;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;entryX=0.25;entryY=0;fontSize=11;fontColor=#5F5E5A;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="front_portal" target="entry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="提交管理操作" style="edgeStyle=none;html=1;strokeColor=#378ADD;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;entryX=0.75;entryY=0;fontSize=11;fontColor=#5F5E5A;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="front_admin" target="entry">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=none;html=1;strokeColor=#378ADD;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="entry" target="backend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="读写同一份数据" style="edgeStyle=none;html=1;strokeColor=#378ADD;strokeWidth=1.5;endArrow=block;endFill=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=11;fontColor=#5F5E5A;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="backend" target="data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
