@@ -5,6 +5,7 @@ import { portalMenus } from './configs/portal'
 import { hasPortalPermission } from './lib/portal-access'
 import { loadPortalRollout, portalEntryEnabled } from './lib/portal-rollout'
 import { portalEntryForRoute } from './lib/portal-entry-policy'
+import { hasLoginHandoff } from './lib/login-target'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -59,7 +60,7 @@ router.beforeEach(async (to) => {
   if (to.path !== '/login' && !session.token) {
     return { path: '/login', query: { from: to.fullPath } }
   }
-  if (to.path === '/login' && session.token) {
+  if (to.path === '/login' && session.token && !hasLoginHandoff(to.query)) {
     return { path: '/' }
   }
   if (to.name === 'console' && !session.isAdmin) {
@@ -77,6 +78,10 @@ router.beforeEach(async (to) => {
     }
   }
   if (rolloutEntry && !portalEntryEnabled(rolloutEntry.key)) return { path: '/portal/unavailable', query: { from: to.fullPath } }
+  if (to.path === '/portal/hr-documents' && to.query.mode === 'new') {
+    const { mode, ...query } = to.query
+    return { path: '/portal/hr-documents/new', query }
+  }
   if (to.path === '/portal/hr-documents' && /^\d+$/.test(String(to.query.id || ''))) {
     const { id, mode, ...query } = to.query
     return { path: `/portal/hr-documents/id/${id}/${mode === 'preview' ? 'preview' : 'edit'}`, query }
@@ -99,6 +104,7 @@ router.beforeEach(async (to) => {
   if (to.name === 'page') {
     const key = String(to.params.key ?? '')
     const config = pageConfigs[key]
+    if (!config) return '/forbidden'
     if (config?.permission ? !session.has(config.permission) : !session.isAdmin) return '/forbidden'
   }
 })

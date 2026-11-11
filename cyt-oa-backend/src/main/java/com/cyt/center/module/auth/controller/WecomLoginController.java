@@ -49,9 +49,8 @@ public class WecomLoginController {
     private static final long HANDOFF_TTL_MILLIS = 60_000;
     private static final String FRONT_SCOPE = "front";
     private static final String ADMIN_SCOPE = "admin";
-    /** 前台是嵌在企微里的个人中心，后台是控制台登录页，两个入口各自回跳。 */
-    private static final String FRONT_PATH = "/personal";
-    private static final String ADMIN_PATH = "/login";
+    /** 所有身份交接都在同一个登录页回填，实际权限由 OA 自己决定。 */
+    private static final String LOGIN_PATH = "/login";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final PortalSsoClient portal;
@@ -59,10 +58,10 @@ public class WecomLoginController {
     private final AuthService authService;
 
     private record Pending(String nonce, String verifier, long issued, String returnBase, boolean popup,
-                           boolean admin) {
+                           String scope, String returnTo) {
     }
 
-    private record Handoff(String code, Long userId, String userid, long issued, String nonce, boolean admin) {
+    private record Handoff(String code, Long userId, String userid, long issued, String nonce, String scope) {
     }
 
     public record ExchangeRequest(String code) {
@@ -89,16 +88,18 @@ public class WecomLoginController {
     /** 二维码面板参数：由 Portal 生成，前端只原样拼进官方登录组件，不参与任何身份判断。 */
     @GetMapping("/panel")
     public Result<Map<String, String>> panel(@RequestParam(value = "scope", defaultValue = "front") String scope,
+                                             @RequestParam(value = "from", defaultValue = "/") String from,
                                              HttpSession session) {
-        return Result.ok(begin(session, false, scope).params());
+        return Result.ok(begin(session, false, scope, from).params());
     }
 
     /** 企微内置浏览器走整页授权，桌面端走快捷登录面板或扫码。 */
     @GetMapping("/login")
     public ResponseEntity<Void> login(@RequestParam(value = "popup", defaultValue = "false") boolean popup,
                                       @RequestParam(value = "scope", defaultValue = "front") String scope,
+                                      @RequestParam(value = "from", defaultValue = "/") String from,
                                       HttpServletRequest request, HttpSession session) {
-        Map<String, String> params = new LinkedHashMap<>(begin(session, popup, scope).params());
+        Map<String, String> params = new LinkedHashMap<>(begin(session, popup, scope, from).params());
         boolean insideWecom = isInsideWecom(request);
         String base = "https://login.work.weixin.qq.com/wwlogin/sso/login";
         if (insideWecom) {
@@ -116,15 +117,46 @@ public class WecomLoginController {
         return redirect(base + "?" + query + (insideWecom ? "#wechat_redirect" : ""));
     }
 
+    /** 先在 OA 建立浏览器绑定事务，再使用门户已有企业登录态完成授权。 */
+    @GetMapping("/portal/authorize")
+    public ResponseEntity<Void> portalAuthorize(@RequestParam(value = "from", defaultValue = "/") String from,
+                                                 HttpSession session) {
+        String returnTo = LoginTarget.safe(from);
+        try {
+            PortalSsoClient.Authorization authorization = begin(session, false, AuthService.DEVICE_AUTO, returnTo);
+            return redirect(portal.portalBase() + "/sso/oa?state=" + encode(authorization.params().get("state")));
+        } catch (BizException error) {
+            log.warn("门户免登暂未就绪：{}", error.getMessage());
+            return redirect(loginPage(portal.returnBaseQuietly(), returnTo) + "&sso_error=portal_unavailable");
+        }
+    }
+
+    /** 门户桥接失败时恢复当前事务的目标页，不暴露 nonce、verifier 或身份。 */
+    @GetMapping("/portal/context")
+    public Result<Map<String, String>> portalContext(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            synchronized (session) {
+                Object value = session.getAttribute(PENDING);
+                if (value instanceof Pending pending
+                        && System.currentTimeMillis() - pending.issued() <= PENDING_TTL_MILLIS) {
+                    return Result.ok(Map.of("returnTo", pending.returnTo()));
+                }
+            }
+        }
+        return Result.ok(Map.of("returnTo", "/"));
+    }
+
     @GetMapping("/callback")
     public ResponseEntity<Void> callback(@RequestParam(value = "code", defaultValue = "") String code,
                                          @RequestParam(value = "state", defaultValue = "") String state,
                                          HttpServletRequest request, HttpSession session) {
-        String loginPage = portal.returnBaseQuietly() + FRONT_PATH;
+        String loginPage = loginPage(portal.returnBaseQuietly(), "/");
         try {
             Pending pending;
             synchronized (session) {
                 Object value = session.getAttribute(PENDING);
+                if (value instanceof Pending current) loginPage = loginPage(current.returnBase(), current.returnTo());
                 if (!(value instanceof Pending current) || !current.nonce().equals(state)
                         || System.currentTimeMillis() - current.issued() > PENDING_TTL_MILLIS
                         || !portal.matchesCodeFormat(code)) {
@@ -133,7 +165,7 @@ public class WecomLoginController {
                 pending = current;
                 session.removeAttribute(PENDING);
             }
-            loginPage = pending.returnBase() + (pending.admin() ? ADMIN_PATH : FRONT_PATH);
+            loginPage = loginPage(pending.returnBase(), pending.returnTo());
             String userid = portal.exchange(code, pending.verifier(), pending.nonce());
             SysUser user = users.byWecomUserid(userid);
             if (user == null || !Boolean.TRUE.equals(user.getEnabled())) {
@@ -147,13 +179,13 @@ public class WecomLoginController {
                 request.changeSessionId();
                 String handoff = UUID.randomUUID().toString().replace("-", "");
                 session.setAttribute(HANDOFF, new Handoff(handoff, user.getId(), userid, System.currentTimeMillis(),
-                        pending.nonce(), pending.admin()));
-                return redirect(loginPage + "?" + (pending.popup() ? "wecom_popup=1&" : "") + "wecom_code=" + handoff);
+                        pending.nonce(), pending.scope()));
+                return redirect(loginPage + "&" + (pending.popup() ? "wecom_popup=1&" : "") + "wecom_code=" + handoff);
             }
         } catch (BizException error) {
             // 失败原因只写日志，页面统一拿 wecom_error 提示重新扫码，不回显任何身份细节。
             log.warn("企微登录未完成：{}", error.getMessage());
-            return redirect(loginPage + "?wecom_error=login_failed");
+            return redirect(loginPage + "&wecom_error=login_failed");
         }
     }
 
@@ -173,12 +205,12 @@ public class WecomLoginController {
                 throw new BizException("该员工账号不可用，请联系管理员");
             }
             return Result.ok(authService.issue(user.getId(),
-                    current.admin() ? ADMIN_SCOPE : FRONT_SCOPE));
+                    current.scope()));
         }
     }
 
-    private PortalSsoClient.Authorization begin(HttpSession session, boolean popup, String scope) {
-        if (!FRONT_SCOPE.equals(scope) && !ADMIN_SCOPE.equals(scope)) {
+    private PortalSsoClient.Authorization begin(HttpSession session, boolean popup, String scope, String from) {
+        if (!FRONT_SCOPE.equals(scope) && !ADMIN_SCOPE.equals(scope) && !AuthService.DEVICE_AUTO.equals(scope)) {
             throw new BizException("登录入口无效");
         }
         portal.requireEnabled();
@@ -199,9 +231,13 @@ public class WecomLoginController {
             }
             PortalSsoClient.Authorization authorization = portal.authorize(nonce, challenge);
             session.setAttribute(PENDING, new Pending(nonce, verifier, System.currentTimeMillis(),
-                    authorization.returnBase(), popup, ADMIN_SCOPE.equals(scope)));
+                    authorization.returnBase(), popup, scope, LoginTarget.safe(from)));
             return authorization;
         }
+    }
+
+    private static String loginPage(String base, String from) {
+        return base + LOGIN_PATH + "?from=" + encode(LoginTarget.safe(from));
     }
 
     private String portalStatePrefix() {

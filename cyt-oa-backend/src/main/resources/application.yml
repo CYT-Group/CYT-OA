@@ -5,6 +5,7 @@ server:
       cookie:
         http-only: true
         same-site: lax
+        secure: ${CYT_COOKIE_SECURE:false}
 
 spring:
   application:

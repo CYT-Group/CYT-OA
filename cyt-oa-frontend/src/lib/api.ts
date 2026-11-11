@@ -34,6 +34,14 @@ function toLogin() {
   router.push(target ? { path: '/login', query: { from: target } } : { path: '/login' })
 }
 
+/** 换人登录期间，上一会话的晚到 401 不能注销刚建立的新会话。 */
+function expireRequestSession(config?: { headers?: Record<string, unknown> }) {
+  const owner = config?.headers?.['cyt-token']
+  if (!owner || owner !== session.token) return
+  session.clear()
+  toLogin()
+}
+
 http.interceptors.request.use((cfg) => {
   if (session.token) cfg.headers['cyt-token'] = session.token
   return cfg
@@ -48,16 +56,14 @@ http.interceptors.response.use(
       const code = body?.code ?? res.status
       const message = body?.message || (res.status === 401 ? '登录状态已失效，请重新登录' : '请求失败')
       if (res.status === 401) {
-        session.clear()
-        toLogin()
+        expireRequestSession(res.config)
       }
       throw new ApiError(code, message)
     }
     if (body && typeof body === 'object' && 'code' in body) {
       if (body.code === 0) return body.data
       if (body.code === 401) {
-        session.clear()
-        toLogin()
+        expireRequestSession(res.config)
       }
       throw new ApiError(body.code, body.message || '请求失败')
     }
@@ -70,8 +76,7 @@ http.interceptors.response.use(
       : err.code === 'ECONNABORTED' ? '请求超时，请重试'
       : '网络异常，请稍后再试'
     if (status === 401) {
-      session.clear()
-      toLogin()
+      expireRequestSession(err.config)
     }
     throw new ApiError(status ?? -1, text)
   }

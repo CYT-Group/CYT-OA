@@ -19,6 +19,17 @@ export const portalRollout = reactive({
 });
 let inflight: { token: string; promise: Promise<void> } | undefined;
 
+export function resetPortalRollout() {
+  inflight = undefined;
+  Object.assign(portalRollout, {
+    owner: "",
+    loaded: false,
+    entries: {},
+    error: "",
+    revision: "0",
+  });
+}
+
 function validate(snapshot: PortalRolloutEntries) {
   if (
     !snapshot ||

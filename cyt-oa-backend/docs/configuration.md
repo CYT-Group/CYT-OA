@@ -55,6 +55,45 @@
 - `CYT_SSO_ENDPOINT_PREFIX` / `CYT_SSO_AUDIENCE` / `CYT_SSO_STATE_PREFIX` / `CYT_SSO_CODE_PREFIX`：与门户约定的接口前缀与命名空间，两端必须一致。
 - `CYT_SSO_RETURN_BASE_URL`：登录完成后回跳的本服务地址。
 
+门户只负责展示与企业身份认证，管理操作由 OA 承接。门户管理入口先进入 OA
+`/api/wecom/portal/authorize?from=/portal/...`，OA 建立浏览器绑定的 nonce/PKCE 事务，
+再返回门户 `/sso/oa` 使用已有登录态授权。门户签发的一次性码经 OA 后端兑换后，
+只按本地已同步账号的状态、角色和权限创建 OA 会话；两个站点不共享管理员 token。
+
+单独打开 OA 未登录时，登录页调用 `/api/wecom/panel?scope=auto` 加载企微二维码；
+扫码与门户免登都由 `/api/wecom/callback` 回到 `/login` 完成会话回填。
+`auto` 只由后端按实际角色选择管理或员工会话，不会让普通员工获得管理权限。
+旧门户登录 token 没有可验证的企业身份声明时，需首次扫码确认；之后新门户会话可直接免登。
+
+两端配置必须一致：Portal 的 `OA_FRONTEND_URL` 等于 OA 的 `CYT_SSO_RETURN_BASE_URL`，
+浏览器使用 `CYT_SSO_PORTAL_PUBLIC_BASE_URL`，OA 服务端用 `CYT_SSO_PORTAL_BASE_URL`。
+企微回调仍是门户 `/api/wework/callback`，应在企微应用中登记该域名。
+生产需启用 HTTPS Cookie，并保证回调与发起请求能读到同一 HttpSession（单实例或配置会话共享/粘性路由）。
+
+正式域名确定后填写以下配置（`oa.example.com` 是占位地址，不能直接用于上线）：
+
+```dotenv
+# Portal 后端
+OA_FRONTEND_URL=https://oa.example.com
+PORTAL_BASE_URL=https://portal.cyt.group
+
+# Portal 前端构建
+VITE_OA_CONSOLE_BASE_URL=https://oa.example.com
+
+# OA 后端
+CYT_SSO_ENABLED=true
+CYT_SSO_PORTAL_BASE_URL=https://portal.cyt.group
+CYT_SSO_PORTAL_PUBLIC_BASE_URL=https://portal.cyt.group
+CYT_SSO_RETURN_BASE_URL=https://oa.example.com
+CYT_WECOM_CORP_ID=填写企业CorpID
+CYT_COOKIE_SECURE=true
+CYT_PASSWORD_LOGIN_ENABLED=false
+CYT_DEV_IDENTITY_ENABLED=false
+```
+
+上述密码与开发身份开关对应 `application.yml` 里的环境变量；正式环境保持关闭。
+未配置正式地址时保留 SSO 默认关闭，页面显示可重试的配置提示，不使用伪造二维码。
+
 ## Portal 管理迁移
 
 迁移所需建表顺序、附件缺口和旧入口切流见 [Portal 两组管理迁移](portal-admin-migration.md)。
