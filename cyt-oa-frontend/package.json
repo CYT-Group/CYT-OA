@@ -10,6 +10,7 @@
     "test:portal-rollout": "node --test scripts/portal-rollout.test.cjs",
     "test:navigation": "node --test scripts/navigation.test.cjs",
     "test:login": "node --test scripts/login.test.cjs",
+    "test:org-sync": "node --test scripts/org-sync.test.cjs",
     "preview": "vite preview"
   },
   "dependencies": {

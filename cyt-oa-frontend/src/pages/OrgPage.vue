@@ -14,10 +14,25 @@
       </template>
     </PageHeader>
 
-    <Callout :tone="syncTone" :title="headline" class="mt-4">
+    <Callout
+      v-if="showSyncNotice"
+      :tone="syncTone"
+      :title="headline"
+      class="mt-4"
+      :role="syncing ? 'status' : 'alert'"
+      aria-live="polite"
+    >
       {{ subline }}
       <template #action>
-        <span class="whitespace-nowrap text-xs opacity-80">共 {{ nodes.length }} 个部门</span>
+        <button
+          v-if="!syncing"
+          type="button"
+          class="grid size-7 shrink-0 place-items-center rounded-md hover:bg-destructive/10 focus-visible:outline-2 focus-visible:outline-ring"
+          aria-label="关闭同步错误提示"
+          @click="dismissedRunId = latest?.id ?? ''"
+        >
+          <X class="size-4" aria-hidden="true" />
+        </button>
       </template>
     </Callout>
 
@@ -30,7 +45,13 @@
             />
             <Input v-model="filter" class="pl-8" placeholder="搜索部门" aria-label="搜索部门" />
           </div>
-          <p class="mt-2 text-xs text-muted-foreground">数字＝直属人数</p>
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+            <span>{{ nodes.length }} 个部门 · 数字为直属人数</span>
+            <span
+              v-if="latest?.status === 'success'"
+              :title="`最近同步：${fmtTime(latest.finishedAt || latest.createdAt)}`"
+            >已同步 {{ fmtTime(latest.finishedAt || latest.createdAt) }}</span>
+          </div>
         </div>
 
         <div
@@ -326,7 +347,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Building2, ChevronRight, History, RefreshCw, Search, Users } from '@lucide/vue'
+import { Building2, ChevronRight, History, RefreshCw, Search, Users, X } from '@lucide/vue'
 import { api } from '../lib/api'
 import { session } from '../lib/session'
 import { toast } from '../lib/toast'
@@ -430,6 +451,8 @@ const leaderValue = ref('')
 const savingLeader = ref(false)
 
 const latest = ref<SyncRun | null>(null)
+const dismissedRunId = ref('')
+const syncStarting = ref(false)
 const elapsed = ref(0)
 const runsOpen = ref(false)
 const runs = ref<SyncRun[]>([])
@@ -437,8 +460,13 @@ const runsErr = ref('')
 
 let pollTimer: ReturnType<typeof setTimeout> | undefined
 let tickTimer: ReturnType<typeof setInterval> | undefined
+let disposed = false
 
-const syncing = computed(() => latest.value?.status === 'running')
+const syncing = computed(() => syncStarting.value || latest.value?.status === 'running')
+// 历史成功结果只用于显示更新时间，不当作本次操作的新通知。
+const showSyncNotice = computed(() => syncing.value || (
+  latest.value?.status === 'failed' && latest.value.id !== dismissedRunId.value
+))
 const byId = computed(() => new Map(nodes.value.map((n) => [n.id, n])))
 const selected = computed(() => (selectedId.value ? (byId.value.get(selectedId.value) ?? null) : null))
 
@@ -664,9 +692,12 @@ async function loadMembers() {
 
 async function loadStatus() {
   try {
-    latest.value = (await api.get<SyncRun>('/admin-api/system/directory/sync-status')) ?? null
+    const status = (await api.get<SyncRun>('/admin-api/system/directory/sync-status')) ?? null
+    if (!disposed) latest.value = status
+    return true
   } catch {
-    latest.value = null
+    // 暂时读不到状态不能当作同步已结束，保留运行态并继续轮询。
+    return false
   }
 }
 
@@ -743,6 +774,7 @@ async function saveLeader() {
 }
 
 function startTicking() {
+  if (disposed) return
   elapsed.value = 0
   if (tickTimer) clearInterval(tickTimer)
   tickTimer = setInterval(() => (elapsed.value += 1), 1000)
@@ -754,13 +786,19 @@ function stopTicking() {
 }
 
 function schedulePoll(delay: number) {
+  if (disposed) return
   if (pollTimer) clearTimeout(pollTimer)
   pollTimer = setTimeout(pollSync, delay)
 }
 
 /** 同步跑在后台线程，页面每 3 秒读一次运行记录；关掉页面那趟照样会跑完并留痕。 */
 async function pollSync() {
-  await loadStatus()
+  const loaded = await loadStatus()
+  if (disposed) return
+  if (!loaded) {
+    schedulePoll(5000)
+    return
+  }
   if (!syncing.value) {
     stopTicking()
     reportRun(latest.value)
@@ -784,14 +822,20 @@ function reportRun(r: SyncRun | null) {
 
 async function runSync() {
   if (syncing.value) return
+  syncStarting.value = true
+  dismissedRunId.value = ''
   try {
     const started = await api.post<SyncRun>('/admin-api/system/directory/sync')
+    if (disposed) return
     if (started) latest.value = started
     startTicking()
     schedulePoll(2000)
   } catch (e) {
+    if (disposed) return
     showToast(e instanceof Error ? e.message : '同步启动失败', 'bad')
     void loadStatus()
+  } finally {
+    syncStarting.value = false
   }
 }
 
@@ -815,6 +859,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
   if (pollTimer) clearTimeout(pollTimer)
   stopTicking()
 })
