@@ -11,7 +11,7 @@
     <main class="login-reference-main">
       <header class="login-reference-heading">
         <span class="brand-mark">OA</span>
-        <h1>畅韵OA</h1>
+        <h1>CYT</h1>
         <p>个人办公与企业管理</p>
       </header>
       <section
@@ -217,7 +217,7 @@
         </template>
       </section>
       <p class="mt-7 text-center text-[11px] text-muted-foreground">
-        © {{ year }} 畅韵OA
+        © {{ year }} CYT
       </p>
     </main>
   </div>

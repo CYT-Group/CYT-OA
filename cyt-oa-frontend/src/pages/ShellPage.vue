@@ -7,7 +7,7 @@
         <span class="sidebar-label min-w-0">
           <b
             class="block truncate text-sm font-semibold text-sidebar-foreground"
-            >畅韵OA</b
+            >CYT</b
           >
           <small class="block text-[10px] text-sidebar-muted"
             >个人办公与企业协作</small
@@ -217,7 +217,7 @@
 
     <Sheet
       v-model:open="drawerOpen"
-      title="畅韵OA"
+      title="CYT"
       description="导航与账号"
       side="left"
       tone="sidebar"
@@ -360,7 +360,7 @@ const crumbs = computed<string[]>(() => {
       (tabbedPages[key] ?? pageConfigs[key])?.title ?? "未找到页面",
     ];
   }
-  return ["畅韵OA"];
+  return ["CYT"];
 });
 
 function navigateTo(path: string) {
