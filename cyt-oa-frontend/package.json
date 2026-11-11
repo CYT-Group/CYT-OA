@@ -8,6 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "test:portal-editor": "node --test scripts/portal-editor-bridge.test.cjs scripts/portal-editor-navigation.test.cjs scripts/portal-editor-style.test.cjs scripts/portal-editor-richtext.test.cjs",
     "test:portal-rollout": "node --test scripts/portal-rollout.test.cjs",
+    "test:navigation": "node --test scripts/navigation.test.cjs",
     "test:login": "node --test scripts/login.test.cjs",
     "preview": "vite preview"
   },

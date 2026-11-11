@@ -1,7 +1,7 @@
 <template>
   <div>
   <PageHeader
-    title="我的资料"
+    :title="tab === 'voice' ? '我要发声' : '我的资料'"
     description="人事档案、贡献足迹、认可与提醒偏好都汇总在这里"
   />
 
@@ -196,7 +196,7 @@
         v-for="c in CHANNELS"
         :key="c.key"
         type="button"
-        class="flex items-start gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        class="flex items-start gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-[border-color,background-color,box-shadow] hover:border-primary/40 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         :class="channel === c.key ? 'border-primary/60 ring-2 ring-primary/15' : ''"
         @click="channel = c.key"
       >
@@ -354,7 +354,10 @@ const voices = ref<VoiceView[]>([])
 const period = ref('')
 const savingPref = ref(false)
 const pref = reactive<ReminderPreference>({ reportDue: true, overdue: true, milestone: true, corpNews: true })
-const channel = ref<string>('suggestion')
+const channel = computed<string>({
+  get: () => CHANNELS.find(item => item.key === route.query.channel)?.key ?? 'suggestion',
+  set: value => { void router.replace({ path: '/me/profile', query: { ...route.query, tab: 'voice', channel: value } }) }
+})
 const content = ref('')
 const anonymous = ref(false)
 const sending = ref(false)

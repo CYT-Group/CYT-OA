@@ -1,49 +1,67 @@
 <template>
-  <div :class="cn('panel group relative overflow-hidden p-5 transition-colors', props.class)">
-    <div class="relative flex items-start justify-between gap-3">
-      <div class="min-w-0">
-        <p class="truncate text-[13px] font-medium text-muted-foreground">{{ title }}</p>
-        <p class="mt-4 text-[30px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
-          {{ value }}
-        </p>
-      </div>
-      <span v-if="icon" :class="cn('grid size-11 shrink-0 place-items-center rounded-xl', toneChip)">
-        <component :is="icon" class="size-[18px]" :stroke-width="1.9" />
-      </span>
-    </div>
-    <p
-      v-if="hint"
-      class="relative mt-4 truncate border-t border-border/70 pt-3 text-[11px] text-muted-foreground"
+  <div
+    :class="
+      cn(
+        'panel group relative overflow-hidden p-[18px] transition-colors',
+        props.class,
+      )
+    "
+    :title="hint"
+  >
+    <span
+      v-if="icon || glyph"
+      :class="
+        cn('mb-2.5 grid size-[34px] place-items-center rounded-lg', toneChip)
+      "
+      aria-hidden="true"
     >
+      <span v-if="glyph" class="text-lg">{{ glyph }}</span>
+      <component
+        v-else-if="icon"
+        :is="icon"
+        class="size-[17px]"
+        :stroke-width="1.7"
+      />
+    </span>
+    <p class="text-2xl font-bold leading-[1.6] tabular-nums text-foreground">
+      {{ value }}
+    </p>
+    <p class="truncate text-xs leading-[1.6] text-muted-foreground">
+      {{ title }}
+    </p>
+    <p v-if="hint" class="sr-only">
       {{ hint }}
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
-import { cn } from '../lib/utils'
+import { computed, type Component } from "vue";
+import { cn } from "../lib/utils";
 
 const props = withDefaults(
   defineProps<{
-    title: string
-    value: string | number
-    hint?: string
-    icon?: Component
-    tone?: 'primary' | 'info' | 'success' | 'warning' | 'destructive'
-    class?: string
+    title: string;
+    value: string | number;
+    hint?: string;
+    icon?: Component;
+    glyph?: string;
+    tone?: "primary" | "info" | "success" | "warning" | "destructive";
+    class?: string;
   }>(),
-  { tone: 'primary' }
-)
+  { tone: "primary" },
+);
 
 const toneChip = computed(
   () =>
     ({
-      primary: 'bg-primary/10 text-primary ring-primary/15 dark:bg-primary/12',
-      info: 'bg-info-soft text-info ring-info/15 dark:bg-info-soft',
-      success: 'bg-success-soft text-success ring-success/15 dark:bg-success-soft',
-      warning: 'bg-warning-soft text-warning ring-warning/20 dark:bg-warning-soft',
-      destructive: 'bg-destructive/10 text-destructive ring-destructive/15'
-    })[props.tone]
-)
+      primary: "bg-primary/10 text-primary ring-primary/15 dark:bg-primary/12",
+      info: "bg-info-soft text-info ring-info/15 dark:bg-info-soft",
+      success:
+        "bg-success-soft text-success ring-success/15 dark:bg-success-soft",
+      warning:
+        "bg-warning-soft text-warning ring-warning/20 dark:bg-warning-soft",
+      destructive: "bg-destructive/10 text-destructive ring-destructive/15",
+    })[props.tone],
+);
 </script>

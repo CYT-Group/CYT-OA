@@ -1,226 +1,167 @@
 <template>
-  <nav class="app-navigation space-y-5" :class="{ 'nav-collapsed': collapsed }" aria-label="系统导航">
+  <nav
+    class="app-navigation"
+    :class="{ 'nav-collapsed': collapsed }"
+    aria-label="系统导航"
+  >
     <section v-for="zone in zones" :key="zone.key">
-      <button
-        type="button"
+      <h2
         class="nav-zone-title"
-        :aria-expanded="!zoneClosed(zone.key)"
-        @click="toggleZone(zone.key)"
+        :class="{ 'nav-zone-management': zone.adminOnly }"
       >
-        <span class="flex-1 truncate text-left">{{ zone.title }}</span>
-        <ChevronDown
-          class="size-3 shrink-0 transition-transform duration-200"
-          :class="zoneClosed(zone.key) ? '-rotate-90' : ''"
-        />
-      </button>
-
-      <div v-show="collapsed || !zoneClosed(zone.key)" class="mt-1 space-y-px">
-        <div v-for="item in zone.items" :key="item.key">
-          <DropdownMenu v-if="collapsed && item.children?.length" side="right" align="start">
-            <template #trigger>
-              <button
-                type="button"
-                class="nav-item flex min-h-10 w-full items-center rounded-lg text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                :class="hasActiveChild(item) ? 'bg-sidebar-active text-white' : ''"
-                :aria-label="item.title"
-                :title="item.title"
-              >
-                <component :is="iconOf(item.icon)" class="nav-item-icon" :stroke-width="1.8" />
-              </button>
-            </template>
-            <p class="px-2 py-2 text-xs font-semibold text-muted-foreground">{{ item.title }}</p>
-            <DropdownMenuItem
-              v-for="child in item.children"
-              :key="child.to"
-              @select="navigate(child.to)"
-              >{{ child.title }}</DropdownMenuItem
-            >
-          </DropdownMenu>
-          <div v-else class="nav-item-row group/item flex items-center gap-0.5" :class="{ 'nav-parent-active': hasActiveChild(item) }">
-            <router-link
-              :to="item.to"
-              :title="collapsed ? item.title : undefined"
-              :aria-current="exactActive(item) ? 'page' : undefined"
-              :class="
-                cn(
-                  'nav-item flex min-h-10 min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
-                  exactActive(item)
-                    ? 'nav-item-active bg-sidebar-active font-medium text-white'
-                    : hasActiveChild(item)
-                      ? 'font-medium text-sidebar-foreground'
-                      : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                )
-              "
-              @click="emit('navigate')"
-            >
-              <component :is="iconOf(item.icon)" class="nav-item-icon" :stroke-width="1.8" />
-              <span class="nav-item-label flex-1 truncate">{{ item.title }}</span>
-              <span
-                v-if="badgeOf(item) && !collapsed"
-                :class="
-                  cn(
-                    'min-w-[18px] rounded px-1 text-center text-[10px] font-semibold leading-[16px] tabular-nums',
-                    item.badge === 'reminder'
-                      ? 'bg-destructive text-white'
-                      : 'bg-sidebar-accent text-sidebar-foreground'
-                  )
-                "
-              >
-                {{ badgeOf(item) }}
-              </span>
-            </router-link>
-            <button
-              v-if="item.children?.length && !collapsed"
+        <span v-if="zone.glyph" aria-hidden="true">{{ zone.glyph }} </span
+        >{{ zone.title }}
+      </h2>
+      <div v-for="item in zone.items" :key="item.key" class="nav-item-row">
+        <DropdownMenu
+          v-if="collapsed && item.children?.length"
+          side="right"
+          align="start"
+        >
+          <template #trigger
+            ><button
               type="button"
-              class="nav-expand flex size-8 shrink-0 items-center justify-center rounded-md text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-              :aria-expanded="isOpen(item.key)"
-              :aria-label="`${isOpen(item.key) ? '收起' : '展开'}${item.title}子菜单`"
-              @click="expand(item.key, !isOpen(item.key))"
+              class="nav-item nav-item-header"
+              :class="{ 'nav-item-active': active?.item.key === item.key }"
+              :aria-label="item.title"
+              :title="item.title"
             >
-              <ChevronRight
-                class="size-3.5 transition-transform"
-                :class="isOpen(item.key) ? 'rotate-90' : ''"
-              />
-            </button>
-          </div>
-
+              <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" /></button
+          ></template>
+          <p class="px-2 py-2 text-xs font-semibold text-muted-foreground">
+            {{ item.title }}
+          </p>
+          <DropdownMenuItem
+            v-for="child in item.children"
+            :key="child.to"
+            @select="navigate(child.to)"
+            ><NavIcon
+              v-if="child.glyph || child.icon"
+              :name="child.icon"
+              :glyph="child.glyph ?? ''"
+            />{{ child.title }}</DropdownMenuItem
+          >
+        </DropdownMenu>
+        <template v-else>
+          <button
+            v-if="item.children?.length"
+            type="button"
+            class="nav-item nav-item-header"
+            :class="{ 'nav-item-active': active?.item.key === item.key }"
+            :aria-expanded="isOpen(item.key)"
+            :aria-controls="`nav-submenu-${item.key}`"
+            @click="activate(item)"
+          >
+            <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" />
+            <span class="nav-item-label">{{ item.title }}</span>
+            <span v-if="item.automatic" class="nav-automatic">自动</span>
+            <span v-if="badgeOf(item)" class="nav-count">{{
+              badgeOf(item)
+            }}</span>
+            <span class="nav-arrow" aria-hidden="true">{{
+              isOpen(item.key) ? "▼" : "▶"
+            }}</span>
+          </button>
+          <router-link
+            v-else
+            :to="item.to"
+            class="nav-item nav-item-header"
+            :class="{ 'nav-item-active': active?.item.key === item.key }"
+            :aria-current="active?.item.key === item.key ? 'page' : undefined"
+            :aria-label="collapsed ? item.title : undefined"
+            :title="collapsed ? item.title : undefined"
+            @click="emit('navigate')"
+          >
+            <NavIcon :name="item.icon" :glyph="item.glyph ?? ''" /><span
+              class="nav-item-label"
+              >{{ item.title }}</span
+            ><span v-if="badgeOf(item) && !collapsed" class="nav-count">{{
+              badgeOf(item)
+            }}</span>
+          </router-link>
           <div
             v-if="item.children?.length && isOpen(item.key) && !collapsed"
+            :id="`nav-submenu-${item.key}`"
             class="nav-submenu"
           >
             <router-link
               v-for="child in item.children"
               :key="child.to"
               :to="child.to"
-              :aria-current="samePath(child.to) ? 'page' : undefined"
-              :class="
-                cn(
-                  'nav-child',
-                  samePath(child.to)
-                    ? 'nav-child-active'
-                    : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                )
+              class="nav-child"
+              :class="{
+                'nav-child-active':
+                  active?.item.key === item.key &&
+                  active?.child?.to === child.to,
+              }"
+              :aria-current="
+                active?.item.key === item.key && active?.child?.to === child.to
+                  ? 'page'
+                  : undefined
               "
               @click="emit('navigate')"
             >
-              {{ child.title }}
+              <NavIcon
+                v-if="child.glyph || child.icon"
+                :name="child.icon"
+                :glyph="child.glyph ?? ''"
+              /><span>{{ child.title }}</span>
             </router-link>
           </div>
-        </div>
+        </template>
       </div>
     </section>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { matchesNavigation } from '../lib/navigation'
-import { ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ChevronDown, ChevronRight } from '@lucide/vue'
-import type { NavItem, NavZone } from '../configs/nav'
-import { meSummary } from '../lib/me'
-import { iconOf } from '../lib/icons'
-import { cn } from '../lib/utils'
-import DropdownMenu from '../ui/DropdownMenu.vue'
-import DropdownMenuItem from '../ui/DropdownMenuItem.vue'
-
-const props = defineProps<{ zones: NavZone[]; collapsed?: boolean }>()
-const emit = defineEmits<{ navigate: [] }>()
-
-const route = useRoute()
-const router = useRouter()
-
-function navigate(path: string) {
-  void router.push(path)
-  emit('navigate')
-}
-
-const OPEN_KEY = 'cyt-oa-nav-open'
-const ZONE_KEY = 'cyt-oa-nav-zone-closed'
-
-/** 本地存储的展开状态可能被手工改坏，读失败时按默认值走 */
-function readSet(key: string): Set<string> {
-  try {
-    const saved: unknown = JSON.parse(localStorage.getItem(key) || '[]')
-    return new Set(Array.isArray(saved) ? saved.filter((x): x is string => typeof x === 'string') : [])
-  } catch {
-    return new Set()
-  }
-}
-
-function saveSet(key: string, set: Set<string>) {
-  try {
-    localStorage.setItem(key, JSON.stringify([...set]))
-  } catch {
-    /* 隐私模式下写不了，忽略即可 */
-  }
-}
-
-// 桌面侧栏与移动抽屉共用同一份展开状态
-const open = ref<Set<string>>(readSet(OPEN_KEY))
-const closedZones = ref<Set<string>>(readSet(ZONE_KEY))
-
-function badgeOf(item: NavItem): number | '' {
-  if (!item.badge) return ''
-  return meSummary.counts[item.badge as keyof typeof meSummary.counts] ?? ''
-}
-
-function isOpen(key: string) {
-  return open.value.has(key)
-}
-
+import { computed, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import type { NavItem, NavZone } from "../configs/nav";
+import { findNavigationMatch } from "../lib/navigation";
+import { meSummary } from "../lib/me";
+import NavIcon from "./NavIcon.vue";
+import DropdownMenu from "../ui/DropdownMenu.vue";
+import DropdownMenuItem from "../ui/DropdownMenuItem.vue";
+const props = defineProps<{
+  zones: NavZone[];
+  collapsed?: boolean;
+  expandOnly?: boolean;
+}>();
+const emit = defineEmits<{ navigate: [] }>();
+const route = useRoute(),
+  router = useRouter();
+const active = computed(() => findNavigationMatch(props.zones, route.fullPath));
+const open = ref(new Set<string>());
+const isOpen = (key: string) => open.value.has(key);
 function expand(key: string, on: boolean) {
-  const next = new Set(open.value)
-  if (on) next.add(key)
-  else next.delete(key)
-  open.value = next
-  saveSet(OPEN_KEY, next)
+  open.value = new Set<string>(on ? [key] : []);
 }
-
-function zoneClosed(key: string) {
-  return closedZones.value.has(key)
+function badgeOf(item: NavItem): number | "" {
+  return item.badge
+    ? meSummary.counts[item.badge as keyof typeof meSummary.counts] || ""
+    : "";
 }
-
-function toggleZone(key: string) {
-  const next = new Set(closedZones.value)
-  if (next.has(key)) next.delete(key)
-  else next.add(key)
-  closedZones.value = next
-  saveSet(ZONE_KEY, next)
+function navigate(path: string) {
+  void router.push(path);
+  emit("navigate");
 }
-
-function samePath(path: string) {
-  return matchesNavigation(path, route.fullPath)
-}
-
-function hasActiveChild(item: NavItem) {
-  return item.children?.some((c) => samePath(c.to)) ?? false
-}
-
-function exactActive(item: NavItem) {
-  return samePath(item.to) && !hasActiveChild(item)
-}
-
-/** 进到某个页面时自动展开它的子菜单；只在「一级项换人了」时展开 */
-let autoOpened = ''
-watch(
-  () => route.fullPath,
-  (full) => {
-    const parent = findParentKey(full)
-    if (!parent || parent === autoOpened) return
-    autoOpened = parent
-    if (!isOpen(parent)) expand(parent, true)
-  },
-  { immediate: true }
-)
-
-function findParentKey(full: string): string {
-  for (const zone of props.zones) {
-    for (const item of zone.items) {
-      if (!item.children?.length) continue
-      if (item.children.some((c) => matchesNavigation(c.to, full))) return item.key
-    }
+function activate(item: NavItem) {
+  if (isOpen(item.key)) {
+    expand(item.key, false);
+    return;
   }
-  return ''
+  expand(item.key, true);
+  // 展开当前模块时保留正在阅读的二级页，其他模块进入第一个可访问入口。
+  if (!props.expandOnly && active.value?.item.key !== item.key)
+    navigate(item.to);
 }
+watch(
+  () => active.value?.item.key,
+  (key) => {
+    if (key && active.value?.item.children?.length) expand(key, true);
+    else open.value = new Set();
+  },
+  { immediate: true },
+);
 </script>

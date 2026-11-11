@@ -1,7 +1,7 @@
 <template>
   <DialogRoot :open="open" @update:open="emit('update:open', $event)">
     <DialogPortal>
-      <DialogOverlay class="fixed inset-0 z-[60] bg-black/45 backdrop-blur-[2px] data-[state=open]:animate-fade-in dark:bg-black/70" />
+      <DialogOverlay class="ui-dialog-overlay fixed inset-0 z-[60] data-[state=open]:animate-fade-in" />
       <DialogContent
         :class="
           cn(

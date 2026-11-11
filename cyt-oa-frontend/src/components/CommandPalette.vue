@@ -38,7 +38,7 @@
             @mouseenter="active = index"
             @click="choose(entry)"
           >
-            <component :is="iconOf(entry.icon)" class="size-4 shrink-0 text-muted-foreground" />
+            <NavIcon :name="entry.icon" :glyph="entry.glyph ?? ''" />
             <span class="flex-1 truncate">{{ entry.title }}</span>
             <span class="shrink-0 text-[11px] text-muted-foreground">{{ entry.group }}</span>
           </button>
@@ -64,7 +64,7 @@ import {
 } from 'reka-ui'
 import { Search } from '@lucide/vue'
 import type { NavZone } from '../configs/nav'
-import { iconOf } from '../lib/icons'
+import NavIcon from './NavIcon.vue'
 import { cn } from '../lib/utils'
 
 interface Entry {
@@ -72,6 +72,7 @@ interface Entry {
   to: string
   group: string
   icon: string
+  glyph?: string
 }
 
 const props = defineProps<{ open: boolean; zones: NavZone[] }>()
@@ -86,14 +87,15 @@ const entries = computed<Entry[]>(() =>
     const list: Entry[] = []
     for (const item of zone.items) {
       if (!item.children?.length) {
-        list.push({ title: item.title, to: item.to, group: zone.title, icon: item.icon })
+        list.push({ title: item.title, to: item.to, group: zone.title, icon: item.icon, glyph: item.glyph })
       } else {
         for (const child of item.children) {
           list.push({
             title: child.title,
             to: child.to,
             group: `${zone.title} · ${item.title}`,
-            icon: item.icon
+            icon: child.icon || item.icon,
+            glyph: child.glyph
           })
         }
       }

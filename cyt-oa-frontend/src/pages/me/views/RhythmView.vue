@@ -92,7 +92,7 @@
             </Button>
           </div>
           <div v-if="current.state === 'ongoing'" class="h-1 bg-muted">
-            <div class="h-full bg-primary transition-all" :style="{ width: progressPct(current) + '%' }" />
+            <div class="h-full bg-primary transition-[width]" :style="{ width: progressPct(current) + '%' }" />
           </div>
           <p class="border-t border-border px-4 py-3 text-sm leading-relaxed text-muted-foreground">
             {{ current.note || '暂无作战说明' }}
@@ -224,7 +224,7 @@ const REMIND_OPTIONS = [
 
 const DOW = ['一', '二', '三', '四', '五', '六', '日']
 const nodes = ref<RhythmNode[]>([])
-const kind = ref('')
+const kind = computed(() => ['sale', 'new', 'event'].includes(String(route.query.kind)) ? String(route.query.kind) : '')
 const picked = ref<RhythmNode | null>(null)
 const remindBefore = ref(3)
 const loadError = ref('')
@@ -352,8 +352,7 @@ function select(key: string, value: string) {
 }
 
 function onKind(value: string | number | null | undefined) {
-  kind.value = value == null ? '' : String(value)
-  void load()
+  select('kind', value == null ? '' : String(value))
 }
 
 async function load() {
@@ -368,6 +367,7 @@ async function load() {
 watch(tab, (value) => {
   if (value === 'calendar' && !nodes.value.length) void load()
 })
+watch(kind, load)
 
 onMounted(load)
 </script>

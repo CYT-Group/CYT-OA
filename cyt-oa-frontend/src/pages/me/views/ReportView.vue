@@ -1,10 +1,10 @@
 <template>
   <div class="space-y-5">
-    <PageHeader title="我的报告" description="周报、月报与日报的提交、点评和轨迹">
+    <PageHeader :title="REPORT_TYPE_OPTIONS.find(option => option.value === reportType)?.label || '我的报告'" description="周报、月报与日报的提交、点评和轨迹">
       <template #actions>
         <Button @click="compose()">
           <PenLine class="size-4" />
-          写本周汇报
+          写{{ REPORT_TYPE_OPTIONS.find(option => option.value === trackType)?.label || '汇报' }}
         </Button>
       </template>
     </PageHeader>
@@ -366,7 +366,8 @@ const TRACK_TYPE_OPTIONS = [
 ]
 
 const tab = computed(() => String(route.query.tab ?? 'draft'))
-const trackType = ref(2)
+const reportType = computed(() => [1, 2, 3].includes(Number(route.query.type)) ? Number(route.query.type) : undefined)
+const trackType = ref(reportType.value ?? 2)
 const track = ref<TrackCell[]>([])
 const rows = ref<Report[]>([])
 const drafts = ref<Report[]>([])
@@ -392,8 +393,7 @@ function trackClass(state: string) {
 }
 
 function onTrackType(value: string | number | null | undefined) {
-  trackType.value = value == null ? 2 : Number(value)
-  void loadTrack()
+  pick('type', String(value == null ? 2 : Number(value)))
 }
 
 async function loadTrack() {
@@ -408,13 +408,14 @@ async function load() {
   loadError.value = ''
   try {
     if (tab.value === 'draft') {
-      drafts.value = await meApi.reportDrafts()
+      const all = await meApi.reportDrafts()
+      drafts.value = reportType.value ? all.filter(row => row.type === reportType.value) : all
     } else if (tab.value === 'review') {
-      const data = await meApi.reports({ status: REPORT_SUBMITTED, pageNo: 1, pageSize: 50 })
+      const data = await meApi.reports({ type: reportType.value, status: REPORT_SUBMITTED, pageNo: 1, pageSize: 50 })
       rows.value = data.list ?? []
       total.value = Number(data.total ?? 0)
     } else {
-      const data = await meApi.reports({ pageNo: pageNo.value, pageSize })
+      const data = await meApi.reports({ type: reportType.value, pageNo: pageNo.value, pageSize })
       rows.value = data.list ?? []
       total.value = Number(data.total ?? 0)
     }
@@ -532,6 +533,11 @@ watch(tab, () => {
   void load()
 })
 watch(trackType, loadTrack)
+watch(reportType, value => {
+  trackType.value = value ?? 2
+  pageNo.value = 1
+  void load()
+})
 
 onMounted(() => {
   void load()

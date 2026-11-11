@@ -18,6 +18,7 @@ npm run dev      # http://localhost:4810
 ```sh
 npx vue-tsc --noEmit    # 类型检查
 npm run build           # 类型检查 + 构建，CI 里等价于这道命令
+npm run test:navigation  # 目录归属、权限与分批上线回归
 ```
 
 ## 页面是怎么拼起来的
@@ -26,6 +27,10 @@ npm run build           # 类型检查 + 构建，CI 里等价于这道命令
   新增一张后台表通常只在这里加一项，不需要写新组件。
 - `src/configs/nav.ts` 声明左侧导航的区块、一级项与二级项；二级项是带查询参数的路由，
   所以同一个视图的不同标签在地址栏是可分享的。
+  已有业务按设计稿的名称、顺序、层级与彩色图标排列；设计稿没有的能力保留原分组和 Lucide 图标。
+  `glyph` 是设计稿中的原始图标，未填写时沿用原业务图标，不按名称猜测替换。
+  目录组合继续引用原菜单的权限和上线 key；有额外操作权限的入口必须同时满足原业务权限。
+  查询参数较具体的入口优先选中，面包屑与快速搜索使用同一份目录，避免多个子项同时高亮。
 - `src/pages/DataPage.vue` 消费上面两份声明，渲染表格、筛选与表单。
 - 只有交互特殊的页面（个人中心各视图）才单独写组件。
 
@@ -44,18 +49,21 @@ npm run build           # 类型检查 + 构建，CI 里等价于这道命令
 - `src/styles/theme.css` 是唯一全局样式入口：设计令牌（颜色、圆角、动效）与
   `panel`、`data-table`、`field-label` 等组合类都在这里定义，深色模式走 `.dark` 类。
 - `src/styles/workspace.css` 由主题入口导入，维护响应式外壳、工作台双栏、登录页与快捷入口。
-  桌面侧栏支持收起和二级浮出菜单，移动端使用导航抽屉；个人工作台与管理控制台分别呈现导航。
+  桌面侧栏支持收起和二级浮出菜单，移动端使用导航抽屉；个人办公与获授权的管理中心入口统一呈现。
 - `src/ui/` 是基础组件（Button、Dialog、Select、Badge、Pagination、EmptyState…），
   用 `cn()`（clsx + tailwind-merge）合并类名、`cva` 声明变体。
-- 图标统一用 `@lucide/vue`，提示统一用 `src/lib/toast.ts` 的函数式 toast。
+- 导航和工作台保留设计样例的彩色图标，集中在 `NavIcon.vue` 映射；操作图标用 `@lucide/vue`，
+  提示统一用 `src/lib/toast.ts` 的函数式 toast。
 
 新增页面优先组合 `src/ui/` 组件与 `theme.css` 的组合类，不要退回原生控件或另起一套
 按钮/卡片样式；颜色一律引用语义令牌（`bg-card`、`text-muted-foreground` 等），
 不要写死十六进制色值。
 
-视觉参考 [Vben Admin](https://github.com/vbenjs/vue-vben-admin) 与
-[Ant Design Pro](https://github.com/ant-design/ant-design-pro) 的后台导航和信息层次，
-采用深色侧栏、浅灰内容底色、白色面板与蓝色强调。默认浅色，保留用户保存的主题偏好。
+视觉以设计提供的[企业门户样例](https://share.traecontent.cn/artifact/1D5NTD5VGTOBUD)为准：
+浅色侧栏上方放身份卡，内容使用淡紫灰背景、白色面板和紫色强调，工作台使用紫色欢迎区。
+默认浅色，保留用户保存的主题偏好；深色模式通过同一套语义令牌适配。
+公共菜单图标固定为 16px，菜单项最小高度 36px，危险操作使用语义红色，
+菜单、下拉选项和弹窗统一层次、圆角、键盘焦点和关闭交互。
 业务页面复用语义令牌，不叠加装饰性光晕；指标必须来自接口，加载失败使用「–」或错误提示，
 不可把失败结果显示成零。工作日历 `WorkCalendar.vue` 提供月份切换和回到今天，
 它只展示日期，不隐含业务事件或考勤安排。
