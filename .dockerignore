@@ -1,6 +1,9 @@
 .git
 .idea
 .workbuddy-ai
+.trae
+.local
+.screenshots
 **/node_modules
 **/dist
 **/target

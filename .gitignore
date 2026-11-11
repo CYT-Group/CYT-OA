@@ -26,6 +26,8 @@ _*.txt
 
 # 助手工作数据，不属于项目代码
 .workbuddy-ai/
+.trae/
+.local/
 
 # 门户文档持久卷（含简历原件与员工贺卡）不属于源代码
 **/data/portal-documents/
