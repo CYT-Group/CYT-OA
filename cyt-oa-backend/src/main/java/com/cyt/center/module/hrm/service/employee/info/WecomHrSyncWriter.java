@@ -42,30 +42,29 @@ public class WecomHrSyncWriter {
             if (!Set.of("birthday", "entryTime").contains(key)) throw new BizException("不支持的花名册日期字段");
             if (selectedExpectedValues != null && !selectedExpectedValues.containsKey(key)) continue;
             LocalDateTime current = key.equals("birthday") ? employee.getBirthday() : employee.getEntryTime();
-            LocalDateTime previous = key.equals("birthday") ? state.getBirthday() : state.getEntryTime();
             LocalDate upstream = field.getValue();
             if (selectedExpectedValues != null && !Objects.equals(date(current), selectedExpectedValues.get(key)))
                 throw new BizException("本地档案在确认期间已变化，请重新同步");
-            boolean writable = selectedExpectedValues != null || current == null
-                    || current.toLocalDate().equals(upstream)
-                    || previous != null && current.toLocalDate().equals(previous.toLocalDate());
-            if (!writable) {
-                conflicts.add(new Conflict(employeeId, employee.getName(), key, date(current), upstream.toString()));
-                continue;
-            }
-            if (current == null || !current.toLocalDate().equals(upstream)) {
-                if (key.equals("birthday")) change.set(HrmEmployeeDO::getBirthday, upstream.atStartOfDay());
-                else change.set(HrmEmployeeDO::getEntryTime, upstream.atStartOfDay());
+            LocalDateTime value = upstream == null ? null : upstream.atStartOfDay();
+            // 企微成功返回的值（包括明确空值）为准；未返回/无权限字段不会进入 dates。
+            if (!Objects.equals(current == null ? null : current.toLocalDate(), upstream)) {
+                if (key.equals("birthday")) change.set(HrmEmployeeDO::getBirthday, value);
+                else change.set(HrmEmployeeDO::getEntryTime, value);
                 updated++;
             }
-            if (key.equals("birthday")) state.setBirthday(upstream.atStartOfDay());
-            else state.setEntryTime(upstream.atStartOfDay());
+            if (key.equals("birthday")) state.setBirthday(value);
+            else state.setEntryTime(value);
         }
         if (selectedExpectedValues != null && !dates.keySet().containsAll(selectedExpectedValues.keySet()))
             throw new BizException("企微字段当前为空或不可读，未覆盖本地日期");
         if (updated > 0) employees.update(null, change);
         state.setSyncedAt(LocalDateTime.now());
-        if (newState) states.insert(state); else states.updateById(state);
+        if (newState) states.insert(state);
+        else states.update(null, new LambdaUpdateWrapper<HrmEmployeeWecomSyncDO>()
+                .eq(HrmEmployeeWecomSyncDO::getEmployeeId, employeeId)
+                .set(HrmEmployeeWecomSyncDO::getBirthday, state.getBirthday())
+                .set(HrmEmployeeWecomSyncDO::getEntryTime, state.getEntryTime())
+                .set(HrmEmployeeWecomSyncDO::getSyncedAt, state.getSyncedAt()));
         return new Written(updated, conflicts);
     }
     private static String date(LocalDateTime value) { return value == null ? null : value.toLocalDate().toString(); }

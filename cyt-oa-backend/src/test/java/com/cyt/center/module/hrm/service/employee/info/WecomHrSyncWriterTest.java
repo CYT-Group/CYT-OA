@@ -14,7 +14,7 @@ class WecomHrSyncWriterTest {
     final HrmEmployeeMapper employees=mock(HrmEmployeeMapper.class);
     final HrmEmployeeWecomSyncMapper states=mock(HrmEmployeeWecomSyncMapper.class);
     final WecomHrSyncWriter writer=new WecomHrSyncWriter(employees,states);
-    @BeforeAll static void mapping(){com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(new com.baomidou.mybatisplus.core.MybatisConfiguration(),"test"),HrmEmployeeDO.class);}
+    @BeforeAll static void mapping(){com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(new com.baomidou.mybatisplus.core.MybatisConfiguration(),"test"),HrmEmployeeDO.class);com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(new com.baomidou.mybatisplus.core.MybatisConfiguration(),"state"),HrmEmployeeWecomSyncDO.class);}
     @Test void missingSchemaStopsSyncWithUpgradeInstructions(){
         var error = assertThrows(BizException.class, writer::requireSchema);
         assertTrue(error.getMessage().contains("db/wecom-hr-sync-schema.sql"));
@@ -55,17 +55,28 @@ class WecomHrSyncWriterTest {
         var c=org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
         verify(employees).update(isNull(),c.capture());assertFalse(c.getValue().getSqlSet().contains("entry_status"));
     }
-    @Test void preservesManualDatesAndReportsConflict(){
+    @Test void latestUpstreamDateOverwritesManualDate(){
         when(employees.selectByIdForUpdate(1L)).thenReturn(new HrmEmployeeDO().setId(1L).setUserId(7L).setBirthday(LocalDateTime.of(1990,1,1,0,0)));
         var r=writer.apply(1L,7L,Map.of("birthday",LocalDate.of(1991,1,1)),null);
-        assertEquals(0,r.updatedFields());assertEquals(1,r.conflicts().size());
-        verify(employees,never()).update(isNull(),any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        assertEquals(1,r.updatedFields());assertTrue(r.conflicts().isEmpty());
+        verify(employees).update(isNull(),any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
     }
     @Test void laterUpstreamChangesFollowLastAppliedSourceValue(){
         var old=LocalDateTime.of(1990,1,1,0,0);
         when(employees.selectByIdForUpdate(1L)).thenReturn(new HrmEmployeeDO().setId(1L).setUserId(7L).setBirthday(old));
         var state=new HrmEmployeeWecomSyncDO();state.setEmployeeId(1L);state.setBirthday(old);when(states.selectById(1L)).thenReturn(state);
         assertEquals(1,writer.apply(1L,7L,Map.of("birthday",LocalDate.of(1991,1,1)),null).updatedFields());
+    }
+    @Test void explicitEmptyClearsDateButMissingFieldPreservesIt() {
+        when(employees.selectByIdForUpdate(1L)).thenReturn(new HrmEmployeeDO().setId(1L).setUserId(7L)
+                .setBirthday(LocalDateTime.of(1990,1,1,0,0)).setEntryTime(LocalDateTime.of(2020,1,1,0,0)));
+        Map<String, LocalDate> dates = new HashMap<>(); dates.put("birthday", null);
+        assertEquals(1, writer.apply(1L, 7L, dates, null).updatedFields());
+        var change = org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(employees).update(isNull(), change.capture());
+        assertTrue(change.getValue().getSqlSet().contains("birthday"));
+        assertFalse(change.getValue().getSqlSet().contains("entry_time"));
+        assertTrue(change.getValue().getParamNameValuePairs().containsValue(null));
     }
     @Test void confirmationRechecksLocalValueBeforeOverwrite(){
         when(employees.selectByIdForUpdate(1L)).thenReturn(new HrmEmployeeDO().setId(1L).setUserId(7L).setBirthday(LocalDateTime.of(1992,1,1,0,0)));

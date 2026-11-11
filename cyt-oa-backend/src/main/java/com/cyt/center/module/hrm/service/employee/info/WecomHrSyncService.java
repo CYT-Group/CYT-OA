@@ -85,7 +85,7 @@ public class WecomHrSyncService {
         if (user == null || user.getWecomUserid() == null) throw new BizException("员工未关联企微账号");
         var fields = WecomHrDates.fields(gateway.hrFields());
         var dates = WecomHrDates.parse(gateway.hrStaff(user.getWecomUserid(), fields.values()), fields, today());
-        if (!Objects.equals(expectedUpstreamValue, dates.containsKey(field) ? dates.get(field).toString() : null))
+        if (!Objects.equals(expectedUpstreamValue, dates.get(field) == null ? null : dates.get(field).toString()))
             throw new BizException("企微日期在确认期间已变化，请重新同步");
         Map<String, String> expected = new HashMap<>(); expected.put(field, expectedCurrentValue);
         return writer.apply(employeeId, user.getId(), dates, expected).updatedFields();

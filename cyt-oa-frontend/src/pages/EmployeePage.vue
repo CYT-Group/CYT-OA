@@ -1,6 +1,6 @@
 <template>
   <div>
-    <PageHeader title="员工档案" description="集中查看员工信息与任职资料，支持企业微信花名册同步。">
+    <PageHeader title="员工档案" description="管理员工任职、直属上级与人事资料，企微资料随同步更新。">
       <template #actions>
         <Button
           v-if="session.has('hrm:employee:query') && canEdit"
@@ -14,7 +14,7 @@
         </Button>
         <Button variant="outline" size="sm" @click="router.push('/org')">
           <Network class="size-3.5" />
-          企微组织与同步
+          组织架构
         </Button>
       </template>
     </PageHeader>
@@ -30,33 +30,20 @@
             花名册同步：读取 {{ hrResult.scanned }} 人，更新 {{ hrResult.updatedFields }} 个日期字段
           </h2>
           <p class="mt-0.5 text-xs text-muted-foreground">
-            企微空值不会清除本地资料。人工修改过的日期需要核对后逐项采用。
+            生日、入职日期以企微本次成功返回的值为准。
           </p>
         </div>
         <Button variant="ghost" size="sm" @click="hrResult = null">收起</Button>
       </header>
       <div class="space-y-2 px-4 py-3">
-        <div
-          v-for="c in hrResult.conflicts"
-          :key="`${c.employeeId}:${c.field}`"
-          class="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-sm"
-        >
-          <span
-            >{{ c.name }} · {{ c.field === 'birthday' ? '生日' : '入职日期' }}：本地
-            {{ c.currentValue || '空' }} → 企微 {{ c.upstreamValue }}</span
-          >
-          <Button variant="outline" size="sm" :disabled="hrSyncing" @click="confirmHr(c)"
-            >采用企微日期</Button
-          >
-        </div>
         <p v-for="f in hrResult.failures" :key="f.employeeId" class="text-xs text-destructive">
           {{ f.name }}：{{ f.reason }}
         </p>
         <p
-          v-if="!hrResult.conflicts.length && !hrResult.failures.length"
+          v-if="!hrResult.failures.length"
           class="text-xs text-muted-foreground"
         >
-          没有需要核对的冲突项
+          已与企微最新返回的数据一致
         </p>
       </div>
     </section>
@@ -240,8 +227,9 @@
           />
 
           <h3 class="mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            企微工作信息
+            企微资料
           </h3>
+          <p v-if="detail.userId" class="mt-1 text-xs text-muted-foreground">生日、入职日期在企微维护，同步后更新。</p>
           <dl class="mt-2 grid gap-x-6 gap-y-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-2">
             <div v-for="item in workFacts" :key="item.label">
               <dt class="text-[11px] text-muted-foreground">{{ item.label }}</dt>
@@ -292,7 +280,7 @@
               />
             </div>
 
-            <div v-if="showEmptyFields || hasValue(detail.entryTime)" class="flex flex-col">
+            <div v-if="!detail.userId && (showEmptyFields || hasValue(detail.entryTime))" class="flex flex-col">
               <Label>入职日期</Label>
               <Input v-model="form.entryTime" type="date" :disabled="!canEdit || !unconfirmed" />
             </div>
@@ -311,7 +299,7 @@
               />
             </div>
 
-            <div v-if="showEmptyFields || hasValue(detail.birthday)" class="flex flex-col">
+            <div v-if="!detail.userId && (showEmptyFields || hasValue(detail.birthday))" class="flex flex-col">
               <Label>生日（仅人事可见）</Label>
               <Input v-model="form.birthday" type="date" :disabled="!canEdit" />
             </div>
@@ -557,21 +545,17 @@ const workFacts = computed(() => {
     { label: '手机号', value: d.mobile },
     { label: '邮箱', value: d.email },
     { label: '主部门', value: d.deptName },
-    { label: '岗位', value: d.postName }
+    { label: '岗位', value: d.postName },
+    ...(d.userId ? [
+      { label: '生日', value: d.birthday?.slice(0, 10) || '企微未提供' },
+      { label: '入职日期', value: d.entryTime?.slice(0, 10) || '企微未提供' }
+    ] : [])
   ].filter((item) => hasValue(item.value)) as { label: string; value: string }[]
 })
 
-interface HrConflict {
-  employeeId: string
-  name: string
-  field: string
-  currentValue: string | null
-  upstreamValue: string
-}
 interface HrResult {
   scanned: number
   updatedFields: number
-  conflicts: HrConflict[]
   failures: { employeeId: string; name: string; reason: string }[]
 }
 const hrSyncing = ref(false),
@@ -587,21 +571,6 @@ async function syncHr() {
     if (detail.value) await open(detail.value.id)
   } catch (e) {
     error.value = e instanceof Error ? e.message : '企微花名册同步失败'
-  } finally {
-    hrSyncing.value = false
-  }
-}
-
-async function confirmHr(conflict: HrConflict) {
-  hrSyncing.value = true
-  error.value = ''
-  try {
-    await api.post('/admin-api/hrm/employee/wecom/confirm', conflict, 100000)
-    if (hrResult.value) hrResult.value.conflicts = hrResult.value.conflicts.filter((c) => c !== conflict)
-    await load()
-    if (detail.value) await open(detail.value.id)
-  } catch (e) {
-    error.value = e instanceof Error ? e.message : '企微日期确认失败'
   } finally {
     hrSyncing.value = false
   }

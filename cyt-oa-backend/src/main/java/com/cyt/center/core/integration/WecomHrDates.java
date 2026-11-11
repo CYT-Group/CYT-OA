@@ -61,7 +61,10 @@ public final class WecomHrDates {
                 if (item.path("value_type").asInt(-1) != field.valueType()
                         || valueKeys.stream().anyMatch(k -> !k.equals(valueKey))) throw invalid("花名册日期值类型异常");
                 JsonNode value = item.path(valueKey);
-                if (value.isNull() || value.isMissingNode() || value.isTextual() && value.asText().isEmpty()) continue;
+                if (value.isNull() || value.isMissingNode() || value.isTextual() && value.asText().isEmpty()) {
+                    dates.put(entry.getKey(), null);
+                    continue;
+                }
                 if (!value.isIntegralNumber() && !(value.isTextual() && value.asText().matches("-?\\d+")))
                     throw invalid("花名册日期值不合法");
                 try {

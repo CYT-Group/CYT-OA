@@ -47,4 +47,16 @@ class EmployeeDirectoryArchiveServiceTest {
         assertFalse(columns.contains("entry_status"));assertFalse(columns.contains("birthday"));assertFalse(columns.contains("leader_employee_id"));
         verify(employees,never()).insert(any(HrmEmployeeDO.class));verifyNoInteractions(changes);
     }
+    @Test void batchReadsOnceAndSkipsUnchangedArchives() {
+        when(employees.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class)))
+                .thenReturn(List.of(new HrmEmployeeDO().setId(42L).setUserId(7L).setName("Alice")));
+        SysUser alice = new SysUser(); alice.setId(7L); alice.setName("Alice");
+        SysUser bob = new SysUser(); bob.setId(8L); bob.setName("Bob");
+        service.syncIdentities(List.of(alice, bob));
+        verify(employees, times(1)).selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verify(employees, never()).update(isNull(), any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        var inserted = org.mockito.ArgumentCaptor.forClass(HrmEmployeeDO.class);
+        verify(employees).insert(inserted.capture()); assertEquals(8L, inserted.getValue().getUserId());
+        verifyNoInteractions(changes);
+    }
 }

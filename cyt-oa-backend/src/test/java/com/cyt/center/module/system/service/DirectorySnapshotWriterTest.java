@@ -16,9 +16,16 @@ class DirectorySnapshotWriterTest {
     final SysUserMapper users = mock(SysUserMapper.class);
     final SysDeptMapper depts = mock(SysDeptMapper.class);
     final EmployeeDirectoryArchiveService archives = mock(EmployeeDirectoryArchiveService.class);
+    final SysUserDeptMapper bindings = mock(SysUserDeptMapper.class);
     final DirectorySnapshotWriter writer = new DirectorySnapshotWriter(users, depts,
-            mock(SysUserDeptMapper.class), mock(SysUserService.class), new CenterProperties(), archives);
+            bindings, mock(SysUserService.class), new CenterProperties(), archives);
     final ObjectMapper json = new ObjectMapper();
+
+    @org.junit.jupiter.api.BeforeAll static void mapping() {
+        for (Class<?> entity : List.of(SysUser.class, SysUserDept.class))
+            com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(
+                    new com.baomidou.mybatisplus.core.MybatisConfiguration(), "test"), entity);
+    }
 
     @Test void syncDoesNotRestoreDisabledAccountsAndFallsBackToFirstDepartment() throws Exception {
         SysUser old = new SysUser(); old.setId(7L); old.setUsername("alice"); old.setWecomUserid("alice"); old.setEnabled(false);
@@ -26,10 +33,10 @@ class DirectorySnapshotWriterTest {
         TransactionSynchronizationManager.initSynchronization();
         try {
             writer.apply(json.readTree(snapshot("[{\"userid\":\"alice\",\"name\":\"Alice\",\"status\":1,\"department_ids\":[1]}]")));
-            var change = org.mockito.ArgumentCaptor.forClass(SysUser.class);
-            verify(users).updateById(change.capture());
-            assertFalse(change.getValue().getEnabled()); assertEquals(1L, change.getValue().getMainDeptId());
-            verify(archives).syncIdentity(change.getValue());
+            var changes = org.mockito.ArgumentCaptor.forClass(List.class);
+            verify(archives).syncIdentities(changes.capture());
+            SysUser change = (SysUser) changes.getValue().getFirst();
+            assertFalse(change.getEnabled()); assertEquals(1L, change.getMainDeptId());
         } finally { TransactionSynchronizationManager.clearSynchronization(); }
     }
 
@@ -38,9 +45,11 @@ class DirectorySnapshotWriterTest {
         SysUser old = new SysUser(); old.setId(7L); old.setUsername("admin"); old.setWecomUserid("zhangwei"); old.setEnabled(true);
         when(users.selectList(any())).thenReturn(List.of(old)); when(depts.selectList(any())).thenReturn(List.of());
         var result = writer.apply(json.readTree(snapshot("[{\"userid\":\"ZhangWei\",\"name\":\"张蔚\",\"status\":1,\"department_ids\":[1]}]")));
-        var change = org.mockito.ArgumentCaptor.forClass(SysUser.class);
-        verify(users).updateById(change.capture()); verify(users, never()).insert(any(SysUser.class));
-        assertEquals(7L, change.getValue().getId()); assertEquals("ZhangWei", change.getValue().getWecomUserid());
+        var changes = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(archives).syncIdentities(changes.capture()); verify(users, never()).insert(any(SysUser.class));
+        SysUser change = (SysUser) changes.getValue().getFirst();
+        assertEquals(7L, change.getId()); assertEquals("ZhangWei", change.getWecomUserid());
+        assertTrue(result.missing().isEmpty());
         assertTrue(result.conflicts().isEmpty(), "同人改大小写不算冲突账号");
     }
 
@@ -54,7 +63,7 @@ class DirectorySnapshotWriterTest {
         SysUser old = new SysUser(); old.setId(7L); old.setWecomUserid("missing"); old.setEnabled(true);
         when(users.selectList(any())).thenReturn(List.of(old)); when(depts.selectList(any())).thenReturn(List.of());
         var result = writer.apply(json.readTree(snapshot("[]")));
-        assertEquals(List.of("missing"),result.missing()); verify(users,never()).updateById(any(SysUser.class)); verifyNoInteractions(archives);
+        assertEquals(List.of("missing"),result.missing()); verify(users,never()).updateById(any(SysUser.class)); verify(archives).syncIdentities(List.of());
     }
 
     /** 已经全表读过部门，就不该再为每个部门单点查一次存在性。 */
@@ -71,6 +80,39 @@ class DirectorySnapshotWriterTest {
     @Test void cyclicDepartmentsAreRejectedBeforeWriting() throws Exception {
         var data = json.readTree("{\"departments\":[{\"id\":1,\"parent_id\":1,\"name\":\"A\",\"path\":\"A\"}],\"users\":[],\"counts\":{\"users\":0,\"departments\":1}}");
         assertThrows(BizException.class, () -> writer.apply(data)); verifyNoInteractions(users,archives);
+    }
+
+    @Test void unchangedMembershipsAvoidDeleteAndInsert() throws Exception {
+        SysUser old = new SysUser(); old.setId(7L); old.setWecomUserid("alice"); old.setEnabled(true);
+        SysUserDept binding = new SysUserDept(); binding.setUserId(7L); binding.setDeptId(1L);
+        when(users.selectList(any())).thenReturn(List.of(old));
+        when(bindings.selectList(any())).thenReturn(List.of(binding));
+        writer.apply(json.readTree(snapshot("[{\"userid\":\"alice\",\"name\":\"Alice\",\"status\":1,\"department_ids\":[1]}]")));
+        verify(bindings, never()).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verify(bindings, never()).insertBindings(anyList());
+    }
+
+    @Test void latestSnapshotClearsOldMembershipAndMainDepartment() throws Exception {
+        SysUser old = new SysUser(); old.setId(7L); old.setWecomUserid("alice"); old.setEnabled(true); old.setMainDeptId(1L);
+        SysUserDept binding = new SysUserDept(); binding.setUserId(7L); binding.setDeptId(1L);
+        when(users.selectList(any())).thenReturn(List.of(old)); when(bindings.selectList(any())).thenReturn(List.of(binding));
+        writer.apply(json.readTree(snapshot("[{\"userid\":\"alice\",\"name\":\"Alice\",\"status\":1,\"department_ids\":[]}]")));
+        var change = org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(users).update(isNull(), change.capture());
+        assertTrue(change.getValue().getSqlSet().contains("main_dept_id"));
+        assertTrue(change.getValue().getParamNameValuePairs().containsValue(null));
+        verify(bindings).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verify(bindings, never()).insertBindings(anyList());
+    }
+
+    @Test void missingMembersLeaveOrganizationButKeepTheirAccountsAndArchives() throws Exception {
+        SysUser old = new SysUser(); old.setId(7L); old.setWecomUserid("missing"); old.setEnabled(true);
+        SysUserDept binding = new SysUserDept(); binding.setUserId(7L); binding.setDeptId(1L);
+        when(users.selectList(any())).thenReturn(List.of(old)); when(bindings.selectList(any())).thenReturn(List.of(binding));
+        assertEquals(List.of("missing"), writer.apply(json.readTree(snapshot("[]"))).missing());
+        verify(bindings).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verify(users, never()).update(isNull(), any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verify(archives).syncIdentities(List.of());
     }
 
     String snapshot(String users) throws Exception {

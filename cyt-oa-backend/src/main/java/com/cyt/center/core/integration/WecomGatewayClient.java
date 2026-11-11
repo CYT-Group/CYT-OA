@@ -90,8 +90,9 @@ public class WecomGatewayClient {
             if (!envelope.path("data").isObject()) {
                 throw new WecomGatewayException("bad_envelope", traceId, "企微网关未返回 data，未执行任何同步");
             }
-            if (operationPath.startsWith("wecom/hr/") && envelope.path("meta").path("mock").asBoolean(false)) {
-                throw new BizException("企微花名册网关处于模拟模式，未写入任何人事日期");
+            if ((operationPath.startsWith("wecom/hr/") || operationPath.startsWith("wecom/directory/"))
+                    && envelope.path("meta").path("mock").asBoolean(false)) {
+                throw new BizException("企微网关处于模拟模式，未写入任何通讯录或人事资料");
             }
             return envelope.path("data");
         } catch (InterruptedException error) {

@@ -18,6 +18,7 @@ function page(initialStatus) {
   let nextTimer = 0;
   let starts = 0;
   let finishStart;
+  let getResponse = () => [];
   const source = fs.readFileSync(path.join(__dirname, '../src/pages/OrgPage.vue'), 'utf8');
   const { descriptor } = parse(source);
   const script = compileScript(descriptor, { id: 'org-sync-test' }).content;
@@ -38,12 +39,12 @@ function page(initialStatus) {
       if (name === '../lib/toast') return { toast: (...args) => notifications.push(args) };
       if (name === '../lib/tone') return { toneBadge: value => value };
       if (name === '../lib/api') return { api: {
-        async get(url) {
+        async get(url, params) {
           if (url.endsWith('/sync-status')) {
             if (rejectStatus) throw new Error('temporarily offline');
             return currentStatus;
           }
-          return [];
+          return getResponse(url, params);
         },
         async post() {
           starts++;
@@ -60,6 +61,7 @@ function page(initialStatus) {
   const state = context.exports.default.setup({}, { expose() {} });
   return {
     state, timers, notifications,
+    respond: fn => { getResponse = fn; },
     mount: async () => { for (const fn of mounted) await fn(); },
     unmount: () => unmounted.forEach(fn => fn()),
     status: value => { currentStatus = value; },
@@ -141,4 +143,35 @@ test('离开页面后到达的启动失败不再弹出过期通知', async () =>
   await pending;
   assert.equal(p.notifications.length, 0);
   assert.equal(p.timers.size, 0);
+});
+
+
+test('刷新组织树会重新加载当前部门成员，避免同步后仍显示旧成员', async () => {
+  const p = page(null);
+  let reads = 0;
+  p.respond(url => {
+    if (url.endsWith('/org-tree')) return [{ id: '1', parentId: null, name: '部门' }];
+    if (url.endsWith('/members')) return { total: 1, list: [{ userId: String(++reads), name: '新资料' }] };
+    return [];
+  });
+  await p.mount();
+  assert.equal(p.state.members.value[0].userId, '1');
+  await p.state.loadTree();
+  assert.equal(p.state.members.value[0].userId, '2');
+});
+
+test('快速切换部门时较晚到达的旧请求不会覆盖当前部门成员', async () => {
+  const p = page(null);
+  let releaseOld;
+  p.respond((url, params) => params.deptId === 'old'
+    ? new Promise(resolve => { releaseOld = resolve; })
+    : { total: 1, list: [{ userId: 'new' }] });
+  p.state.selectedId.value = 'old';
+  const old = p.state.loadMembers();
+  p.state.selectedId.value = 'new';
+  await p.state.loadMembers();
+  releaseOld({ total: 1, list: [{ userId: 'old' }] });
+  await old;
+  assert.equal(p.state.members.value[0].userId, 'new');
+  assert.equal(p.state.membersLoading.value, false);
 });

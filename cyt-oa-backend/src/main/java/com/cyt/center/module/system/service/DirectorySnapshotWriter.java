@@ -2,6 +2,7 @@ package com.cyt.center.module.system.service;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cyt.center.core.config.CenterProperties;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.module.system.mapper.SysDeptMapper;
@@ -74,6 +75,13 @@ public class DirectorySnapshotWriter {
         Set<String> seen = new HashSet<>();
         List<String> conflicts = new ArrayList<>();
         List<Long> blocked = new ArrayList<>();
+        List<SysUser> identities = new ArrayList<>();
+        Map<Long, Set<Long>> memberships = new HashMap<>();
+        for (SysUserDept binding : userDepartments.selectList(null)) {
+            memberships.computeIfAbsent(binding.getUserId(), key -> new HashSet<>()).add(binding.getDeptId());
+        }
+        List<Long> replaceIds = new ArrayList<>();
+        List<SysUserDept> newBindings = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
         int created = 0;
         int updated = 0;
@@ -131,11 +139,25 @@ public class DirectorySnapshotWriter {
                 created++;
             } else {
                 change.setId(current.getId());
-                users.updateById(change);
+                // 显式写 null，企微取消主部门时不能被 MyBatis 的非空策略保留旧值。
+                users.update(null, new LambdaUpdateWrapper<SysUser>().eq(SysUser::getId, change.getId())
+                        .set(SysUser::getWecomUserid, externalId).set(SysUser::getName, name)
+                        .set(SysUser::getPosition, change.getPosition()).set(SysUser::getMobile, change.getMobile())
+                        .set(SysUser::getEmail, change.getEmail()).set(SysUser::getAvatar, change.getAvatar())
+                        .set(SysUser::getMainDeptId, mainDeptId).set(SysUser::getWecomStatus, status)
+                        .set(SysUser::getEnabled, change.getEnabled()).set(SysUser::getDirectorySyncedAt, now));
                 updated++;
             }
-            replaceDepartments(change.getId(), deptIds);
-            employeeArchives.syncIdentity(change);
+            if (!deptIds.equals(memberships.getOrDefault(change.getId(), Set.of()))) {
+                replaceIds.add(change.getId());
+                for (Long deptId : deptIds) {
+                    SysUserDept binding = new SysUserDept();
+                    binding.setUserId(change.getId());
+                    binding.setDeptId(deptId);
+                    newBindings.add(binding);
+                }
+            }
+            identities.add(change);
             if (!Boolean.TRUE.equals(change.getEnabled())) {
                 blocked.add(change.getId());
             }
@@ -143,6 +165,19 @@ public class DirectorySnapshotWriter {
                 accountService.grantRole(change, PrincipalService.ROLE_ADMIN);
             }
         }
+
+        // 组织页只反映本轮返回的成员；历史账号与人事档案仍保留，不推断离职或恢复登录。
+        existing.stream().filter(user -> user.getWecomUserid() != null
+                && !seen.contains(normalizeUserid(user.getWecomUserid())))
+                .map(SysUser::getId).filter(memberships::containsKey).forEach(replaceIds::add);
+        for (int offset = 0; offset < replaceIds.size(); offset += 500) {
+            userDepartments.delete(new LambdaQueryWrapper<SysUserDept>().in(SysUserDept::getUserId,
+                    replaceIds.subList(offset, Math.min(offset + 500, replaceIds.size()))));
+        }
+        for (int offset = 0; offset < newBindings.size(); offset += 500) {
+            userDepartments.insertBindings(newBindings.subList(offset, Math.min(offset + 500, newBindings.size())));
+        }
+        employeeArchives.syncIdentities(identities);
 
         // 全表部门在这里已经读了一次，顺便记住已存在的 ID，下面不必再为每个部门单点查一次。
         Set<Long> existingDeptIds = new HashSet<>();
@@ -165,7 +200,7 @@ public class DirectorySnapshotWriter {
         }
 
         List<String> missing = existing.stream()
-                .filter(user -> user.getWecomUserid() != null && !seen.contains(user.getWecomUserid()))
+                .filter(user -> user.getWecomUserid() != null && !seen.contains(normalizeUserid(user.getWecomUserid())))
                 .map(SysUser::getWecomUserid)
                 .toList();
         afterCommit(blocked);
@@ -202,16 +237,6 @@ public class DirectorySnapshotWriter {
             }
         }
         return departmentMap;
-    }
-
-    private void replaceDepartments(Long userId, Set<Long> deptIds) {
-        userDepartments.delete(new LambdaQueryWrapper<SysUserDept>().eq(SysUserDept::getUserId, userId));
-        for (Long deptId : deptIds) {
-            SysUserDept binding = new SysUserDept();
-            binding.setUserId(userId);
-            binding.setDeptId(deptId);
-            userDepartments.insert(binding);
-        }
     }
 
     /** 停用人员要掉线，但必须等数据提交后再踢，否则回滚了却把人赶出去。 */
