@@ -167,4 +167,19 @@ export const portalMenus: MenuGroup[] = [
   },
 ];
 
-export const portalPages: Record<string, PageConfig> = {};
+export const portalPages: Record<string, PageConfig> = {
+  "portal-feedback": {
+    key: "portal-feedback",
+    title: "员工反馈",
+    api: "/admin-api/portal/feedback/page",
+    permission: "can_view_dashboards",
+    columns: [
+      { key: "createdAt", label: "提交时间" },
+      { key: "content", label: "反馈内容", ellipsis: true },
+      { key: "status", label: "状态" },
+    ],
+    canCreate: false,
+    canEdit: false,
+    canDelete: false,
+  },
+};

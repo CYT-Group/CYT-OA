@@ -6,8 +6,11 @@ import { portalEntryKey } from "./portal-entry-policy";
 export function hasPortalPermission(item: {
   permission?: string;
   anyPermissions?: string[];
+  allPermissions?: string[];
 }) {
   if (item.permission && !session.has(item.permission)) return false;
+  if (item.allPermissions?.some((permission) => !session.has(permission)))
+    return false;
   return (
     !item.anyPermissions?.length ||
     item.anyPermissions.some((p) => session.has(p))
@@ -19,8 +22,14 @@ export function allowed(item: {
   to?: string;
   permission?: string;
   anyPermissions?: string[];
+  allPermissions?: string[];
+  systemOnly?: boolean;
 }) {
-  return hasPortalPermission(item) && portalEntryEnabled(portalEntryKey(item));
+  return (
+    (!item.systemOnly || session.isAdmin) &&
+    hasPortalPermission(item) &&
+    portalEntryEnabled(portalEntryKey(item))
+  );
 }
 
 export function filterPortalNavigation(zones: NavZone[]): NavZone[] {

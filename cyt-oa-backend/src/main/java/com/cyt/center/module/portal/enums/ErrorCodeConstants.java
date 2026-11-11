@@ -118,5 +118,15 @@ public interface ErrorCodeConstants {
     ErrorCode SIGNOFF_DEPT_FORBIDDEN = new ErrorCode(1_060_910_003, "本文档限定特定部门签收");
     ErrorCode SIGNOFF_UNKNOWN_DOC = new ErrorCode(1_060_910_004, "未知文档或未发布");
 
+    // ========== 电竞室 1-060-920-000 ==========
+    ErrorCode ESPORTS_BOOKING_NOT_FOUND = new ErrorCode(1_060_920_000, "预约不存在");
+    /** 能力不足（Portal 的 Forbidden → 403 语义） */
+    ErrorCode ESPORTS_FORBIDDEN = new ErrorCode(1_060_920_001, "{}");
+    /** 开放规则校验不通过（Portal 的 Invalid → 422 语义） */
+    ErrorCode ESPORTS_SETTINGS_INVALID = new ErrorCode(1_060_920_002, "{}");
+    /** 预约/参加人校验不通过（Portal 的 Invalid → 422 语义） */
+    ErrorCode ESPORTS_BOOKING_INVALID = new ErrorCode(1_060_920_003, "{}");
+    /** 时段冲突/状态或环节已变化（Portal 的 Conflict → 409 语义） */
+    ErrorCode ESPORTS_CONFLICT = new ErrorCode(1_060_920_004, "{}");
 
 }

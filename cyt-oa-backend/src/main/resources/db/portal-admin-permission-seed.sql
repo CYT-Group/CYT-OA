@@ -23,6 +23,8 @@ INSERT INTO sys_menu(name,type,permission) SELECT '简历识别与候选人库',
 INSERT INTO sys_menu(name,type,permission) SELECT '物资档案管理','button','can_manage_materials' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_manage_materials');
 INSERT INTO sys_menu(name,type,permission) SELECT '物资全站审批','button','can_approve_any_material_apply' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_approve_any_material_apply');
 INSERT INTO sys_menu(name,type,permission) SELECT '站点负责人配置','button','can_configure_site_owners' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_configure_site_owners');
+INSERT INTO sys_menu(name,type,permission) SELECT '电竞室预约管理','button','can_manage_esports' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_manage_esports');
+INSERT INTO sys_menu(name,type,permission) SELECT '查看全部电竞室预约','button','can_view_all_esports' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_view_all_esports');
 INSERT INTO sys_menu(name,type,permission) SELECT '新品动态管理','button','can_manage_products' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_manage_products');
 INSERT INTO sys_menu(name,type,permission) SELECT '展会活动管理','button','can_manage_events' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_manage_events');
 INSERT INTO sys_menu(name,type,permission) SELECT '品牌手册库管理','button','can_manage_brand_docs' WHERE NOT EXISTS(SELECT 1 FROM sys_menu WHERE permission='can_manage_brand_docs');

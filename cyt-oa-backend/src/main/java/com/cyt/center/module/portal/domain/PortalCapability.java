@@ -32,6 +32,10 @@ public final class PortalCapability {
     public static final String VIEW_HR_SOP = "can_view_hr_sop";
     /** 制度签收覆盖率与未签清单查看（Portal 的 can_view_signoff_stats） */
     public static final String VIEW_SIGNOFF_STATS = "can_view_signoff_stats";
+    /** 管理电竞室开放规则及所有预约（Portal 的 can_manage_esports） */
+    public static final String MANAGE_ESPORTS = "can_manage_esports";
+    /** 全量查看电竞室预约及敏感详情（Portal 的 can_view_all_esports，独立授权不附带审批权） */
+    public static final String VIEW_ALL_ESPORTS = "can_view_all_esports";
 
     private PortalCapability() {
     }
