@@ -1,0 +1,2 @@
+# 迁移 SQL 在 Windows/Linux 检出时保持一致；已执行文件不得修改。
+cyt-oa-backend/src/main/resources/db/migration/*.sql text eol=lf
