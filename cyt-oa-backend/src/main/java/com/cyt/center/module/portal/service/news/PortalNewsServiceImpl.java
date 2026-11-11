@@ -48,6 +48,8 @@ public class PortalNewsServiceImpl implements PortalNewsService {
     private PortalOperatorResolver operators;
     @Resource
     private PortalAudit audit;
+    @Resource
+    private com.cyt.center.module.portal.service.push.PortalContentPushService contentPush;
 
     @Override
     public PageResult<PortalNewsDO> page(Long userId, PortalNewsPageReqVO pageReqVO) {
@@ -102,6 +104,7 @@ public class PortalNewsServiceImpl implements PortalNewsService {
         row.setPendingNotifyWecom(wantNotify && !autoPublish);
         row.setPendingNotifyDeptScope(wantNotify && !autoPublish ? createReqVO.getNotifyDeptScope() : null);
         newsMapper.insert(row);
+        if (autoPublish && wantNotify) schedulePush(row, createReqVO.getNotifyDeptScope(), userId);
         return row;
     }
 
@@ -131,7 +134,14 @@ public class PortalNewsServiceImpl implements PortalNewsService {
             row.setStatus(STATUS_PENDING);
             row.setPublishedAt(null);
         }
+        if (updateReqVO.getNotifyWecom() != null) {
+            boolean notify = Boolean.TRUE.equals(updateReqVO.getNotifyWecom());
+            row.setPendingNotifyWecom(notify && !STATUS_PUBLISHED.equals(row.getStatus()));
+            row.setPendingNotifyDeptScope(notify && !STATUS_PUBLISHED.equals(row.getStatus()) ? updateReqVO.getNotifyDeptScope() : null);
+        }
         newsMapper.updateById(row);
+        if (STATUS_PUBLISHED.equals(row.getStatus()) && Boolean.TRUE.equals(updateReqVO.getNotifyWecom()))
+            schedulePush(row, updateReqVO.getNotifyDeptScope(), userId);
         return row;
     }
 
@@ -171,7 +181,7 @@ public class PortalNewsServiceImpl implements PortalNewsService {
         row.setPendingNotifyDeptScope(null);
         newsMapper.updateById(row);
         if (doPush) {
-            schedulePush(row, deptScope, operators.resolve(userId).username());
+            schedulePush(row, deptScope, userId);
         }
         audit.record(userId, "approve", AUDIT_TABLE, id, before, snapshot(row),
                 approveReqVO == null ? null : approveReqVO.getComment());
@@ -195,16 +205,9 @@ public class PortalNewsServiceImpl implements PortalNewsService {
 
     // ══════════════ 内部 ══════════════
 
-    /**
-     * 企微推送。
-     *
-     * 现在只有意图、没有出口：OA 的企微网关客户端（WecomGatewayClient）目前只验证过通讯录一个操作，
-     * 消息发送接口未配置，所以这里只记账不发送。B8 落 {@code sys_wecom_push_log} 与冷却时
-     * 把这一处换成真发送，上面的意图消费逻辑不用动。
-     */
-    private void schedulePush(PortalNewsDO row, List<String> deptScope, String pushedBy) {
-        log.info("[schedulePush][动态({}) 由 {} 决定推送，范围 {}] 企微消息接口未配置，本次未发送",
-                row.getId(), pushedBy, deptScope == null || deptScope.isEmpty() ? "全员" : deptScope);
+    /** 同事务保存明确推送意图，提交后才异步发送；失败和24小时冷却结果均可查询。 */
+    private void schedulePush(PortalNewsDO row, List<String> deptScope, Long userId) {
+        contentPush.news(userId, row, deptScope, false, false);
     }
 
     /** 行的审计快照：键名沿用 Portal 的 snake_case，与 B1 搬来的历史行对齐；正文按摘要存 */

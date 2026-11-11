@@ -8,6 +8,11 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class PortalNewsDetailRespVO extends PortalNewsRespVO {
+    @Schema(description = "作者提交的待审核企微推送意图")
+    private Boolean pendingNotifyWecom;
+
+    @Schema(description = "作者选择的推送部门范围；null或空为全员")
+    private java.util.List<String> pendingNotifyDeptScope;
 
     @Schema(description = "富文本正文")
     private String content;

@@ -41,6 +41,8 @@
         <caffeine.version>3.2.4</caffeine.version>
         <springdoc.version>2.6.0</springdoc.version>
         <warm-flow.version>1.8.9</warm-flow.version>
+        <!-- MinIO Java SDK：培训资料 NAS 桶的预签名与目录列举（同步阻塞，探图读头走线程池并发） -->
+        <minio.version>8.5.17</minio.version>
     </properties>
 
     <dependencies>
@@ -109,6 +111,12 @@
             <groupId>org.apache.pdfbox</groupId>
             <artifactId>pdfbox</artifactId>
             <version>3.0.8</version>
+        </dependency>
+        <!-- NAS MinIO 客户端：培训资料桶的预签名 / 目录列举 / 文件头读取 -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>${minio.version}</version>
         </dependency>
         <!-- 本地缓存：移植的 @Cacheable 只缓存外部门市抓取的社保标准数据，
              用 Caffeine 进程内缓存即可（单实例部署，缓存允许各实例各存一份） -->

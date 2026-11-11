@@ -20,6 +20,15 @@ public class CenterProperties {
     private final Wecom wecom = new Wecom();
     private final Directory directory = new Directory();
     private final Web web = new Web();
+    private final Ai ai = new Ai();
+
+    @Data
+    public static class Ai {
+        /** Gemini API key（迁自 Portal 的 GEMINI_API_KEY；空 = 相关 AI 功能不可用但服务可启动）。 */
+        private String geminiKey = "";
+        /** 厂商：gemini（Claude 渠道已停用，同 Portal 口径）。 */
+        private String provider = "gemini";
+    }
 
     @Data
     public static class Auth {

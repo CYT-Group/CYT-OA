@@ -98,7 +98,20 @@ cyt:
     sync-cron: ${CYT_DIRECTORY_SYNC_CRON:0 30 6 * * ?}
   web:
     allowed-origins: ${CYT_ALLOWED_ORIGINS:}
+  ai:
+    # Gemini key 复用 Portal 的 GEMINI_API_KEY（敏感值走环境变量，不写死）；空 = AI 功能不可用但服务可启动
+    gemini-key: ${GEMINI_API_KEY:}
+    provider: ${AI_PROVIDER:gemini}
   oa:
     work-report:
       # 工作汇报 PDF 导出的中文字体；留空则按常见系统路径回退（Windows simhei / Linux Noto CJK）
       pdf-font: ${CYT_OA_WORK_REPORT_PDF_FONT:}
+  portal:
+    # 培训资料 NAS MinIO（PortalMediaStorage 调用时直接读同名环境变量，凭据轮换免重启；
+    # 此处仅作部署对齐占位，任一 endpoint/access-key/secret-key 为空 = 未配置 → 相关端点 503）
+    nas-minio:
+      endpoint: ${NAS_MINIO_ENDPOINT:}
+      access-key: ${NAS_MINIO_ACCESS_KEY:}
+      secret-key: ${NAS_MINIO_SECRET_KEY:}
+      bucket: ${NAS_MINIO_BUCKET:cyt-training}
+      region: ${NAS_MINIO_REGION:us-east-1}

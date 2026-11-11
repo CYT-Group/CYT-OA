@@ -19,7 +19,9 @@ public class StpInterfaceImpl implements StpInterface {
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
         Principal principal = principal(loginId);
-        return principal == null ? List.of() : principal.permissions();
+        // Portal 的能力位不含冒号，Sa-Token 的 *:*:* 无法匹配 can_*。
+        // 使用其原生全局通配，让管理员与 Principal.has 的规则保持一致。
+        return principal == null ? List.of() : principal.isAdmin() ? List.of("*") : principal.permissions();
     }
 
     @Override

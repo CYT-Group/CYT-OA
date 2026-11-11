@@ -24,6 +24,14 @@ cyt:
     leave-template: leave
   web:
     allowed-origins: http://localhost:80,http://127.0.0.1:80
+  portal:
+    # 培训资料 NAS MinIO：本机联调时指向公司 NAS；不配（留空）则媒体/导入端点回 503
+    nas-minio:
+      endpoint: http://192.168.1.248:9000
+      access-key: 你的 NAS MinIO AccessKey
+      secret-key: 你的 NAS MinIO SecretKey
+      bucket: cyt-training
+      region: us-east-1
 
 logging:
   level:

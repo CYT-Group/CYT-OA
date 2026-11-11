@@ -25,6 +25,13 @@ public final class PortalCapability {
     public static final String VIEW_DASHBOARDS = "can_view_dashboards";
     public static final String MANAGE_MATERIALS = "can_manage_materials";
     public static final String MANAGE_TRAINING = "can_manage_training";
+    public static final String MANAGE_EVENTS = "can_manage_events";
+    public static final String MANAGE_PRODUCTS = "can_manage_products";
+    public static final String EDIT_HR_DOCUMENTS = "can_edit_hr_documents";
+    /** SOP 类文档（category=hr-sop）的读权限：只限 HR + admin，员工读侧可见性判断用 */
+    public static final String VIEW_HR_SOP = "can_view_hr_sop";
+    /** 制度签收覆盖率与未签清单查看（Portal 的 can_view_signoff_stats） */
+    public static final String VIEW_SIGNOFF_STATS = "can_view_signoff_stats";
 
     private PortalCapability() {
     }

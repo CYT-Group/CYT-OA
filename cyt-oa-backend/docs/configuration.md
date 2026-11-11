@@ -55,6 +55,20 @@
 - `CYT_SSO_ENDPOINT_PREFIX` / `CYT_SSO_AUDIENCE` / `CYT_SSO_STATE_PREFIX` / `CYT_SSO_CODE_PREFIX`：与门户约定的接口前缀与命名空间，两端必须一致。
 - `CYT_SSO_RETURN_BASE_URL`：登录完成后回跳的本服务地址。
 
+## Portal 管理迁移
+
+迁移所需建表顺序、附件缺口和旧入口切流见 [Portal 两组管理迁移](portal-admin-migration.md)。
+
+- `GEMINI_API_KEY` / `cyt.ai.gemini-key`：AI 厂商凭据，默认空；通过环境变量或本机配置提供。`AI_PROVIDER` / `cyt.ai.provider` 默认 `gemini`。
+- `AI_KEY_ENCRYPTION_KEY`：Base64 编码的 32 字节 AES 主密钥；读取旧加密凭据时必须沿用原主密钥。
+- `NAS_MINIO_ENDPOINT`、`NAS_MINIO_ACCESS_KEY`、`NAS_MINIO_SECRET_KEY`：培训资料 NAS 的连接与凭据；未配置时媒体和导入接口明确报错。`NAS_MINIO_BUCKET` 默认 `cyt-training`，`NAS_MINIO_REGION` 默认 `us-east-1`，对应 `cyt.portal.nas-minio.*`。
+- `PORTAL_DOCUMENT_ROOT`：私有附件、图片和贺卡持久卷，默认 `data/portal-documents`。真实文件与本机配置均不提交源码仓库。
+- `PORTAL_PUBLIC_BASE_URL`：OA 对外基址，用于生成贺卡分享链接。`PORTAL_DISPLAY_BASE_URL`：员工展示门户基址，用于内容推送的阅读链接。
+- `PORTAL_CARD_FONT`：贺卡中文字体路径；部署环境需提供可用中文字体。
+- `cyt.portal.celebrations.scheduler-enabled`：默认不启用庆祝定时任务；切流时先停旧任务，再显式设置为 `true`。
+
+菜单分批上线由系统管理员在 `/portal/rollout` 保存到 `portal_entry_rollout`，默认全部开启，无独立环境变量。启动此版本前执行 `db/portal-entry-rollout-schema.sql`；可重复执行且不会覆盖现有开关。开关只控制管理页面入口，角色授权、已发布内容和自动任务保持独立。
+
 ## 跨域与导出
 
 - `CYT_ALLOWED_ORIGINS`：逗号分隔的允许来源，前后端分端口开发时必填。

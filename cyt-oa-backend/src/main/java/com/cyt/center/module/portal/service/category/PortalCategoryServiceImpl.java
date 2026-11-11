@@ -4,6 +4,7 @@ import com.cyt.center.framework.common.util.json.JsonUtils;
 import com.cyt.center.module.portal.controller.admin.category.vo.PortalCategoryCreateReqVO;
 import com.cyt.center.module.portal.dal.dataobject.category.PortalCategoryDO;
 import com.cyt.center.module.portal.dal.mysql.category.PortalCategoryMapper;
+import com.cyt.center.module.portal.dal.mysql.training.PortalTrainingMapper;
 import com.cyt.center.module.portal.domain.PortalCategoryScope;
 import com.cyt.center.module.portal.service.support.PortalAccess;
 import com.cyt.center.module.portal.service.support.PortalAudit;
@@ -65,6 +66,8 @@ public class PortalCategoryServiceImpl implements PortalCategoryService {
 
     @Resource
     private PortalCategoryMapper categoryMapper;
+    @Resource
+    private PortalTrainingMapper trainingMapper;
     @Resource
     private PortalAccess access;
     @Resource
@@ -354,21 +357,36 @@ public class PortalCategoryServiceImpl implements PortalCategoryService {
     }
 
     /**
-     * 引用计数与改名级联指向的是培训 / 物资的业务表，那两张表按批次顺序要到 B4 / B5 才进 OA，
-     * 此刻确实一个引用都没有、也没有过渡期文本镜像列可刷，所以这里是 0 与空操作。
-     * B4 / B5 落地时把这三个方法接上各自的 mapper（Portal 口径：培训数课程含草稿、物资数在役 SPU，
-     * 改名级联刷 SKU 表与课程表的 category 文本列）。
+     * 引用计数：培训小类数课程含草稿（Portal 的 repositories/categories.count_courses_of 口径）。
+     * 物资（REF_MATERIAL_PRODUCTS）业务表要到 B5 才进 OA，此刻仍按 0 处理。
      */
     private long refCount(PortalCategoryDO row) {
+        if (PortalCategoryScope.REF_TRAINING.equals(PortalCategoryScope.refTarget(row.getScope(), row.getDepth()))) {
+            return trainingMapper.countByCategoryId(row.getId());
+        }
         return 0L;
     }
 
+    /** 整个培训 scope 一次算出 {category_id: 引用数}（管理列表用；口径同 refCount） */
     private Map<Long, Long> refCountsOfScope(String scope) {
-        return Map.of();
+        PortalCategoryScope.Scope spec = PortalCategoryScope.get(scope);
+        if (!PortalCategoryScope.REF_TRAINING.equals(PortalCategoryScope.refTarget(scope, spec.leafDepth()))) {
+            return Map.of();
+        }
+        List<Long> leafIds = categoryMapper.selectListByScope(scope, true).stream()
+                .filter(r -> Integer.valueOf(spec.leafDepth()).equals(r.getDepth()))
+                .map(PortalCategoryDO::getId).toList();
+        if (leafIds.isEmpty()) {
+            return Map.of();
+        }
+        return trainingMapper.countByCategoryIds(leafIds);
     }
 
+    /** 改培训小类名 → 批量刷课程表的过渡期文本镜像列（S3a 停写文本列后删）；物资分支 B5 再接 */
     private void cascadeRename(PortalCategoryDO row) {
-        // 同 refCount：业务表还没搬来，没有镜像列可刷
+        if (PortalCategoryScope.REF_TRAINING.equals(PortalCategoryScope.refTarget(row.getScope(), row.getDepth()))) {
+            trainingMapper.updateCategoryMirror(row.getId(), row.getName());
+        }
     }
 
     /** 只保留 PATCH 允许的键，其余丢弃——「传了 null」与「没传」的差别全在这个键集合上 */

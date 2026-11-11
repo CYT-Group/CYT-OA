@@ -1,0 +1,580 @@
+{
+  "$defs": {
+    "LayoutBlock": {
+      "description": "AI 产出的单个块。字段全是 Optional，必填项交给 validate_blocks 判。",
+      "properties": {
+        "type": {
+          "enum": [
+            "text",
+            "image",
+            "imageText",
+            "section",
+            "callout",
+            "keypoints",
+            "cards",
+            "steps",
+            "divider",
+            "rawhtml",
+            "quote",
+            "metrics",
+            "compare",
+            "status",
+            "alert",
+            "bento",
+            "numsec",
+            "tabcard",
+            "accordion",
+            "docref"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "富文本，必须是 HTML（<p>/<ul>/<blockquote>）",
+          "title": "Text"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "num": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "numsec 的章序号，如「第一章」",
+          "title": "Num"
+        },
+        "html": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "rawhtml 块的原始 HTML",
+          "title": "Html"
+        },
+        "caption": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "bg": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bg"
+        },
+        "variant": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "callout 取 info|success|warning|danger；alert 取 info|success|warn|danger（注意 warn 不是 warning）",
+          "title": "Variant"
+        },
+        "columns": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Columns"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image"
+        },
+        "slug": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slug"
+        },
+        "button_text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Button Text"
+        },
+        "button_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Button Url"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LayoutItem"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Items"
+        },
+        "cards": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LayoutItem"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cards"
+        },
+        "left": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutSide"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "right": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutSide"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tabs": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LayoutTab"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tabs"
+        },
+        "activeTab": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Activetab"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "LayoutBlock",
+      "type": "object"
+    },
+    "LayoutItem": {
+      "description": "结构化块的单个条目 —— 字段按块类型取用，名字必须与 _ITEM_FIELDS 一致。\n\n- cards     → icon / title / text\n- keypoints → icon / title / desc\n- steps     → title / desc\n- metrics   → value / label\n- status    → status(pass|fail|warn) / text / tag\n- accordion → icon / title / lines(字符串数组) / open\n- bento     → icon / title / desc / color(#RRGGBB) / span",
+      "properties": {
+        "icon": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icon"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "desc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Desc"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "status 块专用，取值 pass | fail | warn",
+          "title": "Status"
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tag"
+        },
+        "lines": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lines"
+        },
+        "open": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Open"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "bento 卡片色，必须是 #RRGGBB",
+          "title": "Color"
+        },
+        "span": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Span"
+        }
+      },
+      "title": "LayoutItem",
+      "type": "object"
+    },
+    "LayoutSide": {
+      "description": "compare 块的左/右一侧。items 是**纯文本要点数组**（契约 _SIDE_FIELDS.items = list）。",
+      "properties": {
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "color": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Color"
+        },
+        "items": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Items"
+        }
+      },
+      "title": "LayoutSide",
+      "type": "object"
+    },
+    "LayoutTab": {
+      "description": "tabcard 的一个页签（契约 _TAB_FIELDS）。",
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "header": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Header"
+        },
+        "subHeader": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subheader"
+        },
+        "metrics": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/LayoutItem"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metrics"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "title": "LayoutTab",
+      "type": "object"
+    }
+  },
+  "description": "整篇排版结果。",
+  "properties": {
+    "blocks": {
+      "description": "按文档顺序排列的块数组",
+      "items": {
+        "$ref": "#/$defs/LayoutBlock"
+      },
+      "title": "Blocks",
+      "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "一句话说明用了哪些块、为什么这样分（给用户看的排版说明，不写进文档）",
+      "title": "Summary"
+    }
+  },
+  "required": [
+    "blocks"
+  ],
+  "title": "LayoutResult",
+  "type": "object"
+}

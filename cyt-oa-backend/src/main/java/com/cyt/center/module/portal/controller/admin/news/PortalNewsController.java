@@ -46,6 +46,26 @@ import static com.cyt.center.module.portal.enums.ErrorCodeConstants.NEWS_NOT_EXI
 @Validated
 @RequiredArgsConstructor
 public class PortalNewsController {
+    private final com.cyt.center.module.portal.service.push.PortalContentPushService contentPush;
+
+    public record PushRequest(java.util.List<String> notifyDeptScope, boolean force) {}
+
+    @PostMapping("/notify")
+    @SaCheckPermission(PortalCapability.REVIEW)
+    public Result<java.util.Map<String,Object>> notify(@RequestParam("id") Long id,
+            @RequestBody(required=false) PushRequest body) {
+        Long actor = getLoginUserId();
+        var row = newsService.requireVisible(actor, id, com.cyt.center.module.portal.enums.ErrorCodeConstants.NEWS_NOT_EXISTS);
+        return success(contentPush.news(actor, row, body == null ? null : body.notifyDeptScope(), body != null && body.force(), false));
+    }
+
+    @PostMapping("/test-push-to-me")
+    @SaCheckPermission(PortalCapability.REVIEW)
+    public Result<java.util.Map<String,Object>> testPush(@RequestParam("id") Long id) {
+        Long actor = getLoginUserId();
+        return success(contentPush.news(actor, newsService.requireVisible(actor, id,
+                com.cyt.center.module.portal.enums.ErrorCodeConstants.NEWS_NOT_EXISTS), null, true, true));
+    }
 
     private final PortalNewsService newsService;
 

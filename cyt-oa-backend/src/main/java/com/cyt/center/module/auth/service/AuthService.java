@@ -54,7 +54,7 @@ public class AuthService {
             throw AuthException.forbidden("账号不存在或已停用，请联系管理员");
         }
         String deviceType = resolveDevice(device, principal);
-        if (CurrentUser.DEVICE_ADMIN.equals(deviceType) && !principal.roles().contains(PrincipalService.ROLE_ADMIN)) {
+        if (CurrentUser.DEVICE_ADMIN.equals(deviceType) && !principal.canAccessConsole()) {
             throw AuthException.forbidden("该账号没有管理控制台权限");
         }
         users.markLogin(userId);
@@ -93,7 +93,7 @@ public class AuthService {
         if (!DEVICE_AUTO.equals(requested)) {
             return requested;
         }
-        return principal.roles().contains(PrincipalService.ROLE_ADMIN)
+        return principal.canAccessConsole()
                 ? CurrentUser.DEVICE_ADMIN : CurrentUser.DEVICE_FRONT;
     }
 

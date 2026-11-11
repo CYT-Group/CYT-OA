@@ -61,4 +61,62 @@ public interface ErrorCodeConstants {
     /** Portal 的 track 缺 page_url 时回 200 + success=False；迁到 OA 后按入参不合法处理，走这个码 */
     ErrorCode PAGE_VIEW_URL_REQUIRED = new ErrorCode(1_060_400_000, "page_url required");
 
+    // ========== 培训中心 1-060-500-000 ==========
+    ErrorCode TRAINING_NOT_EXISTS = new ErrorCode(1_060_500_000, "课程不存在");
+    ErrorCode TRAINING_FORBIDDEN = new ErrorCode(1_060_500_001, "权限不足");
+    ErrorCode TRAINING_STATUS_INVALID = new ErrorCode(1_060_500_002, "status 只能是 draft 或 published");
+    ErrorCode TRAINING_LEVEL_INVALID = new ErrorCode(1_060_500_003, "level 只能是 required 或 elective");
+    ErrorCode TRAINING_CATEGORY_REQUIRED = new ErrorCode(1_060_500_004, "分类不能为空");
+    ErrorCode TRAINING_PUBLISH_NO_LESSONS = new ErrorCode(1_060_500_005, "课程至少要有一个课时才能发布");
+    ErrorCode TRAINING_LESSON_NOT_EXISTS = new ErrorCode(1_060_500_006, "课时不存在");
+    ErrorCode TRAINING_LESSON_FIELDS_INVALID = new ErrorCode(1_060_500_007, "{}");
+    ErrorCode TRAINING_PROGRESS_PERCENT_INVALID = new ErrorCode(1_060_500_008, "percent 须在 0-100 之间");
+    /** NAS/MinIO 未配置或不可达（Portal 的 Unavailable → 503 语义） */
+    ErrorCode TRAINING_NAS_UNAVAILABLE = new ErrorCode(1_060_500_009, "{}");
+    /** 媒体预签名：课时缺对象键/图片/外链（Portal 的 Invalid → 422 语义） */
+    ErrorCode TRAINING_MEDIA_KEY_MISSING = new ErrorCode(1_060_500_010, "{}");
+    /** 管理端直传：kind / 扩展名不匹配（Portal 的 Invalid → 422 语义） */
+    ErrorCode TRAINING_UPLOAD_INVALID = new ErrorCode(1_060_500_011, "{}");
+    /** 导入与另一次扫描撞唯一键（Portal 的 Conflict → 409 语义） */
+    ErrorCode TRAINING_IMPORT_CONFLICT = new ErrorCode(1_060_500_012, "导入与另一次扫描撞车，请稍后重试");
+
+    // ========== 展会日历 1-060-600-000 ==========
+    ErrorCode EVENT_NOT_EXISTS = new ErrorCode(1_060_600_000, "活动不存在");
+
+    // ========== 新品动态 1-060-700-000 ==========
+    ErrorCode PRODUCT_NOT_EXISTS = new ErrorCode(1_060_700_000, "产品不存在");
+
+    // ========== HR 文档 CMS 1-060-800-000 ==========
+    ErrorCode HRDOC_NOT_EXISTS = new ErrorCode(1_060_800_000, "文档不存在");
+    ErrorCode HRDOC_FORBIDDEN = new ErrorCode(1_060_800_001, "权限不足");
+    ErrorCode HRDOC_NOT_PUBLISHED = new ErrorCode(1_060_800_002, "文档未发布");
+    ErrorCode HRDOC_OFFLINE = new ErrorCode(1_060_800_003, "文档已下架");
+    /** slug 形状/长度不合法（Portal 的 Invalid → 422 语义） */
+    ErrorCode HRDOC_SLUG_INVALID = new ErrorCode(1_060_800_004, "{}");
+    /** slug 或其旧路径已被其它文档占用（Portal 的 Conflict → 409 语义） */
+    ErrorCode HRDOC_SLUG_TAKEN = new ErrorCode(1_060_800_005, "slug 已被其它文档占用");
+    ErrorCode HRDOC_CATEGORY_INVALID = new ErrorCode(1_060_800_006, "{}");
+    ErrorCode HRDOC_TOPIC_INVALID = new ErrorCode(1_060_800_007, "{}");
+    /** 块/展示字段/封面/签收等形状校验不通过（Portal 的 Invalid → 422 语义） */
+    ErrorCode HRDOC_FIELDS_INVALID = new ErrorCode(1_060_800_008, "{}");
+    /** 无草稿可发布（Portal 的 BadRequest → 400 语义） */
+    ErrorCode HRDOC_NO_DRAFT = new ErrorCode(1_060_800_009, "无草稿内容可发布");
+    ErrorCode HRDOC_ALREADY_PUBLISHED_NOT_OFFLINE = new ErrorCode(1_060_800_010, "文档已发布且未下架，请先下架再删除");
+    ErrorCode HRDOC_NEVER_PUBLISHED = new ErrorCode(1_060_800_011, "文档从未发布");
+    /** 目标版本已发布过（Portal 的 Conflict → 409 语义） */
+    ErrorCode HRDOC_VERSION_TAKEN = new ErrorCode(1_060_800_012, "版本 {} 已发布过，请使用新版本号");
+    ErrorCode HRDOC_VERSION_NOT_EXISTS = new ErrorCode(1_060_800_013, "版本不存在");
+    ErrorCode HRDOC_DRAFT_VERSION_NOT_EXISTS = new ErrorCode(1_060_800_014, "草稿版本不存在");
+    /** 发布确认凭据失效（草稿在确认期间变化，Portal 的 Conflict → 409 语义） */
+    ErrorCode HRDOC_REVISION_CONFLICT = new ErrorCode(1_060_800_015, "草稿在确认期间已变化，请重新检查后发布");
+    ErrorCode HRDOC_BODY_CHANGED = new ErrorCode(1_060_800_016, "正文已修改，请确认更高版本号后发布");
+
+    // ========== 制度签收 1-060-910-000 ==========
+    ErrorCode SIGNOFF_REF_REQUIRED = new ErrorCode(1_060_910_000, "document_id 与 document 必须且只能提供一个");
+    ErrorCode SIGNOFF_NOT_SIGNABLE = new ErrorCode(1_060_910_001, "文档未配置为可签收（需 requires_signoff=true 且已发布）");
+    ErrorCode SIGNOFF_VERSION_MISMATCH = new ErrorCode(1_060_910_002, "版本号不匹配：当前最新版本为 {}");
+    ErrorCode SIGNOFF_DEPT_FORBIDDEN = new ErrorCode(1_060_910_003, "本文档限定特定部门签收");
+    ErrorCode SIGNOFF_UNKNOWN_DOC = new ErrorCode(1_060_910_004, "未知文档或未发布");
+
+
 }

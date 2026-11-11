@@ -48,6 +48,8 @@ system-schema.sql → dict-seed.sql → permission-seed.sql → system-seed.sql
 已有数据库启用企微花名册同步前，需额外执行 `src/main/resources/db/wecom-hr-sync-schema.sql`。
 新库的 `hrm-schema.sql` 已包含该表；此升级脚本仅创建缺失的同步基线表，不修改员工日期。
 
+Portal 管理迁移的其他增量按[迁移说明](docs/portal-admin-migration.md)执行。启用「入口上线管理」前还需执行 `src/main/resources/db/portal-entry-rollout-schema.sql`；该脚本可重复执行且保留已有开关，默认全部开启。
+
 ### 4. 构建并启动
 
 ```sh
@@ -74,6 +76,7 @@ docs/                                   配置与开发文档
 - [配置说明](docs/configuration.md)：数据库、Redis、企微网关、SSO 与登录开关。
 - [开发与验证](docs/development.md)：本地启动、编译约定、冒烟检查与提交前核对。
 - [组织与员工档案](docs/organization-and-employees.md)：企微字段归属、人事维护、账号状态及已有数据库升级。
+- [Portal 两组管理迁移](docs/portal-admin-migration.md)：入口、数据、附件缺口、建表顺序与切流配置。
 
 ## 参与开发
 

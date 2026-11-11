@@ -26,7 +26,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                 currentUser.requireAdminConsole();
             });
             SaRouter.match("/api/**")
-                    .notMatch("/api/auth/**", "/api/wecom/**")
+                    .notMatch("/api/auth/**", "/api/wecom/**", "/api/portal/media/images/*", "/api/portal/celebrations/cards/**")
                     .check(r -> currentUser.requireUserId());
         })).addPathPatterns("/**").excludePathPatterns("/error", "/favicon.ico");
     }

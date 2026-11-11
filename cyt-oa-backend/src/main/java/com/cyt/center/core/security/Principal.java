@@ -15,4 +15,8 @@ public record Principal(Long userId, String username, String name, List<String> 
         return roles.contains("admin");
     }
 
+    public boolean canAccessConsole() {
+        return isAdmin() || has("can_enter_admin");
+    }
+
 }
