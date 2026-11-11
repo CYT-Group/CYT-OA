@@ -41,6 +41,7 @@ export interface ColumnConfig {
 }
 
 export interface RowAction {
+  permission?: string
   label: string
   api: string
   method?: 'get' | 'post' | 'put' | 'delete' | 'download'
@@ -67,6 +68,10 @@ export interface PageAction {
 }
 
 export interface PageConfig {
+  permission?: string
+  createPermission?: string
+  editPermission?: string
+  deletePermission?: string
   key: string
   title: string
   desc?: string
@@ -88,6 +93,8 @@ export interface PageConfig {
 }
 
 export interface MenuLeaf {
+  permission?: string
+  anyPermissions?: string[]
   key: string
   title: string
   icon: string
@@ -96,6 +103,7 @@ export interface MenuLeaf {
 }
 
 export interface MenuGroup {
+  portal?: boolean
   group: string
   items: MenuLeaf[]
 }

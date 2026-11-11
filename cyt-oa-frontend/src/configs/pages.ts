@@ -1,4 +1,5 @@
 import type { PageConfig, MenuGroup, TabbedPage } from './types'
+import { portalMenus, portalPages } from './portal'
 
 /** 业务单审批状态（BpmProcessInstanceStatusEnum） */
 const APPLY_STATUS = {
@@ -43,6 +44,7 @@ const timeField = (key: string, label: string) => ({ key, label, type: 'datetime
 const reasonField = { key: 'reason', label: '申请原因', type: 'textarea' as const, required: true }
 
 export const pageConfigs: Record<string, PageConfig> = {
+  ...portalPages,
 
   // ==================== 协同办公 ====================
   'oa-overtime': {
@@ -636,6 +638,102 @@ export const pageConfigs: Record<string, PageConfig> = {
       { label: '驳回', api: '/admin-api/portal/wiki/reject', tone: 'dan',
         prompt: { key: 'comment', label: '驳回原因', required: true }, successMsg: '已驳回' }
     ]
+  },
+  'portal-training': {
+    key: 'portal-training', title: '培训课程', desc: 'Portal 搬来的培训课程：手建草稿、课时与发布下架',
+    api: '/admin-api/portal/training/page', getApi: '/admin-api/portal/training/get',
+    search: [
+      { key: 'q', label: '关键词', searchable: true, placeholder: '标题 / 简介' },
+      { key: 'status', label: '状态', type: 'select', searchable: true, blankLabel: '全部（含草稿）', options: [
+        { label: '草稿', value: 'draft' }, { label: '已发布', value: 'published' }
+      ] },
+      { key: 'category', label: '分类', searchable: true, placeholder: '精确匹配小类名' }
+    ],
+    columns: [
+      { key: 'id', label: 'ID' },
+      { key: 'title', label: '标题', ellipsis: true },
+      { key: 'category', label: '分类' },
+      { key: 'level', label: '级别', map: { required: '必修', elective: '选修' } },
+      { key: 'lessonCount', label: '课时数' },
+      { key: 'status', label: '状态', statusMap: PORTAL_STATUS },
+      { key: 'createdAt', label: '创建时间' }
+    ],
+    fields: [
+      { key: 'title', label: '标题', required: true },
+      { key: 'category', label: '分类', required: true, hint: '不存在会自动建小类' },
+      { key: 'level', label: '级别', type: 'select', options: [
+        { label: '必修', value: 'required' }, { label: '选修', value: 'elective' }
+      ] },
+      { key: 'deptScope', label: '可见部门', type: 'textarea', json: true, hint: '部门名 JSON 数组，留空 = 全员' },
+      { key: 'description', label: '简介', type: 'textarea' },
+      { key: 'coverImage', label: '封面地址' },
+      { key: 'instructor', label: '讲师' },
+      { key: 'sortOrder', label: '排序', type: 'number' }
+    ],
+    createApi: '/admin-api/portal/training/create',
+    updateApi: '/admin-api/portal/training/update',
+    deleteApi: '/admin-api/portal/training/delete',
+    rowActions: [
+      { label: '发布', api: '/admin-api/portal/training/publish', method: 'post', tone: 'pri',
+        confirm: '课程至少要有一个课时才能发布', successMsg: '已发布' },
+      { label: '下架', api: '/admin-api/portal/training/unpublish', method: 'post', tone: 'gho',
+        successMsg: '已下架' }
+    ]
+  },
+  'portal-events': {
+    key: 'portal-events', title: '展会日历', desc: '维护展会与活动安排，方便员工了解时间、地点和参与信息。',
+    api: '/admin-api/portal/events/page', getApi: '/admin-api/portal/events/get',
+    search: [
+      { key: 'q', label: '关键词', searchable: true, placeholder: '标题 / 地点' }
+    ],
+    columns: [
+      { key: 'title', label: '标题', ellipsis: true },
+      { key: 'location', label: '地点' },
+      { key: 'startDate', label: '开始日期' },
+      { key: 'endDate', label: '结束日期' },
+      { key: 'eventType', label: '活动类型', map: { exhibition: '展会', holiday: '节假日', company: '公司活动', training: '培训' } },
+      { key: 'createdAt', label: '创建时间' }
+    ],
+    fields: [
+      { key: 'title', label: '标题', required: true },
+      { key: 'location', label: '地点' },
+      { key: 'startDate', label: '开始日期', type: 'date', hint: '新建缺省今天' },
+      { key: 'endDate', label: '结束日期', type: 'date' },
+      { key: 'eventType', label: '活动类型', placeholder: '如 exhibition（展会）' },
+      { key: 'description', label: '介绍', type: 'textarea' }
+    ],
+    createApi: '/admin-api/portal/events/create',
+    updateApi: '/admin-api/portal/events/update',
+    deleteApi: '/admin-api/portal/events/delete'
+  },
+  'portal-products': {
+    key: 'portal-products', title: '新品动态', desc: '维护新品资料、上市日期和详情链接，设置员工关注的精选产品。',
+    api: '/admin-api/portal/products/page', getApi: '/admin-api/portal/products/get',
+    search: [
+      { key: 'q', label: '关键词', searchable: true, placeholder: '名称 / 介绍' },
+      { key: 'brand', label: '品牌', searchable: true, placeholder: '精确匹配' }
+    ],
+    columns: [
+      { key: 'name', label: '名称', ellipsis: true },
+      { key: 'brand', label: '品牌' },
+      { key: 'category', label: '分类' },
+      { key: 'launchDate', label: '发布日期' },
+      { key: 'isFeatured', label: '精选', map: { true: '★ 置顶', false: '—' } },
+      { key: 'createdAt', label: '创建时间' }
+    ],
+    fields: [
+      { key: 'name', label: '名称', required: true },
+      { key: 'brand', label: '品牌' },
+      { key: 'category', label: '分类' },
+      { key: 'launchDate', label: '发布日期', type: 'date' },
+      { key: 'imageUrl', label: '图片地址' },
+      { key: 'linkUrl', label: '详情链接' },
+      { key: 'isFeatured', label: '精选置顶', type: 'switch' },
+      { key: 'description', label: '介绍', type: 'textarea' }
+    ],
+    createApi: '/admin-api/portal/products/create',
+    updateApi: '/admin-api/portal/products/update',
+    deleteApi: '/admin-api/portal/products/delete'
   }
 }
 
@@ -669,14 +767,7 @@ export const menuGroups: MenuGroup[] = [
       { key: 'hrm-holiday', title: '节假日', icon: 'gift' }
     ]
   },
-  {
-    group: '门户内容',
-    items: [
-      { key: 'portal-news', title: '公司动态', icon: 'megaphone' },
-      { key: 'portal-wiki', title: '知识库', icon: 'book' },
-      { key: 'portal-analytics', title: '浏览看板', icon: 'trending-up', to: '/portal/analytics' }
-    ]
-  },
+  ...portalMenus,
   {
     group: '系统管理',
     items: [
@@ -686,3 +777,17 @@ export const menuGroups: MenuGroup[] = [
     ]
   }
 ]
+
+for (const [key, permission] of Object.entries({
+  'portal-news': 'can_enter_admin', 'portal-wiki': 'can_enter_admin',
+  'portal-training': 'can_manage_training', 'portal-events': 'can_manage_events', 'portal-products': 'can_manage_products'
+})) {
+  const config = pageConfigs[key]!
+  config.permission = permission
+  config.createPermission = ['portal-news', 'portal-wiki'].includes(key) ? 'can_create_content' : permission
+  config.deletePermission = 'can_delete'
+  for (const action of config.rowActions ?? []) {
+    action.permission = ['portal-news', 'portal-wiki'].includes(key) ? 'can_review' : permission
+    if (['portal-news', 'portal-wiki'].includes(key)) action.when = (row) => row.status === 'pending'
+  }
+}

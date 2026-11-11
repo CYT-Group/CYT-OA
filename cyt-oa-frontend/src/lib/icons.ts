@@ -31,11 +31,13 @@ import {
   Plane,
   ReceiptText,
   Stamp,
+  Sparkles,
   Target,
   TrendingUp,
   Truck,
   User,
-  Users
+  Users,
+  Upload
 } from '@lucide/vue'
 
 /** 语义名 → lucide 组件，业务代码不用关心具体图标名。 */
@@ -74,6 +76,8 @@ export const iconMap: Record<string, Component> = {
   badge: BadgeCheck,
   briefcase: BriefcaseBusiness,
   chart: BarChart3,
+  sparkles: Sparkles,
+  upload: Upload,
   chevron: ChevronDown
 }
 

@@ -1,0 +1,223 @@
+{
+  "roots": [
+    "views/admin/HrDocEditorView.vue",
+    "views/admin/HrDocPreviewView.vue",
+    "views/admin/HrDocAdminView.vue",
+    "components/ToastNotify.vue",
+    "components/ui/GlobalConfirmHost.vue"
+  ],
+  "files": {
+    "components\\ui\\GlobalConfirmHost.vue": [
+      "components\\ui\\ConfirmDialog.vue",
+      "composables\\useConfirm.ts"
+    ],
+    "composables\\useConfirm.ts": [],
+    "components\\ui\\ConfirmDialog.vue": [],
+    "components\\ToastNotify.vue": [
+      "composables\\useToast.ts"
+    ],
+    "composables\\useToast.ts": [],
+    "views\\admin\\HrDocAdminView.vue": [
+      "components\\admin\\AdminLayout.vue",
+      "components\\admin\\FormCard.vue",
+      "components\\ui\\StatusBadge.vue",
+      "components\\ui\\SelectField.vue",
+      "components\\ui\\ConfirmDialog.vue",
+      "components\\hr\\HrDocPushDialog.vue",
+      "components\\HrDocRenderer.vue",
+      "components\\HrBlocksRenderer.vue",
+      "BRIDGE @/api",
+      "composables\\useToast.ts"
+    ],
+    "components\\HrBlocksRenderer.vue": [
+      "components\\HrDocRenderer.vue",
+      "data\\hr-themes.ts",
+      "data\\hr-cover.ts",
+      "composables\\usePublishedHrDocs.ts",
+      "utils\\hr-chapter-color.ts",
+      "utils\\hr-docref.ts"
+    ],
+    "utils\\hr-docref.ts": [
+      "data\\hr-cover.ts"
+    ],
+    "data\\hr-cover.ts": [],
+    "utils\\hr-chapter-color.ts": [],
+    "composables\\usePublishedHrDocs.ts": [
+      "BRIDGE @/api",
+      "types.ts"
+    ],
+    "types.ts": [
+      "data\\hr-cover.ts"
+    ],
+    "data\\hr-themes.ts": [],
+    "components\\HrDocRenderer.vue": [],
+    "components\\hr\\HrDocPushDialog.vue": [
+      "components\\ui\\BaseModal.vue",
+      "BRIDGE @/api"
+    ],
+    "components\\ui\\BaseModal.vue": [],
+    "components\\ui\\SelectField.vue": [],
+    "components\\ui\\StatusBadge.vue": [],
+    "components\\admin\\FormCard.vue": [],
+    "components\\admin\\AdminLayout.vue": [
+      "components\\ui\\HrLayoutJobsLauncher.vue"
+    ],
+    "components\\ui\\HrLayoutJobsLauncher.vue": [
+      "components\\ui\\HrLayoutJobsDrawer.vue",
+      "BRIDGE @/api",
+      "composables\\useToast.ts"
+    ],
+    "components\\ui\\HrLayoutJobsDrawer.vue": [
+      "components\\HrBlocksRenderer.vue",
+      "BRIDGE @/api"
+    ],
+    "views\\admin\\HrDocPreviewView.vue": [
+      "components\\PortalLayout.vue",
+      "components\\HrDocRenderer.vue",
+      "components\\HrBlocksRenderer.vue",
+      "components\\HrDocOutlineNav.vue",
+      "components\\HrDocCover.vue",
+      "components\\HrDocSignoff.vue",
+      "components\\HrDocSideRail.vue",
+      "components\\ui\\StatusBadge.vue",
+      "data\\hr-themes.ts",
+      "data\\hr-cover.ts",
+      "utils\\hr-signoff.ts",
+      "BRIDGE @/api"
+    ],
+    "utils\\hr-signoff.ts": [
+      "utils\\hr-docref.ts"
+    ],
+    "components\\HrDocSideRail.vue": [],
+    "components\\HrDocSignoff.vue": [
+      "components\\HrDocRenderer.vue",
+      "utils\\hr-signoff.ts"
+    ],
+    "components\\HrDocCover.vue": [
+      "data\\hr-themes.ts",
+      "data\\hr-cover.ts"
+    ],
+    "components\\HrDocOutlineNav.vue": [
+      "utils\\hr-chapter-color.ts"
+    ],
+    "components\\PortalLayout.vue": [],
+    "views\\admin\\HrDocEditorView.vue": [
+      "components\\ui\\StatusBadge.vue",
+      "components\\ui\\RichTextEditor.vue",
+      "components\\HrDocSignoff.vue",
+      "components\\HrDocSideRail.vue",
+      "components\\ui\\RteToolbar.vue",
+      "components\\ui\\SelectField.vue",
+      "components\\ui\\DeptScopePicker.vue",
+      "components\\ui\\ConfirmDialog.vue",
+      "components\\HrBlockListEditor.vue",
+      "components\\HrDocDraftHistory.vue",
+      "components\\HrBlocksRenderer.vue",
+      "components\\HrDocRenderer.vue",
+      "components\\HrDocCover.vue",
+      "components\\HrDocOutlineNav.vue",
+      "components\\hr\\HrDocVersionDialog.vue",
+      "components\\ui\\HrLayoutDialog.vue",
+      "components\\ui\\HrLayoutJobsLauncher.vue",
+      "components\\ui\\HrNewDocDialog.vue",
+      "components\\news\\ImageUpload.vue",
+      "BRIDGE @/api",
+      "data\\hr-themes.ts",
+      "data\\hr-cover.ts",
+      "utils\\hr-signoff.ts",
+      "utils\\hr-version.ts",
+      "composables\\useToast.ts",
+      "composables\\useConfirm.ts"
+    ],
+    "utils\\hr-version.ts": [],
+    "components\\news\\ImageUpload.vue": [
+      "BRIDGE @/api",
+      "utils\\imageCompress.js",
+      "components\\ui\\ConfirmDialog.vue"
+    ],
+    "utils\\imageCompress.js": [],
+    "components\\ui\\HrNewDocDialog.vue": [
+      "BRIDGE @/api"
+    ],
+    "components\\ui\\HrLayoutDialog.vue": [
+      "BRIDGE @/api",
+      "composables\\useToast.ts"
+    ],
+    "components\\hr\\HrDocVersionDialog.vue": [
+      "components\\ui\\BaseModal.vue",
+      "utils\\hr-version.ts"
+    ],
+    "components\\HrDocDraftHistory.vue": [
+      "components\\ui\\ConfirmDialog.vue",
+      "components\\HrBlocksRenderer.vue",
+      "components\\HrDocRenderer.vue",
+      "BRIDGE @/api",
+      "utils\\messageTime.ts",
+      "composables\\useToast.ts"
+    ],
+    "utils\\messageTime.ts": [],
+    "components\\HrBlockListEditor.vue": [
+      "components\\ui\\RichTextEditor.vue",
+      "components\\news\\ImageUpload.vue",
+      "components\\HrBlocksRenderer.vue",
+      "components\\HrBlockPicker.vue",
+      "components\\ui\\EmojiPickerPopover.vue",
+      "components\\ui\\ChapterColorPopover.vue",
+      "components\\ui\\QuoteColorPopover.vue",
+      "components\\ui\\HrDocRefPicker.vue",
+      "composables\\useConfirm.ts"
+    ],
+    "components\\ui\\HrDocRefPicker.vue": [
+      "composables\\usePublishedHrDocs.ts"
+    ],
+    "components\\ui\\QuoteColorPopover.vue": [],
+    "components\\ui\\ChapterColorPopover.vue": [],
+    "components\\ui\\EmojiPickerPopover.vue": [],
+    "components\\HrBlockPicker.vue": [],
+    "components\\ui\\RichTextEditor.vue": [
+      "BRIDGE @/api",
+      "utils\\imageCompress.js",
+      "composables\\useToast.ts",
+      "data\\hr-themes.ts",
+      "components\\ui\\RteToolbar.vue",
+      "components\\ui\\RteTableMenu.vue",
+      "components\\ui\\rte-table-extensions.js"
+    ],
+    "components\\ui\\rte-table-extensions.js": [],
+    "components\\ui\\RteTableMenu.vue": [
+      "components\\ui\\rte-table-extensions.js"
+    ],
+    "components\\ui\\RteToolbar.vue": [
+      "components\\ui\\RteTablePicker.vue",
+      "components\\ui\\SelectField.vue",
+      "components\\ui\\ChapterColorPopover.vue",
+      "components\\ui\\QuoteColorPopover.vue"
+    ],
+    "components\\ui\\RteTablePicker.vue": [
+      "utils\\input-normalize.js"
+    ],
+    "utils\\input-normalize.js": [],
+    "components\\ui\\DeptScopePicker.vue": [
+      "BRIDGE @/api"
+    ]
+  },
+  "external": [
+    "@tiptap/extension-blockquote",
+    "@tiptap/extension-image",
+    "@tiptap/extension-link",
+    "@tiptap/extension-placeholder",
+    "@tiptap/extension-table",
+    "@tiptap/extension-text-align",
+    "@tiptap/extension-text-style",
+    "@tiptap/pm/tables",
+    "@tiptap/starter-kit",
+    "@tiptap/vue-3",
+    "dompurify",
+    "vue",
+    "vue-router"
+  ],
+  "bridges": {
+    "@/api": "D:\\code\\CYT-OA\\cyt-oa-frontend\\src\\pages\\portal\\editor\\bridge\\api.ts",
+    "@/stores/auth": "D:\\code\\CYT-OA\\cyt-oa-frontend\\src\\pages\\portal\\editor\\bridge\\auth.ts"
+  }
+}

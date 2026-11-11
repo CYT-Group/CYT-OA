@@ -2,7 +2,7 @@
   <div>
   <PageHeader
     title="访问分析"
-    description="展示页每次进页面打的浏览埋点：浏览量、访客与热门内容。今日按服务器时区零点起算。"
+    description="查看门户访问趋势、访客数量与热门内容。"
   >
     <template #actions>
       <Button variant="outline" size="sm" :disabled="loading" @click="loadAll">
@@ -30,7 +30,7 @@
     </template>
   </Callout>
 
-  <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="analytics-metrics mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
     <StatCard
       v-for="s in statCards"
       :key="s.label"
@@ -286,13 +286,14 @@
     </section>
   </div>
 
-  <section v-if="historyFor" class="panel mt-4">
+  <section v-if="historyFor" id="portal-analytics-history" class="panel mt-4 scroll-mt-24">
     <div class="panel-header">
       <div class="panel-title">{{ historyName }} 的浏览轨迹</div>
-      <span class="text-xs text-muted-foreground">近 {{ days }} 天 · 最多 50 条</span>
+      <div class="flex items-center gap-3"><span class="text-xs text-muted-foreground">近 {{ days }} 天 · 最多 50 条</span><Button variant="ghost" size="sm" @click="closeHistory">收起</Button></div>
     </div>
     <div class="panel-body">
       <p v-if="loadingHistory" class="text-sm text-muted-foreground">加载中…</p>
+      <Callout v-else-if="historyError" tone="destructive" title="浏览轨迹加载失败">{{ historyError }}<template #action><Button size="sm" variant="outline" @click="openHistory(historyFor)">重试</Button></template></Callout>
       <div v-else-if="history.length" class="space-y-0">
         <div
           v-for="(h, i) in history"
@@ -320,12 +321,12 @@
     </div>
   </section>
 
-  <p class="mt-5 text-xs text-muted-foreground">数据来自展示页浏览埋点；长窗口的查询会慢一些。</p>
+  <p class="mt-5 text-xs text-muted-foreground">统计门户页面的访问情况，较长时间范围的查询可能需要更多时间。</p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CalendarDays, ChartNoAxesColumn, Eye, RefreshCw, UserCheck, Users } from '@lucide/vue'
 import Avatar from '../../ui/Avatar.vue'
 import Button from '../../ui/Button.vue'
@@ -361,6 +362,8 @@ const pages = ref<TopPage[]>([])
 const users = ref<ActiveUser[]>([])
 const history = ref<HistoryRow[]>([])
 const historyFor = ref('')
+const historyError = ref('')
+let historyRequest = 0
 const historyName = ref('')
 const loading = ref(false)
 const loadingHistory = ref(false)
@@ -490,7 +493,7 @@ async function loadAll() {
   err.value = ''
   hover.value = null
   history.value = []
-  historyFor.value = ''
+  closeHistory()
   historyName.value = ''
   const d = { days: days.value }
   try {
@@ -522,22 +525,29 @@ function setDays(v: number) {
 }
 
 async function openHistory(username: string) {
-  if (historyFor.value === username) return
+  if (historyFor.value === username && !historyError.value) return
+  const request = ++historyRequest
+  historyFor.value = username
+  historyName.value = users.value.find((u) => u.username === username)?.displayName || username
+  history.value = []
+  historyError.value = ''
   loadingHistory.value = true
+  await nextTick()
+  document.getElementById('portal-analytics-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   try {
-    history.value = await api.get<HistoryRow[]>('/admin-api/portal/analytics/user-history', {
+    const rows = await api.get<HistoryRow[]>('/admin-api/portal/analytics/user-history', {
       username,
       days: days.value,
       limit: 50
     })
-    historyFor.value = username
-    historyName.value = users.value.find((u) => u.username === username)?.displayName || username
+    if (request === historyRequest) history.value = rows
   } catch (e) {
-    err.value = errText(e, '轨迹加载失败')
+    if (request === historyRequest) historyError.value = errText(e, '轨迹加载失败')
   } finally {
-    loadingHistory.value = false
+    if (request === historyRequest) loadingHistory.value = false
   }
 }
+function closeHistory() { historyRequest++; historyFor.value = ''; loadingHistory.value = false }
 
 onMounted(() => {
   if (chartHost.value) {
@@ -553,6 +563,11 @@ onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <style scoped>
+@media (max-width: 639px) {
+  .analytics-metrics :deep(.panel) { padding: 14px; }
+  .analytics-metrics :deep(.size-11) { display: none; }
+  .analytics-metrics :deep(.text-\[30px\]) { margin-top: 10px; font-size: 25px; }
+}
 .chart-line {
   stroke-dasharray: 1;
   stroke-dashoffset: 1;

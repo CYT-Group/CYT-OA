@@ -34,6 +34,15 @@ export const session = {
     if (!info) return false
     return info.permissions.includes('*:*:*') || info.roles.includes('admin')
   },
+  get canManagePortal(): boolean {
+    return this.has('can_enter_admin')
+  },
+  get canAccessConsole(): boolean {
+    return this.isAdmin || this.canManagePortal
+  },
+  get consoleHome(): string {
+    return this.isAdmin ? '/admin' : '/portal'
+  },
   save(info: LoginInfo) {
     state.info = info
     localStorage.setItem(KEY, JSON.stringify(info))

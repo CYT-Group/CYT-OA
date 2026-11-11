@@ -14,18 +14,18 @@
         </span>
       </router-link>
 
-      <div v-if="session.isAdmin" class="workspace-switch sidebar-label" aria-label="切换工作空间">
+      <div v-if="session.canAccessConsole" class="workspace-switch sidebar-label" aria-label="切换工作空间">
         <router-link to="/me/overview" :class="{ active: !adminSpace }"
           ><House class="size-3.5" />我的工作台</router-link
         >
-        <router-link to="/admin" :class="{ active: adminSpace }"
+        <router-link :to="session.consoleHome" :class="{ active: adminSpace }"
           ><BriefcaseBusiness class="size-3.5" />管理控制台</router-link
         >
       </div>
       <div v-else class="sidebar-label px-6 pb-3 text-xs text-sidebar-muted">我的工作空间</div>
       <router-link
-        v-if="session.isAdmin && sidebarCollapsed"
-        :to="adminSpace ? '/me/overview' : '/admin'"
+        v-if="session.canAccessConsole && sidebarCollapsed"
+        :to="adminSpace ? '/me/overview' : session.consoleHome"
         class="mx-auto mb-4 grid size-10 place-items-center rounded-lg bg-sidebar-accent text-sidebar-foreground"
         :title="adminSpace ? '切换到我的工作台' : '切换到管理控制台'"
         :aria-label="adminSpace ? '切换到我的工作台' : '切换到管理控制台'"
@@ -168,10 +168,10 @@
         </div>
       </header>
 
-      <main id="main-content" class="workspace-main" tabindex="-1">
+      <main id="main-content" class="workspace-main" :class="{ 'portal-management': route.path.startsWith('/portal'), 'portal-document-workspace': route.path.startsWith('/portal/hr-documents/') }" tabindex="-1">
         <router-view v-slot="{ Component }">
           <transition name="page" mode="out-in">
-            <component :is="Component" :key="route.path" />
+            <component :is="Component" :key="route.path.startsWith('/portal/hr-documents') ? 'portal-hr-workspace' : route.path" />
           </transition>
         </router-view>
       </main>
@@ -179,6 +179,10 @@
         <span>畅盈通 OA · 协同办公平台</span><span>专注工作，高效协作</span>
       </footer>
     </div>
+    <template v-if="route.path.startsWith('/portal')">
+      <PortalToastNotify />
+      <PortalConfirmHost />
+    </template>
 
     <Sheet v-model:open="drawerOpen" title="畅盈通 OA" description="导航与账号" side="left" tone="sidebar">
       <div class="border-b border-sidebar-border px-4 py-3">
@@ -244,10 +248,15 @@ import AppNav from '../components/AppNav.vue'
 import CommandPalette from '../components/CommandPalette.vue'
 import Avatar from '../ui/Avatar.vue'
 import Button from '../ui/Button.vue'
+import PortalToastNotify from './portal/editor/legacy/components/ToastNotify.vue'
+import PortalConfirmHost from './portal/editor/legacy/components/ui/GlobalConfirmHost.vue'
 import DropdownMenu from '../ui/DropdownMenu.vue'
 import DropdownMenuItem from '../ui/DropdownMenuItem.vue'
 import Sheet from '../ui/Sheet.vue'
 import { navZones, type NavZone } from '../configs/nav'
+import { filterPortalNavigation } from '../lib/portal-access'
+import { matchesNavigation } from '../lib/navigation'
+import { loadPortalRollout } from '../lib/portal-rollout'
 import { pageConfigs, tabbedPages } from '../configs/pages'
 import { session } from '../lib/session'
 import { meSummary, loadMeSummary } from '../lib/me'
@@ -258,7 +267,7 @@ const router = useRouter()
 const drawerOpen = ref(false)
 const paletteOpen = ref(false)
 const sidebarCollapsed = ref(localStorage.getItem('cyt-oa-sidebar-collapsed') === 'true')
-const adminSpace = computed(() => session.isAdmin && !route.path.startsWith('/me'))
+const adminSpace = computed(() => session.canAccessConsole && !route.path.startsWith('/me'))
 const navigationZones = computed(() =>
   visibleZones.value.filter((zone) => (adminSpace.value ? zone.adminOnly : !zone.adminOnly))
 )
@@ -275,18 +284,14 @@ function toggleSidebar() {
 }
 
 const visibleZones = computed<NavZone[]>(() =>
-  navZones.filter((zone) => {
-    if (zone.adminOnly) return session.isAdmin
+  filterPortalNavigation(navZones).filter((zone) => {
+    if (zone.adminOnly) return session.canAccessConsole
     if (zone.key === 'team') return meSummary.teamCount > 0
     return true
   })
 )
 
 const deptName = computed(() => meSummary.deptName || '未分配部门')
-
-function norm(path: string) {
-  return path.split('?')[0]
-}
 
 const crumbs = computed<string[]>(() => {
   if (route.name === 'page') {
@@ -296,9 +301,9 @@ const crumbs = computed<string[]>(() => {
   if (route.name === 'console') return ['管理', '控制台概览']
   for (const zone of visibleZones.value) {
     for (const item of zone.items) {
-      if (norm(item.to) === norm(route.fullPath)) return [zone.title, item.title]
-      const child = item.children?.find((c) => norm(c.to) === norm(route.fullPath))
+      const child = item.children?.find((c) => matchesNavigation(c.to, route.fullPath))
       if (child) return [zone.title, item.title, child.title]
+      if (matchesNavigation(item.to, route.fullPath)) return [zone.title, item.title]
     }
   }
   return ['畅盈通 OA']
@@ -338,9 +343,11 @@ function onKeydown(event: KeyboardEvent) {
 onMounted(() => {
   void loadMeSummary()
   window.addEventListener('keydown', onKeydown)
+  window.addEventListener('focus', refreshRollout)
 })
 
-onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
+function refreshRollout() { if (session.canAccessConsole) void loadPortalRollout(true).catch(() => {}) }
+onBeforeUnmount(() => { window.removeEventListener('keydown', onKeydown); window.removeEventListener('focus', refreshRollout) })
 
 function logout() {
   drawerOpen.value = false

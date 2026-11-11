@@ -1,0 +1,156 @@
+/* ── CYT Portal — Vue 组件兼容变量 ──
+ * 主设计系统是 portal-design.css（通过 index.html 加载）
+ * 这里只补充现有 Vue 组件用到的变量别名
+ */
+
+/* 滚动条出现/消失时预留槽位，避免短页↔长页切换（如 tab 切换）整体横移抖动 */
+html { scrollbar-gutter: stable; }
+
+:root {
+  /* Colors (mapped to portal-design.css equivalents where possible) */
+  --v: #6366F1;
+  --p: #A855F7;
+  --pk: #EC4899;
+  --b: #3B82F6;
+  --t: #1a1d23;
+  --t2: #2D3258;
+  --t3: #5A5F7A;
+  --t4: #8C92AB;
+  --t5: #B8BECE;
+  --bd: rgba(99,102,241,0.13);
+  --bd2: rgba(99,102,241,0.26);
+  --nav-h: 64px;
+
+  /* Fonts */
+  --fs: 'Outfit', 'Noto Sans SC', sans-serif;
+  --fn: 'Noto Sans SC', 'Outfit', sans-serif;
+  --fm: 'JetBrains Mono', monospace;
+
+  /* Gradients & shadows */
+  --grad: linear-gradient(135deg, var(--v), var(--p), var(--pk));
+  --shadow: 0 4px 24px rgba(99,102,241,0.09);
+  --shadow-hover: 0 12px 40px rgba(99,102,241,0.17);
+
+  /* Extra colors used by some Vue components */
+  --surface: rgba(255,255,255,0.55);
+  --s2: rgba(255,255,255,0.75);
+  --bg: #f4f5f7;
+  --acc: #6366F1;
+  --acc-bg: rgba(99,102,241,0.08);
+  --green: #10b981;
+  --green-bg: rgba(16,185,129,0.08);
+  --red: #ef4444;
+  --red-bg: rgba(239,68,68,0.08);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.08);
+  --blue: #3b82f6;
+  --indigo: #6366f1;
+  --purple: #a855f7;
+  --rose: #f43f5e;
+  --cyan: #06b6d4;
+  --sky: #0ea5e9;
+  --violet: #8b5cf6;
+  --fe: rgba(99,102,241,0.06);
+}
+
+a { color: inherit; }
+img { max-width: 100%; }
+
+.glass {
+  /* 性能：去 backdrop-filter（动画背景上每帧重采样），底色补到 0.92 观感近似 */
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--bd);
+  border-radius: 16px;
+}
+
+.fade-up {
+  animation: fadeUp .4s ease forwards;
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  :root { --nav-h: 56px; }
+}
+@media (max-width: 480px) {
+  :root { --nav-h: 50px; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   统一按钮规格（v1.8）
+
+   背景：同一个后台里出现了两套规格 —— 列表页 4px/10px · 圆角6 · 12px，
+   编辑器顶栏 7px/16px · 圆角9 · 13px，观感不统一；且列表操作列 5 个按钮
+   全是同一套描边，主操作（通过）和次要操作（历史）视觉权重一样。
+
+   这里定一套语义化的：.btn 打底，.btn-primary 主操作实心、.btn-ok/.btn-danger
+   分别给通过与驳回、.btn-sm 小号。**新代码一律用这套，别再写裸样式。**
+   ───────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  background: #fff;
+  color: var(--t2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover:not(:disabled) { border-color: var(--v); color: var(--v); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid rgba(99, 102, 241, 0.45); outline-offset: 1px; }
+
+.btn-sm { padding: 4px 10px; border-radius: 7px; font-size: 12px; }
+
+/* 主操作：实心品牌渐变，一屏只该出现一个 */
+.btn-primary { background: var(--grad); color: #fff; border-color: transparent; }
+/* 🔴 必须显式写 border-color：否则会吃到 `.btn:hover` 的 `border-color: var(--v)`，
+   给实心按钮描一圈和底色不搭的边（语义按钮同理，见下面三个变体）。 */
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); color: #fff; border-color: transparent; }
+
+/* 通过 / 确认类 */
+.btn-ok {
+  background: rgba(16, 185, 129, 0.1);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+.btn-ok:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.18); color: #047857; border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* 驳回 / 删除类 */
+.btn-danger {
+  background: rgba(244, 63, 94, 0.08);
+  color: #b91c1c;
+  border-color: rgba(244, 63, 94, 0.25);
+}
+.btn-danger:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.15); color: #b91c1c; border-color: rgba(244, 63, 94, 0.45);
+}
+
+/* 推送企微 —— 蓝色（通知语义）。
+   🔴 上一版用的企微品牌绿跟「通过」的绿太接近，用户反馈「怎么又和同意是一个样式」。
+   六个按钮各占一色，一眼分清：
+     提交审批=品牌紫实心 · 通过=绿 · 驳回=红 · 推送企微=蓝 · 编辑=灰描边 · ⋯=图标 */
+.btn-notify {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+.btn-notify:hover:not(:disabled) {
+  background: rgba(37, 99, 235, 0.18); color: #1d4ed8; border-color: rgba(37, 99, 235, 0.5);
+}
+
+/* 图标按钮（操作列收进「⋯」菜单后，菜单里的项用它） */
+.btn-icon { padding: 4px 8px; font-size: 14px; line-height: 1; }

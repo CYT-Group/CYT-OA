@@ -5,8 +5,11 @@ import type { MenuLeaf } from './types'
 const leafTarget = (it: MenuLeaf) => it.to ?? `/page/${it.key}`
 
 export interface NavSub {
+  key?: string
   title: string
   to: string
+  permission?: string
+  anyPermissions?: string[]
 }
 
 export interface NavItem {
@@ -17,6 +20,9 @@ export interface NavItem {
   /** 计数徽章的键，取 /api/me/summary 返回的同名字段 */
   badge?: string
   children?: NavSub[]
+  permission?: string
+  anyPermissions?: string[]
+  systemOnly?: boolean
 }
 
 export interface NavZone {
@@ -57,10 +63,11 @@ export const navZones: NavZone[] = [
         key: g.group,
         title: g.group,
         icon: g.items[0]?.icon ?? 'folder',
+        systemOnly: !g.portal,
         to: leafTarget(g.items[0]!),
         // 组里只剩一个页面时不再套一层：那一行和父级标题讲的是同一件事
         children:
-          g.items.length > 1 ? g.items.map((it) => ({ title: it.title, to: leafTarget(it) })) : undefined
+          g.items.length > 1 ? g.items.map((it) => ({ key: it.key, title: it.title, to: leafTarget(it), permission: it.permission, anyPermissions: it.anyPermissions })) : undefined
       }))
     ]
   }

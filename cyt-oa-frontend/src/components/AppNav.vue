@@ -113,6 +113,7 @@
 </template>
 
 <script setup lang="ts">
+import { matchesNavigation } from '../lib/navigation'
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronDown, ChevronRight } from '@lucide/vue'
@@ -188,12 +189,8 @@ function toggleZone(key: string) {
   saveSet(ZONE_KEY, next)
 }
 
-function norm(path: string) {
-  return path.split('?')[0]
-}
-
 function samePath(path: string) {
-  return norm(path) === norm(route.fullPath)
+  return matchesNavigation(path, route.fullPath)
 }
 
 function hasActiveChild(item: NavItem) {
@@ -221,7 +218,7 @@ function findParentKey(full: string): string {
   for (const zone of props.zones) {
     for (const item of zone.items) {
       if (!item.children?.length) continue
-      if (item.children.some((c) => norm(c.to) === norm(full))) return item.key
+      if (item.children.some((c) => matchesNavigation(c.to, full))) return item.key
     }
   }
   return ''

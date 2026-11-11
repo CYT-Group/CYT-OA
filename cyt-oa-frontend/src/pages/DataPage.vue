@@ -374,6 +374,7 @@ import {
 import { pageConfigs, tabbedPages } from '../configs/pages'
 import type { ColumnConfig, FieldConfig, PageAction, RowAction } from '../configs/types'
 import { api } from '../lib/api'
+import { session } from '../lib/session'
 import { dictOptions, type DictItem } from '../lib/dict'
 import { remoteOptions, type SelectOption } from '../lib/options'
 import { errText, toast } from '../lib/toast'
@@ -454,6 +455,7 @@ const canCreate = computed(
   () =>
     config.value !== undefined &&
     config.value.canCreate !== false &&
+    (!config.value.createPermission || session.has(config.value.createPermission)) &&
     !!config.value.fields?.length &&
     !!config.value.createApi
 )
@@ -461,11 +463,13 @@ const canEdit = computed(
   () =>
     config.value !== undefined &&
     config.value.canEdit !== false &&
+    (!config.value.editPermission || session.has(config.value.editPermission)) &&
     !!config.value.fields?.length &&
     !!config.value.updateApi
 )
 const canDelete = computed(
-  () => config.value !== undefined && config.value.canDelete !== false && !!config.value.deleteApi
+  () => config.value !== undefined && config.value.canDelete !== false && !!config.value.deleteApi &&
+    (!config.value.deletePermission || session.has(config.value.deletePermission))
 )
 const hasRowActions = computed(() => canEdit.value || canDelete.value || !!config.value?.rowActions?.length)
 
@@ -809,7 +813,7 @@ async function save() {
 
 // ===== 行操作 / 页面操作 =====
 function visibleRowActions(row: Record<string, unknown>) {
-  return (config.value?.rowActions ?? []).filter((a) => !a.when || a.when(row))
+  return (config.value?.rowActions ?? []).filter((a) => (!a.permission || session.has(a.permission)) && (!a.when || a.when(row)))
 }
 
 function runRowAction(a: RowAction, row: Record<string, unknown>) {

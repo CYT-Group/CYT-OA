@@ -169,6 +169,24 @@
   padding: 28px 20px;
   outline: none;
 }
+.portal-management {
+  --portal-shell-sticky-top: 65px;
+  min-width: 0;
+}
+.portal-management .data-table :is(th, td) {
+  display: table-cell;
+  vertical-align: middle;
+}
+.portal-management .data-table :is(th, td).text-right,
+.portal-management .data-table :is(th, td).num { text-align: right; }
+.portal-management .data-table .sticky-col { width: 1%; min-width: 100px; }
+.portal-management .table-toolbar { gap: 8px; border-bottom: 1px solid var(--border); }
+.portal-management .table-toolbar > form { min-width: 0; flex: 1; }
+.portal-table-title { display: block; max-width: min(360px, 40vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 639px) {
+  .portal-management .table-toolbar { padding: 14px; }
+  .portal-table-title { max-width: 230px; }
+}
 .workspace-footer {
   display: flex;
   justify-content: space-between;
