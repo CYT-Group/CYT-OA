@@ -378,7 +378,7 @@
               <th class="text-right">更新</th>
               <th class="text-right">部门</th>
               <th class="text-right">冲突</th>
-              <th class="text-right">缺失</th>
+              <th class="text-right">未返回</th>
               <th class="text-right">耗时</th>
               <th>说明</th>
             </tr>
@@ -893,7 +893,7 @@ function reportRun(r: SyncRun | null) {
     `部门 ${r.departments ?? 0} 个`
   ]
   if (r.conflicts) parts.push(`冲突 ${r.conflicts} 项`)
-  if (r.missing) parts.push(`缺失 ${r.missing} 项`)
+  if (r.missing) parts.push(`未返回 ${r.missing} 人`)
   showToast('同步完成：' + parts.join('，'))
 }
 

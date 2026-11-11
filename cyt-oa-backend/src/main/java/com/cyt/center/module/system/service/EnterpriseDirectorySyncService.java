@@ -100,7 +100,8 @@ public class EnterpriseDirectorySyncService {
     private void execute(Long runId, String triggerType, String actor, long startedAt) {
         try {
             SyncResult result = writer.apply(gateway.directory());
-            finish(runId, true, result, "", startedAt);
+            finish(runId, true, result, result.missing().isEmpty() ? ""
+                    : "已移除 " + result.missing().size() + " 个企微未返回的账号及关联员工档案", startedAt);
             log.info("企微通讯录同步完成 trigger={}, actor={}, created={}, updated={}, departments={}, "
                             + "conflicts={}, missing={}", triggerType, actor, result.created(), result.updated(),
                     result.departments(), result.conflicts().size(), result.missing().size());

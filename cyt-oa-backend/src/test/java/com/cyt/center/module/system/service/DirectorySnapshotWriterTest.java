@@ -17,27 +17,28 @@ class DirectorySnapshotWriterTest {
     final SysDeptMapper depts = mock(SysDeptMapper.class);
     final EmployeeDirectoryArchiveService archives = mock(EmployeeDirectoryArchiveService.class);
     final SysUserDeptMapper bindings = mock(SysUserDeptMapper.class);
+    final SysUserService accounts = mock(SysUserService.class);
     final DirectorySnapshotWriter writer = new DirectorySnapshotWriter(users, depts,
-            bindings, mock(SysUserService.class), new CenterProperties(), archives);
+            bindings, accounts, new CenterProperties(), archives);
     final ObjectMapper json = new ObjectMapper();
 
     @org.junit.jupiter.api.BeforeAll static void mapping() {
-        for (Class<?> entity : List.of(SysUser.class, SysUserDept.class))
+        for (Class<?> entity : List.of(SysUser.class, SysUserDept.class, SysDept.class))
             com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(
                     new com.baomidou.mybatisplus.core.MybatisConfiguration(), "test"), entity);
     }
 
+    @org.junit.jupiter.api.BeforeEach void beginTransaction() { TransactionSynchronizationManager.initSynchronization(); }
+    @org.junit.jupiter.api.AfterEach void endTransaction() { TransactionSynchronizationManager.clearSynchronization(); }
+
     @Test void syncDoesNotRestoreDisabledAccountsAndFallsBackToFirstDepartment() throws Exception {
         SysUser old = new SysUser(); old.setId(7L); old.setUsername("alice"); old.setWecomUserid("alice"); old.setEnabled(false);
         when(users.selectList(any())).thenReturn(List.of(old)); when(depts.selectList(any())).thenReturn(List.of());
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            writer.apply(json.readTree(snapshot("[{\"userid\":\"alice\",\"name\":\"Alice\",\"status\":1,\"department_ids\":[1]}]")));
-            var changes = org.mockito.ArgumentCaptor.forClass(List.class);
-            verify(archives).syncIdentities(changes.capture());
-            SysUser change = (SysUser) changes.getValue().getFirst();
-            assertFalse(change.getEnabled()); assertEquals(1L, change.getMainDeptId());
-        } finally { TransactionSynchronizationManager.clearSynchronization(); }
+        writer.apply(json.readTree(snapshot("[{\"userid\":\"alice\",\"name\":\"Alice\",\"status\":1,\"department_ids\":[1]}]")));
+        var changes = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(archives).syncIdentities(changes.capture());
+        SysUser change = (SysUser) changes.getValue().getFirst();
+        assertFalse(change.getEnabled()); assertEquals(1L, change.getMainDeptId());
     }
 
     /** uk_sys_user_wecom 是 utf8mb4_0900_ai_ci：企微把 zhangwei 写成 ZhangWei 时必须是更新，不能插第二条同名账号。 */
@@ -59,11 +60,14 @@ class DirectorySnapshotWriterTest {
         verify(users, never()).insert(any(SysUser.class)); verifyNoInteractions(archives);
     }
 
-    @Test void missingMemberIsReportedWithoutDeletingOrDisablingTheirHistory() throws Exception {
+    @Test void missingMemberIsDeletedEvenWhenNoMembershipRemains() throws Exception {
         SysUser old = new SysUser(); old.setId(7L); old.setWecomUserid("missing"); old.setEnabled(true);
         when(users.selectList(any())).thenReturn(List.of(old)); when(depts.selectList(any())).thenReturn(List.of());
         var result = writer.apply(json.readTree(snapshot("[]")));
-        assertEquals(List.of("missing"),result.missing()); verify(users,never()).updateById(any(SysUser.class)); verify(archives).syncIdentities(List.of());
+        assertEquals(List.of("missing"), result.missing());
+        verify(archives).deleteByUserIds(List.of(7L));
+        verify(accounts).deleteDirectoryUsers(List.of(7L));
+        assertEquals(1, TransactionSynchronizationManager.getSynchronizations().size());
     }
 
     /** 已经全表读过部门，就不该再为每个部门单点查一次存在性。 */
@@ -105,14 +109,36 @@ class DirectorySnapshotWriterTest {
         verify(bindings, never()).insertBindings(anyList());
     }
 
-    @Test void missingMembersLeaveOrganizationButKeepTheirAccountsAndArchives() throws Exception {
+    @Test void missingMemberRemovesMembershipAccountArchiveAndLeaderReference() throws Exception {
         SysUser old = new SysUser(); old.setId(7L); old.setWecomUserid("missing"); old.setEnabled(true);
         SysUserDept binding = new SysUserDept(); binding.setUserId(7L); binding.setDeptId(1L);
         when(users.selectList(any())).thenReturn(List.of(old)); when(bindings.selectList(any())).thenReturn(List.of(binding));
         assertEquals(List.of("missing"), writer.apply(json.readTree(snapshot("[]"))).missing());
         verify(bindings).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
         verify(users, never()).update(isNull(), any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
-        verify(archives).syncIdentities(List.of());
+        verify(archives).deleteByUserIds(List.of(7L));
+        verify(accounts).deleteDirectoryUsers(List.of(7L));
+        var leaderChange = org.mockito.ArgumentCaptor.forClass(com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper.class);
+        verify(depts).update(isNull(), leaderChange.capture());
+        assertTrue(leaderChange.getValue().getSqlSet().contains("leader_userid"));
+        assertTrue(leaderChange.getValue().getParamNameValuePairs().containsValue(null));
+    }
+
+    @Test void unrelatedLocalAccountsAreNotDeleted() throws Exception {
+        SysUser local = new SysUser(); local.setId(1L); local.setUsername("admin"); local.setEnabled(true);
+        SysUser blank = new SysUser(); blank.setId(2L); blank.setWecomUserid("");
+        when(users.selectList(any())).thenReturn(List.of(local, blank));
+        assertTrue(writer.apply(json.readTree(snapshot("[]"))).missing().isEmpty());
+        verify(accounts, never()).deleteDirectoryUsers(anyList());
+        verify(archives, never()).deleteByUserIds(anyList());
+        assertTrue(TransactionSynchronizationManager.getSynchronizations().isEmpty());
+    }
+
+    @Test void malformedSnapshotCannotTriggerDeletion() throws Exception {
+        var data = json.readTree(snapshot("[]"));
+        ((com.fasterxml.jackson.databind.node.ObjectNode) data.path("counts")).put("users", 99);
+        assertThrows(BizException.class, () -> writer.apply(data));
+        verifyNoInteractions(users, accounts, archives, bindings);
     }
 
     String snapshot(String users) throws Exception {

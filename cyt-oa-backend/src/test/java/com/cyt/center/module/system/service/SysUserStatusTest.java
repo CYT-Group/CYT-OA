@@ -11,6 +11,11 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class SysUserStatusTest {
+    @org.junit.jupiter.api.BeforeAll static void mapping() {
+        for (Class<?> entity : List.of(SysUser.class, com.cyt.center.module.system.model.entity.SysUserRole.class))
+            com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(
+                    new com.baomidou.mybatisplus.core.MybatisConfiguration(), "test"), entity);
+    }
     final SysUserMapper users=mock(SysUserMapper.class);
     final SysUserRoleMapper roles=mock(SysUserRoleMapper.class);
     final SysUserService service=new SysUserService(users,roles,new DeptNamePathResolver(mock(SysDeptMapper.class)),mock(SysRoleService.class));
@@ -37,5 +42,16 @@ class SysUserStatusTest {
             assertTrue(change.getValue().getEnabled());assertNull(change.getValue().getWecomUserid());assertNull(change.getValue().getName());
             assertEquals(1,TransactionSynchronizationManager.getSynchronizations().size());
         } finally {TransactionSynchronizationManager.clearSynchronization();}
+    }
+    @Test void directoryRemovalDeletesRoleBindingsBeforeAccounts() {
+        service.deleteDirectoryUsers(List.of(7L, 8L));
+        var order = inOrder(roles, users);
+        order.verify(roles).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        order.verify(users).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        order.verifyNoMoreInteractions();
+    }
+    @Test void emptyDirectoryRemovalDoesNotDeleteAnything() {
+        service.deleteDirectoryUsers(List.of());
+        verifyNoInteractions(users, roles);
     }
 }

@@ -188,6 +188,14 @@ public class SysUserService {
         return userRoles.selectRoleCodes(userId);
     }
 
+    /** 仅由完整通讯录同步调用；组织关系、HR 档案和会话由同步事务统一清理。 */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteDirectoryUsers(List<Long> userIds) {
+        if (userIds.isEmpty()) return;
+        userRoles.delete(new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, userIds));
+        users.delete(new LambdaQueryWrapper<SysUser>().in(SysUser::getId, userIds));
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void changeStatus(Long userId, boolean enabled, Long actorId) {
         SysUser user = requireById(userId);

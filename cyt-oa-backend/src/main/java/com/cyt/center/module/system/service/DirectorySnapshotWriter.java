@@ -166,9 +166,10 @@ public class DirectorySnapshotWriter {
             }
         }
 
-        // 组织页只反映本轮返回的成员；历史账号与人事档案仍保留，不推断离职或恢复登录。
-        existing.stream().filter(user -> user.getWecomUserid() != null
-                && !seen.contains(normalizeUserid(user.getWecomUserid())))
+        // 企微完整快照为唯一成员来源；未关联企微的本地账号不在删除范围。
+        List<SysUser> missingUsers = existing.stream().filter(user -> !blank(user.getWecomUserid())
+                && !seen.contains(normalizeUserid(user.getWecomUserid()))).toList();
+        missingUsers.stream()
                 .map(SysUser::getId).filter(memberships::containsKey).forEach(replaceIds::add);
         for (int offset = 0; offset < replaceIds.size(); offset += 500) {
             userDepartments.delete(new LambdaQueryWrapper<SysUserDept>().in(SysUserDept::getUserId,
@@ -199,10 +200,17 @@ public class DirectorySnapshotWriter {
             }
         }
 
-        List<String> missing = existing.stream()
-                .filter(user -> user.getWecomUserid() != null && !seen.contains(normalizeUserid(user.getWecomUserid())))
-                .map(SysUser::getWecomUserid)
-                .toList();
+        for (int offset = 0; offset < missingUsers.size(); offset += 500) {
+            List<SysUser> batch = missingUsers.subList(offset, Math.min(offset + 500, missingUsers.size()));
+            List<Long> ids = batch.stream().map(SysUser::getId).toList();
+            employeeArchives.deleteByUserIds(ids);
+            accountService.deleteDirectoryUsers(ids);
+            departments.update(null, new LambdaUpdateWrapper<SysDept>()
+                    .in(SysDept::getLeaderUserid, batch.stream().map(SysUser::getWecomUserid).toList())
+                    .set(SysDept::getLeaderUserid, null));
+            blocked.addAll(ids);
+        }
+        List<String> missing = missingUsers.stream().map(SysUser::getWecomUserid).toList();
         afterCommit(blocked);
         return new EnterpriseDirectorySyncService.SyncResult(created, updated, departmentMap.size(), conflicts, missing);
     }
