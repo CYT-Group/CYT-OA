@@ -137,64 +137,6 @@ export const pageConfigs: Record<string, PageConfig> = {
         successMsg: '已同步企业微信的审批结论', when: (row) => Number(row.status) === 1 }
     ]
   },
-  'oa-seal-apply': {
-    key: 'oa-seal-apply', title: '用印申请', desc: '本人用印申请；审批在企业微信，结论点「同步状态」回读', api: '/admin-api/oa/seal-apply/page',
-    search: [urgencySearch, statusSearch],
-    columns: [
-      { key: 'title', label: '标题', ellipsis: true },
-      { key: 'useType', label: '用印类型', dictType: 'oa_seal_apply_type' },
-      { key: 'useMode', label: '用印方式', dictType: 'oa_seal_use_mode' },
-      { key: 'expectedCount', label: '用印次数' },
-      { key: 'status', label: '状态', statusMap: APPLY_STATUS },
-      { key: 'createTime', label: '创建时间' }
-    ],
-    fields: [
-      { key: 'title', label: '标题', required: true },
-      urgencyField,
-      { key: 'useType', label: '用印类型', type: 'select', dictType: 'oa_seal_apply_type', required: true },
-      { key: 'useMode', label: '用印方式', type: 'select', dictType: 'oa_seal_use_mode', required: true },
-      { key: 'expectedCount', label: '用印次数', type: 'number', required: true },
-      { key: 'expectedUseTime', label: '预计用印时间', type: 'datetime', required: true },
-      reasonField
-    ],
-    createApi: '/admin-api/oa/seal-apply/create',
-    updateApi: '/admin-api/oa/seal-apply/update',
-    rowActions: [
-      { label: '提交', api: '/admin-api/oa/seal-apply/submit', method: 'put', tone: 'pri',
-        confirm: '确认提交到企业微信审批？', successMsg: '已提交企业微信审批' },
-      { label: '同步状态', api: '/api/me/applies/seal/sync', method: 'put', tone: 'gho',
-        successMsg: '已同步企业微信的审批结论', when: (row) => Number(row.status) === 1 }
-    ]
-  },
-  'oa-seal': {
-    key: 'oa-seal', title: '印章管理', desc: '公司印章台账', api: '/admin-api/oa/seal/page',
-    search: [
-      { key: 'name', label: '印章名称', searchable: true },
-      { key: 'type', label: '类型', type: 'select', dictType: 'oa_seal_type', searchType: 'select', searchable: true }
-    ],
-    columns: [
-      { key: 'name', label: '名称' },
-      { key: 'no', label: '编号' },
-      { key: 'type', label: '类型', dictType: 'oa_seal_type' },
-      { key: 'category', label: '分类', dictType: 'oa_seal_category' },
-      { key: 'keeperName', label: '保管人' },
-      { key: 'status', label: '状态', dictType: 'oa_seal_status' },
-      { key: 'enableTime', label: '启用时间' }
-    ],
-    fields: [
-      { key: 'name', label: '名称', required: true },
-      { key: 'no', label: '编号', required: true },
-      { key: 'type', label: '类型', type: 'select', dictType: 'oa_seal_type', required: true },
-      { key: 'category', label: '分类', type: 'select', dictType: 'oa_seal_category', required: true },
-      { key: 'keeperUserId', label: '保管人编号', type: 'number', required: true },
-      { key: 'status', label: '状态', type: 'select', dictType: 'oa_seal_status' },
-      { key: 'enableTime', label: '启用时间', type: 'datetime' },
-      { key: 'remark', label: '备注', type: 'textarea' }
-    ],
-    createApi: '/admin-api/oa/seal/create',
-    updateApi: '/admin-api/oa/seal/update',
-    deleteApi: '/admin-api/oa/seal/delete'
-  },
   'oa-supply-apply': {
     key: 'oa-supply-apply', title: '用品领用申请', desc: '本人领用申请；审批在企业微信，结论点「同步状态」回读', api: '/admin-api/oa/supply-apply/page',
     search: [statusSearch],
@@ -744,7 +686,7 @@ export const pageConfigs: Record<string, PageConfig> = {
 export const tabbedPages: Record<string, TabbedPage> = {}
 
 /**
- * 管理区菜单分组。个人视角的页面（请假/加班/报销/出差/用印/领用/日程/汇报）不在这里——
+ * 管理区菜单分组。个人视角的页面（请假/加班/报销/出差/领用/日程/汇报）不在这里——
  * 那些都在「我要办事」里，管理区只放台账、配置与人事职责页。
  */
 export const menuGroups: MenuGroup[] = [
@@ -752,7 +694,6 @@ export const menuGroups: MenuGroup[] = [
     group: '办公台账',
     items: [
       { key: 'oa-announcement', title: '公告管理', icon: 'megaphone' },
-      { key: 'oa-seal', title: '印章管理', icon: 'stamp' },
       { key: 'oa-supply-issue', title: '领用发放', icon: 'truck' },
       { key: 'oa-supply-item', title: '办公用品', icon: 'box' }
     ]

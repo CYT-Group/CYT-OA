@@ -1,10 +1,11 @@
 <template>
   <div>
   <PageHeader
-    title="发起申请"
-    description="选择单据类型填写后提交，审批在企业微信进行，结论可随时回读"
+    :title="view === 'start' ? '我要办事' : view === 'mine' ? '我的申请' : view === 'history' ? '历史记录' : '发起申请'"
+    :description="view === 'history' ? '查看近期已经结束的申请记录' : '选择单据类型填写后提交，审批在企业微信进行，结论可随时回读'"
   >
     <template #actions>
+      <Button v-if="view === 'mine' || view === 'history'" size="sm" @click="router.push('/me/apply?view=start')">发起申请</Button>
       <Button variant="outline" size="sm" @click="reload">
         <RefreshCw class="size-3.5" />
         刷新
@@ -12,12 +13,12 @@
     </template>
   </PageHeader>
 
-  <section class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+  <section v-if="view === 'all' || view === 'start'" class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
     <button
       v-for="t in TILES"
       :key="t.type"
       type="button"
-      class="group flex flex-col gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      class="group flex flex-col gap-3 rounded-xl border bg-card p-4 text-left shadow-xs transition-[border-color,background-color,box-shadow] hover:border-primary/40 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       @click="open(t.type)"
     >
       <span class="flex w-full items-center justify-between">
@@ -33,6 +34,7 @@
     </button>
   </section>
 
+  <template v-if="view !== 'start'">
   <div class="mt-6 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
     <SegmentedTabs :model-value="type" :items="typeTabs" @update:model-value="pick" />
     <Select
@@ -46,7 +48,7 @@
   <section class="mt-4 overflow-hidden rounded-xl border bg-card shadow-xs">
     <header class="flex items-center justify-between gap-3 border-b px-4 py-3">
       <h2 class="text-sm font-semibold">{{ typeTitle || '全部申请' }}</h2>
-      <span class="text-xs text-muted-foreground">共 {{ total }} 条</span>
+      <span class="text-xs text-muted-foreground">共 {{ view === 'history' ? visibleRows.length : total }} 条</span>
     </header>
 
     <div v-if="loadError" class="p-4">
@@ -54,15 +56,15 @@
     </div>
 
     <EmptyState
-      v-else-if="!rows.length"
+      v-else-if="!visibleRows.length"
       :icon="FileText"
       :title="type ? '这类单据还没有记录' : '还没有发起过申请'"
-      :description="type ? '点上方卡片新建一张，提交后会出现在这里' : '从上方选择一种单据类型开始'"
+      :description="view === 'history' ? '近期已结束的申请会显示在这里' : '通过「我要办事」发起申请，提交后会出现在这里'"
     />
 
     <ul v-else class="divide-y">
       <li
-        v-for="row in rows"
+        v-for="row in visibleRows"
         :key="row.type + row.id"
         class="flex flex-col gap-2.5 px-4 py-3 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center"
       >
@@ -117,6 +119,7 @@
       <Pagination :page="pageNo" :page-size="pageSize" :total="total" @update:page="go" />
     </div>
   </section>
+  </template>
 
   <Dialog
     :open="!!current"
@@ -183,14 +186,14 @@ interface ApplyForm {
 const route = useRoute()
 const router = useRouter()
 
-const ledger = reactive<{ seals: Option[]; items: Option[] }>({ seals: [], items: [] })
+const ledger = reactive<{ items: Option[] }>({ items: [] })
 
 const timeField = (key: string, label: string): FieldConfig => ({ key, label, type: 'datetime', required: true })
 const reasonField: FieldConfig = { key: 'reason', label: '申请事由', type: 'textarea', required: true }
 const urgencyField: FieldConfig = { key: 'urgency', label: '紧急程度', type: 'select', dictType: 'oa_apply_urgency', required: true }
 const titleField: FieldConfig = { key: 'title', label: '标题', required: true }
 
-/** 印章与用品的下拉在打开时才知道，所以表单是算出来的而不是常量。 */
+/** 用品下拉在打开时才知道，所以表单按台账选项生成。 */
 function forms(): Record<string, ApplyForm> {
   return {
     leave: {
@@ -259,32 +262,6 @@ function forms(): Record<string, ApplyForm> {
       },
       note: '审批在企业微信进行，审批结论点列表里的「同步状态」回读。'
     },
-    seal: {
-      type: 'seal', title: '用印申请', icon: 'seal', desc: '合同 / 证明用章',
-      fields: [
-        {
-          key: 'sealId', label: '印章', type: 'select', required: true,
-          hint: ledger.seals.length ? undefined : '暂无可选印章，请先到管理端「印章台账」新增',
-          options: ledger.seals.map((s) => ({ label: s.label, value: String(s.value) }))
-        },
-        { key: 'type', label: '用印类型', type: 'select', required: true, options: [
-          { label: '合同用印', value: '1' }, { label: '协议用印', value: '2' }, { label: '证明用印', value: '3' },
-          { label: '授权用印', value: '4' }, { label: '其他用印', value: '5' }
-        ] },
-        { key: 'mode', label: '用印方式', type: 'select', required: true, options: [
-          { label: '现场用印', value: '1' }, { label: '外借', value: '2' }
-        ] },
-        { key: 'documentTitle', label: '文件标题' },
-        { key: 'documentCount', label: '文件份数', type: 'number', required: true },
-        { key: 'contractPrice', label: '合同金额', type: 'number' },
-        { key: 'contractParty', label: '合同对方' },
-        timeField('expectedUseTime', '预计用印时间'),
-        { key: 'expectedReturnTime', label: '预计归还时间', type: 'datetime' },
-        { key: 'urgent', label: '是否紧急', type: 'switch', required: true },
-        reasonField
-      ],
-      note: '审批在企业微信进行，审批结论点列表里的「同步状态」回读。外借需要按时归还，实际归还时间由印章保管人登记。'
-    },
     supply: {
       type: 'supply', title: '用品领用', icon: 'supply', desc: '办公用品领用 / 借用',
       fields: [
@@ -340,9 +317,14 @@ const STATUS_OPTIONS = [
   { label: '未提交', value: -1 }
 ]
 
-const type = computed(() => String(route.query.type ?? ''))
+const type = computed(() => {
+  const value = String(route.query.type ?? '')
+  return forms()[value] ? value : ''
+})
+const view = computed(() => ['start', 'mine', 'history'].includes(String(route.query.view)) ? String(route.query.view) : 'all')
 const status = ref(0)
 const rows = ref<ApplyItem[]>([])
+const visibleRows = computed(() => view.value === 'history' ? rows.value.filter(row => [2, 3, 4].includes(Number(row.status))) : rows.value)
 const total = ref(0)
 const pageNo = ref(1)
 const pageSize = 10
@@ -371,14 +353,15 @@ function onStatus(value: unknown) {
   void reload()
 }
 
-watch(type, () => {
+watch([type, view], ([, nextView], [, previousView]) => {
+  if (nextView !== previousView) status.value = 0
   pageNo.value = 1
   void reload()
 })
 
 async function reload() {
   if (!type.value) {
-    // 跨类型列表用聚合接口，避免一次发 8 个分页请求
+    // 跨类型列表用聚合接口，避免同时发多个分页请求
     loadError.value = ''
     try {
       rows.value = await meApi.recentApplies(30)
@@ -409,28 +392,20 @@ function go(next: number) {
   void reload()
 }
 
-/** 印章 / 用品台账是异步的：弹窗先开，数据回来后把对应字段的 options 原地补上。
- *  FieldForm 的选项走 computed，会自动刷新下拉；不重建表单，也就不会冲掉已填内容。 */
-function syncLedgerOptions(kind: string) {
+/** 用品台账异步返回后只补充选项，保留用户已填写的内容。 */
+function syncLedgerOptions() {
   const form = current.value
-  if (!form || form.type !== kind) return
-  const fieldKey = kind === 'seal' ? 'sealId' : 'itemId'
-  const list = kind === 'seal' ? ledger.seals : ledger.items
-  const target = [...form.fields, ...(form.line?.fields ?? [])].find((f) => f.key === fieldKey)
+  if (form?.type !== 'supply') return
+  const target = form.line?.fields.find((field) => field.key === 'itemId')
   if (!target) return
-  target.options = list.map((o) => ({
-    label: kind === 'seal' ? o.label : `${o.label}（${o.hint ?? '—'}）`,
-    value: String(o.value)
+  target.options = ledger.items.map((item) => ({
+    label: `${item.label}（${item.hint ?? '—'}）`,
+    value: String(item.value)
   }))
-  target.hint = list.length
-    ? undefined
-    : (kind === 'seal' ? '暂无可选印章，请先到管理端「印章台账」新增' : '暂无可选用品，请先到管理端「用品台账」新增')
+  target.hint = ledger.items.length ? undefined : '暂无可选用品，请先到管理端「用品台账」新增'
 }
 
-watch(() => [ledger.seals, ledger.items], () => {
-  if (current.value?.type === 'seal') syncLedgerOptions('seal')
-  if (current.value?.type === 'supply') syncLedgerOptions('supply')
-})
+watch(() => ledger.items, syncLedgerOptions)
 
 /** 请假表单复用管理端页面配置，其中「审批人候选」这类下拉的选项要按 optionsApi 自己拉一次。
  *  remoteOptions 按 url 缓存，重复打开表单不会再发请求。 */
@@ -444,12 +419,11 @@ async function fillRemoteOptions(form: ApplyForm) {
 async function open(next: string) {
   current.value = forms()[next] ?? null
   if (!current.value) return
-  if (type.value !== next) void router.replace({ path: '/me/apply', query: { type: next } })
-  if (next === 'seal' && !ledger.seals.length) {
-    ledger.seals = await meApi.seals().catch((e) => {
-      toast(errText(e), 'bad')
-      return ledger.seals
-    })
+  if (type.value !== next || route.query.new) {
+    const query = { ...route.query }
+    query.type = next
+    delete query.new
+    void router.replace({ path: '/me/apply', query })
   }
   if (next === 'supply' && !ledger.items.length) {
     ledger.items = await meApi.supplyItems().catch((e) => {
@@ -459,6 +433,10 @@ async function open(next: string) {
   }
   if (next === 'leave') await fillRemoteOptions(current.value)
 }
+
+watch(() => route.query.new, (value) => {
+  if (typeof value === 'string' && forms()[value]) void open(value)
+}, { immediate: true })
 
 async function create() {
   const form = current.value
@@ -488,9 +466,9 @@ async function create() {
   }
 }
 
-/** 用印 / 用品的提交只认编号，其余类型的提交接口认 {id} */
+/** 用品的提交只认编号，其余类型的提交接口认 {id} */
 async function startFlow(type: string, id: string) {
-  if (type === 'seal' || type === 'supply') await meApi.submitApplyById(type, id)
+  if (type === 'supply') await meApi.submitApplyById(type, id)
   else await meApi.submitApply(type, { id })
 }
 
@@ -534,8 +512,7 @@ async function syncApproval(row: ApplyItem) {
 
 onMounted(() => {
   void reload()
-  // 预拉印章 / 用品台账：点开表单时下拉里直接有真实选项，不用先等一次请求
-  void meApi.seals().then((r) => { ledger.seals = r }).catch(() => {})
+  // 预拉用品台账，打开表单即可选择实际库存条目
   void meApi.supplyItems().then((r) => { ledger.items = r }).catch(() => {})
 })
 </script>

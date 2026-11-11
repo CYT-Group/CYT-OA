@@ -13,8 +13,6 @@ import com.cyt.center.module.oa.controller.admin.leave.vo.OaLeaveApplyPageReqVO;
 import com.cyt.center.module.oa.controller.admin.overtime.vo.OaOvertimeApplyPageReqVO;
 import com.cyt.center.module.oa.controller.admin.reimbursement.vo.OaReimbursementPageReqVO;
 import com.cyt.center.module.oa.controller.admin.schedule.vo.OaSchedulePageReqVO;
-import com.cyt.center.module.oa.controller.admin.seal.vo.OaSealPageReqVO;
-import com.cyt.center.module.oa.controller.admin.seal.vo.apply.OaSealApplyPageReqVO;
 import com.cyt.center.module.oa.controller.admin.supply.vo.item.OaSupplyItemPageReqVO;
 import com.cyt.center.module.oa.controller.admin.supply.vo.apply.OaSupplyApplyPageReqVO;
 import com.cyt.center.module.oa.controller.admin.travel.vo.apply.OaTravelApplyPageReqVO;
@@ -22,7 +20,6 @@ import com.cyt.center.module.oa.controller.admin.travel.vo.reimbursement.OaTrave
 import com.cyt.center.module.oa.dal.dataobject.leave.OaLeaveApplyDO;
 import com.cyt.center.module.oa.dal.dataobject.overtime.OaOvertimeApplyDO;
 import com.cyt.center.module.oa.dal.dataobject.reimbursement.OaReimbursementDO;
-import com.cyt.center.module.oa.dal.dataobject.seal.OaSealApplyDO;
 import com.cyt.center.module.oa.dal.dataobject.supply.OaSupplyApplyDO;
 import com.cyt.center.module.oa.dal.dataobject.travel.OaTravelApplyDO;
 import com.cyt.center.module.oa.dal.dataobject.travel.OaTravelReimbursementDO;
@@ -30,8 +27,6 @@ import com.cyt.center.module.oa.service.leave.OaLeaveApplyService;
 import com.cyt.center.module.oa.service.overtime.OaOvertimeApplyService;
 import com.cyt.center.module.oa.service.reimbursement.OaReimbursementService;
 import com.cyt.center.module.oa.service.schedule.OaScheduleService;
-import com.cyt.center.module.oa.service.seal.OaSealApplyService;
-import com.cyt.center.module.oa.service.seal.OaSealService;
 import com.cyt.center.module.oa.service.supply.OaSupplyApplyService;
 import com.cyt.center.module.oa.service.supply.OaSupplyItemService;
 import com.cyt.center.module.oa.service.travel.OaTravelApplyService;
@@ -54,7 +49,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 我要办事。8 类单据仍写各自的 oa_ 表，这里只做「我发起的」跨类型统一投影和撤销转发；
+ * 我要办事。7 类单据仍写各自的 oa_ 表，这里只做「我发起的」跨类型统一投影和撤销转发；
  * 各类型的必填校验沿用移植过来的 SaveReqVO，不再复制一套个人中心专用入参。
  */
 @Service
@@ -66,7 +61,6 @@ public class MeApplyService {
     public static final String REIMBURSEMENT = "reimbursement";
     public static final String TRAVEL = "travel";
     public static final String TRAVEL_REIMBURSEMENT = "travel-reimbursement";
-    public static final String SEAL = "seal";
     public static final String SUPPLY = "supply";
     public static final String SCHEDULE = "schedule";
 
@@ -78,7 +72,6 @@ public class MeApplyService {
         TYPE_TEXT.put(REIMBURSEMENT, "报销");
         TYPE_TEXT.put(TRAVEL, "出差");
         TYPE_TEXT.put(TRAVEL_REIMBURSEMENT, "差旅报销");
-        TYPE_TEXT.put(SEAL, "用章");
         TYPE_TEXT.put(SUPPLY, "物资领用");
         TYPE_TEXT.put(SCHEDULE, "日程");
     }
@@ -88,30 +81,18 @@ public class MeApplyService {
     private final OaReimbursementService reimbursement;
     private final OaTravelApplyService travel;
     private final OaTravelReimbursementService travelReimbursement;
-    private final OaSealApplyService seal;
     private final OaSupplyApplyService supply;
     private final OaScheduleService schedule;
-    private final OaSealService sealLedger;
     private final OaSupplyItemService itemLedger;
     private final WecomApprovalBridge bridge;
     private final AdminUserApi userApi;
     private final DeptApi deptApi;
 
-    /** 台账下拉一次取满一页，公司印章与用品的量级远小于此 */
+    /** 台账下拉一次取满一页，公司用品的量级远小于此 */
     private static final int LEDGER_PAGE_SIZE = 200;
 
     public static List<String> types() {
         return List.copyOf(TYPE_TEXT.keySet());
-    }
-
-    /** 用印表单里的印章下拉：取台账在用的章，员工不需要印章管理权限也能选。 */
-    public List<Option> sealOptions() {
-        OaSealPageReqVO reqVO = new OaSealPageReqVO();
-        reqVO.setPageSize(LEDGER_PAGE_SIZE);
-        return sealLedger.getSealPage(reqVO).getList().stream()
-                .filter(seal -> seal.getStatus() == null || seal.getStatus() != 0)
-                .map(seal -> new Option(seal.getId(), seal.getName(), seal.getNo()))
-                .toList();
     }
 
     /** 领用表单里的用品下拉：带库存与单位，避免选出没货的。 */
@@ -198,14 +179,6 @@ public class MeApplyService {
                                 row.getTotalPrice(), row.getCreateTime(), row.getStartTime(), row.getEndTime(),
                                 row.getProcessInstanceId()));
             }
-            case SEAL -> {
-                OaSealApplyPageReqVO reqVO = new OaSealApplyPageReqVO();
-                copyPage(pageParam, reqVO);
-                reqVO.setStatus(status);
-                yield convert(seal.getSealApplyPage(userId, reqVO), row -> item(SEAL, row.getId(), row.getNo(),
-                        row.getDocumentTitle(), row.getStatus(), row.getContractPrice(), row.getCreateTime(),
-                        row.getExpectedUseTime(), row.getExpectedReturnTime(), row.getProcessInstanceId()));
-            }
             case SUPPLY -> {
                 OaSupplyApplyPageReqVO reqVO = new OaSupplyApplyPageReqVO();
                 copyPage(pageParam, reqVO);
@@ -224,7 +197,7 @@ public class MeApplyService {
         };
     }
 
-    /** 概览用：跨 8 类各取最新几条后按时间倒序合并。 */
+    /** 概览用：跨 7 类各取最新几条后按时间倒序合并。 */
     public List<ApplyItem> recent(Long userId, int limit) {
         PageParam pageParam = new PageParam();
         pageParam.setPageNo(1);
@@ -252,7 +225,6 @@ public class MeApplyService {
             case REIMBURSEMENT -> bridge.linked(REIMBURSEMENT, id);
             case TRAVEL -> bridge.linked(TRAVEL, id);
             case TRAVEL_REIMBURSEMENT -> bridge.linked(TRAVEL_REIMBURSEMENT, id);
-            case SEAL -> bridge.linked(SEAL, id);
             case SUPPLY -> bridge.linked(SUPPLY, id);
             default -> false;
         };
@@ -292,12 +264,6 @@ public class MeApplyService {
                 yield item(TRAVEL_REIMBURSEMENT, row.getId(), row.getNo(), row.getReason(), row.getStatus(),
                         row.getTotalPrice(), row.getCreateTime(), row.getStartTime(), row.getEndTime(),
                         row.getProcessInstanceId());
-            }
-            case SEAL -> {
-                OaSealApplyDO row = seal.syncSealApplyStatus(id, userId);
-                yield item(SEAL, row.getId(), row.getNo(), row.getDocumentTitle(), row.getStatus(),
-                        row.getContractPrice(), row.getCreateTime(), row.getExpectedUseTime(),
-                        row.getExpectedReturnTime(), row.getProcessInstanceId());
             }
             case SUPPLY -> {
                 OaSupplyApplyDO row = supply.syncSupplyApplyStatus(id, userId);

@@ -38,10 +38,6 @@ public interface BpmModelConstants {
      */
     String TRAVEL_REIMBURSEMENT = "oa_travel_reimbursement";
 
-    /**
-     * 用印申请
-     */
-    String SEAL_APPLY = "oa_seal_apply";
 
 
 }

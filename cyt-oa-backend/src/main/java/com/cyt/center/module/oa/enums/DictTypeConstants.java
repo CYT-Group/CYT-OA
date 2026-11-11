@@ -12,12 +12,6 @@ public interface DictTypeConstants {
     String OVERTIME_TYPE = "oa_overtime_type"; // 加班类型
     String LEAVE_TYPE = "oa_leave_type"; // 请假类型
 
-    String SEAL_TYPE = "oa_seal_type"; // 印章类型
-    String SEAL_CATEGORY = "oa_seal_category"; // 印章分类
-    String SEAL_STATUS = "oa_seal_status"; // 印章状态
-    String SEAL_APPLY_TYPE = "oa_seal_apply_type"; // 用印类型
-    String SEAL_USE_MODE = "oa_seal_use_mode"; // 用印方式
-    String SEAL_USE_STATUS = "oa_seal_use_status"; // 用印状态
 
     String SUPPLY_CATEGORY = "oa_supply_category"; // 办公用品分类
     String SUPPLY_PICKUP_METHOD = "oa_supply_pickup_method"; // 办公用品领取方式

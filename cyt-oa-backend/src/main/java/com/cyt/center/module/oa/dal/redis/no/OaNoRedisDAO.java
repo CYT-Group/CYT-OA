@@ -32,16 +32,6 @@ public class OaNoRedisDAO {
      */
     public static final String TRAVEL_REIMBURSEMENT_NO_PREFIX = "CLBX";
     /**
-     * 印章编号 {@link com.cyt.center.module.oa.dal.dataobject.seal.OaSealDO}
-     */
-    public static final String SEAL_NO_PREFIX = "YZ";
-    /**
-     * 用印申请 {@link com.cyt.center.module.oa.dal.dataobject.seal.OaSealApplyDO}
-     */
-    public static final String SEAL_APPLY_NO_PREFIX = "YY";
-
-
-    /**
      * 工作汇报 {@link com.cyt.center.module.oa.dal.dataobject.workreport.OaWorkReportDO}
      */
     public static final String WORK_REPORT_NO_PREFIX = "WR";

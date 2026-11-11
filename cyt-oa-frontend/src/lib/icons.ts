@@ -88,7 +88,6 @@ export const iconAlias: Record<string, string> = {
   reimbursement: 'receipt',
   travel: 'plane',
   'travel-reimbursement': 'file',
-  seal: 'stamp',
   supply: 'box',
   schedule: 'calendar-plus',
   birthday: 'gift',

@@ -47,7 +47,7 @@ public final class MeVos {
     public record DeptAction(String dept, List<String> items) {
     }
 
-    /** 办事表单里的下拉项：印章、办公用品等台账选值 */
+    /** 办事表单里的下拉项：办公用品等台账选值 */
     public record Option(Long value, String label, String hint) {
     }
 

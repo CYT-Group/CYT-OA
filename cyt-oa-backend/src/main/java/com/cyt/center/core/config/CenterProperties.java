@@ -78,7 +78,6 @@ public class CenterProperties {
         private String reimbursementTemplate = "reimbursement";
         private String travelTemplate = "travel";
         private String travelReimbursementTemplate = "travel-reimbursement";
-        private String sealTemplate = "seal";
         private String supplyTemplate = "supply";
         private String hrmLeaveTemplate = "hrm-leave";
     }

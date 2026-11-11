@@ -162,7 +162,7 @@ async function ensureDict(type: string) {
   dictCache[type] = items.map((i) => ({ label: i.label, value: i.value }))
 }
 
-/** 选项统一走 computed：字典异步回来、或父级事后补上 options（印章/用品台账），
+/** 选项统一走 computed：字典异步回来、或父级事后补上 options（用品台账等），
  *  下拉都会自己更新，不用重建整个表单，也不会把用户已经填的值冲掉。 */
 const resolvedOptions = computed<Record<string, { label: string; value: string }[]>>(() => {
   const out: Record<string, { label: string; value: string }[]> = {}

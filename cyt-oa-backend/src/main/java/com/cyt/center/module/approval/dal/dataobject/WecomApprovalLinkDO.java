@@ -18,7 +18,7 @@ public class WecomApprovalLinkDO extends BaseDO {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    /** 业务类型：leave / overtime / reimbursement / travel / travel-reimbursement / seal / supply / hrm-leave */
+    /** 业务类型：leave / overtime / reimbursement / travel / travel-reimbursement / supply / hrm-leave */
     private String applyType;
     /** 业务单据编号 */
     private Long bizId;

@@ -130,17 +130,6 @@ public interface ErrorCodeConstants {
     ErrorCode SUPPLY_APPLY_QTY_INVALID = new ErrorCode(1_054_200_010, "操作数量超过申请或待归还数量");
     ErrorCode SUPPLY_ISSUE_NOT_EXISTS = new ErrorCode(1_054_200_011, "用品发放或归还记录不存在");
 
-    // ========== 印章管理 1-054-210-000 ==========
-    ErrorCode SEAL_IN_USE = new ErrorCode(1_054_210_002, "印章已有业务单据引用，不能删除");
-    ErrorCode SEAL_NOT_EXISTS = new ErrorCode(1_054_210_000, "印章不存在");
-    ErrorCode SEAL_APPLY_NOT_EXISTS = new ErrorCode(1_054_210_013, "用印申请不存在");
-    ErrorCode SEAL_APPLY_NOT_OWNER = new ErrorCode(1_054_210_014, "只能操作本人的用印申请");
-    ErrorCode SEAL_APPLY_STATUS_INVALID = new ErrorCode(1_054_210_015, "用印申请状态不允许该操作");
-    ErrorCode SEAL_APPLY_TIME_INVALID = new ErrorCode(1_054_210_016, "用印或归还时间不正确");
-    ErrorCode SEAL_APPLY_TIME_CONFLICT = new ErrorCode(1_054_210_017, "该印章存在冲突预约或尚未归还");
-    ErrorCode SEAL_APPLY_NO_DUPLICATE = new ErrorCode(1_054_210_021, "用印申请单号已存在");
-    ErrorCode SEAL_NO_DUPLICATE = new ErrorCode(1_054_210_001, "印章编号已存在");
-
     // ========== 车辆管理 1-054-220-000 ==========
     ErrorCode VEHICLE_IN_USE = new ErrorCode(1_054_220_019, "车辆已有业务单据引用，不能删除");
     ErrorCode VEHICLE_NOT_EXISTS = new ErrorCode(1_054_220_000, "车辆不存在");

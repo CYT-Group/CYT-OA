@@ -18,7 +18,6 @@ import com.cyt.center.module.oa.controller.admin.overtime.vo.OaOvertimeApplySubm
 import com.cyt.center.module.oa.controller.admin.reimbursement.vo.OaReimbursementSaveReqVO;
 import com.cyt.center.module.oa.controller.admin.reimbursement.vo.OaReimbursementSubmitReqVO;
 import com.cyt.center.module.oa.controller.admin.schedule.vo.OaScheduleSaveReqVO;
-import com.cyt.center.module.oa.controller.admin.seal.vo.apply.OaSealApplySaveReqVO;
 import com.cyt.center.module.oa.controller.admin.supply.vo.apply.OaSupplyApplySaveReqVO;
 import com.cyt.center.module.oa.controller.admin.travel.vo.apply.OaTravelApplySaveReqVO;
 import com.cyt.center.module.oa.controller.admin.travel.vo.apply.OaTravelApplySubmitReqVO;
@@ -28,7 +27,6 @@ import com.cyt.center.module.oa.service.leave.OaLeaveApplyService;
 import com.cyt.center.module.oa.service.overtime.OaOvertimeApplyService;
 import com.cyt.center.module.oa.service.reimbursement.OaReimbursementService;
 import com.cyt.center.module.oa.service.schedule.OaScheduleService;
-import com.cyt.center.module.oa.service.seal.OaSealApplyService;
 import com.cyt.center.module.oa.service.supply.OaSupplyApplyService;
 import com.cyt.center.module.oa.service.travel.OaTravelApplyService;
 import com.cyt.center.module.oa.service.travel.OaTravelReimbursementService;
@@ -73,8 +71,6 @@ public class MeApplyController {
     @Resource
     private OaTravelReimbursementService travelReimbursementService;
     @Resource
-    private OaSealApplyService sealApplyService;
-    @Resource
     private OaSupplyApplyService supplyApplyService;
     @Resource
     private OaScheduleService scheduleService;
@@ -97,12 +93,6 @@ public class MeApplyController {
     @Operation(summary = "跨类型最近几条，概览页用")
     public Result<List<ApplyItem>> recent(@RequestParam(value = "limit", defaultValue = "6") int limit) {
         return success(meApplyService.recent(getLoginUserId(), limit));
-    }
-
-    @GetMapping("/seals")
-    @Operation(summary = "在用印章下拉，供用印表单选值")
-    public Result<List<Option>> seals() {
-        return success(meApplyService.sealOptions());
     }
 
     @GetMapping("/supply-items")
@@ -201,19 +191,6 @@ public class MeApplyController {
     @Operation(summary = "提交差旅报销进入审批")
     public Result<Boolean> submitTravelReimbursement(@Valid @RequestBody OaTravelReimbursementSubmitReqVO reqVO) {
         travelReimbursementService.submitTravelReimbursement(reqVO, getLoginUserId());
-        return success(true);
-    }
-
-    @PostMapping("/seal")
-    @Operation(summary = "发起用章申请")
-    public Result<Long> createSeal(@Valid @RequestBody OaSealApplySaveReqVO reqVO) {
-        return success(sealApplyService.createSealApply(reqVO, getLoginUserId()));
-    }
-
-    @PutMapping("/seal/submit")
-    @Operation(summary = "提交用章申请进入审批")
-    public Result<Boolean> submitSeal(@RequestParam("id") Long id) {
-        sealApplyService.submitSealApply(id, getLoginUserId());
         return success(true);
     }
 

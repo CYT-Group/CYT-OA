@@ -246,7 +246,7 @@ export interface TeamBoard {
   star: { userId: string; name: string } | null
 }
 
-/** 下拉选项：用印的印章、领用的用品 */
+/** 下拉选项：领用的用品、审批人等 */
 export interface Option {
   value: string
   label: string
@@ -327,7 +327,6 @@ export const meApi = {
   applies: (params: { type: string; status?: number; pageNo?: number; pageSize?: number }) =>
     api.get<PageResult<ApplyItem>>('/api/me/applies', params),
   applyTypes: () => api.get<string[]>('/api/me/applies/types'),
-  seals: () => api.get<Option[]>('/api/me/applies/seals'),
   supplyItems: () => api.get<Option[]>('/api/me/applies/supply-items'),
   recentApplies: (limit = 6) => api.get<ApplyItem[]>('/api/me/applies/recent', { limit }),
   cancelApply: (type: string, id: string, reason?: string) =>
@@ -336,7 +335,7 @@ export const meApi = {
     api.post<string>(`/api/me/applies/${type}`, body),
   submitApply: (type: string, body: Record<string, unknown>) =>
     api.put<boolean>(`/api/me/applies/${type}/submit`, body),
-  /** 用印 / 用品的提交只认编号，没有额外表单 */
+  /** 用品的提交只认编号，没有额外表单 */
   submitApplyById: (type: string, id: string) =>
     api.put<boolean>(`/api/me/applies/${type}/submit?id=${id}`),
   /** 请假自选审批人的候选人：在职且有企微账号的同事 */
