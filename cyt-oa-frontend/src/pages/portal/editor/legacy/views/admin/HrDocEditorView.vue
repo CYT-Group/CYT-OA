@@ -47,7 +47,7 @@ HrDocEditorView — HR 文档编辑器（新建 + 编辑），Confluence 风格�
       <span class="doc-context-meta">{{ mode === 'blocks' ? form.blocks.length + ' 个内容块' : '富文本' }}<span>{{ wordCount }} 字</span></span>
       <div class="doc-tools-right">
         <Button variant="ghost" size="sm" :disabled="loading" @click="layoutOpen = true" title="上传文档或粘贴全文，AI 自动拆章节并匹配块类型"><Sparkles />智能排版</Button>
-        <HrLayoutJobsLauncher class="doc-jobs-inline" hide-when-empty />
+        <HrLayoutJobsLauncher class="doc-jobs-inline" hide-when-empty :theme="form.theme" />
         <Button v-if="!isNew && !loading" variant="ghost" size="sm" :aria-expanded="historyOpen" @click="historyOpen = !historyOpen"><History />草稿历史</Button>
         <DropdownMenu>
           <template #trigger><Button variant="ghost" size="icon-sm" aria-label="更多编辑操作"><Ellipsis /></Button></template>

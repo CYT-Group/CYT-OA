@@ -1249,6 +1249,14 @@ const iconShape = (icon) => ([...String(icon).trim()].length <= 2 ? 'is-chip' : 
   font-size: 8px;
 }
 
+/* 排版任务的阅读纸张有独立宽度，按实际正文宽度响应，而非外层浏览器宽度。 */
+@container hr-layout-preview (max-width: 768px) {
+  .hb-keypoints, .hb-cards.cols-2, .hb-cards.cols-3, .hb-metrics, .hb-compare, .hb-bento, .hb-imagetext { grid-template-columns: minmax(0, 1fr); }
+  .hb-tabcard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hb-section { font-size: 16px; margin-top: 20px; }
+  .hb-numsec-title { font-size: 21px; }
+}
+
 /* ── 移动端：多列结构一律降单列 ── */
 @media (max-width: 768px) {
   .hb-keypoints,

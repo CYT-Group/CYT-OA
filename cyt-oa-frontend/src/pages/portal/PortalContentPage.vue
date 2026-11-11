@@ -672,7 +672,7 @@ import {
   ref,
   watch,
 } from "vue";
-import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from "vue-router";
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from "vue-router";
 import { Plus, Search, ArrowLeft, Eye } from "@lucide/vue";
 import PortalRowActions from "../../components/portal/PortalRowActions.vue";
 import PageHeader from "../../ui/PageHeader.vue";
@@ -712,6 +712,7 @@ const props = withDefaults(defineProps<{ kind?: ContentKind }>(), {
   kind: "news",
 });
 const route = useRoute();
+const router = useRouter();
 const isNews = computed(() => props.kind === "news"),
   title = computed(() => (isNews.value ? "公司动态管理" : "知识库管理"));
 const canCreate = computed(() => session.has("can_create_content")),
@@ -1273,6 +1274,16 @@ const confirmLeave = () =>
   !dirty.value || window.confirm("内容有未保存的修改，确认离开并放弃修改？");
 onBeforeRouteLeave(confirmLeave);
 onBeforeRouteUpdate(confirmLeave);
+watch(() => route.query.action, action => {
+  if (action === 'create' && canCreate.value && !editing.value) startCreate();
+  else if (action !== 'create' && !dirty.value) editing.value = false;
+}, { immediate: true });
+watch(editing, value => {
+  if (!value && route.query.action === 'create') {
+    const next = { ...route.query }; delete next.action;
+    void router.replace({ query: next });
+  }
+});
 watch(
   () => props.kind,
   () => {

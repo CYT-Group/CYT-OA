@@ -14,7 +14,7 @@ HrDocAdminView — HR 文档 CMS 管理后台（列表 + 状态筛选 + 直接�
     <PageHeader title="HR 文档" description="维护员工手册、制度与流程，管理版本、发布和签收。">
       <template #actions>
         <HrLayoutJobsLauncher class="hr-list-jobs" />
-        <Button variant="outline" :disabled="loading" @click="loadDocs"><RefreshCw />刷新</Button>
+        <Button variant="outline" :disabled="loading" @click="loadDocs" aria-label="刷新文档列表"><RefreshCw />刷新</Button>
         <Button @click="goNew"><Plus />新建文档</Button>
       </template>
     </PageHeader>
@@ -38,36 +38,35 @@ HrDocAdminView — HR 文档 CMS 管理后台（列表 + 状态筛选 + 直接�
         <span>更新时间</span><Input v-model="filter.dateFrom" type="date" aria-label="起始日期" /><span>至</span><Input v-model="filter.dateTo" type="date" aria-label="结束日期" />
       </div>
       <div v-if="filter.deleted" class="hr-bin-notice"><Trash2 /><p>已删除文档不对员工展示。恢复后保留原有正文、版本和签收记录。</p></div>
-      <div v-if="loading" class="hr-list-loading" role="status"><LoaderCircle class="animate-spin" />正在加载文档…</div>
+      <div v-if="loadError" class="hr-load-error" role="alert"><p>{{ loadError }}</p><Button variant="outline" size="sm" @click="loadDocs">重新加载</Button></div>
+      <div v-else-if="loading" class="hr-list-loading" role="status"><LoaderCircle class="animate-spin" />正在加载文档…</div>
       <EmptyState v-else-if="!filteredDocs.length" :icon="Files" :title="filter.deleted ? '回收站为空' : '没有符合条件的文档'" :description="hasFilters ? '调整筛选条件或清空搜索后重试。' : '创建文档后，在这里管理草稿与发布版本。'" compact>
         <Button v-if="hasFilters" variant="outline" size="sm" @click="resetFilters">清空筛选</Button>
         <Button v-else-if="!filter.deleted" size="sm" @click="goNew"><Plus />新建文档</Button>
       </EmptyState>
       <div v-else class="hr-table-scroll">
         <table class="data-table hr-doc-table">
-          <colgroup><col /><col style="width:130px" /><col style="width:112px" /><col style="width:112px" /><col :style="{width: filter.deleted ? '130px' : '84px'}" /><col style="width:148px" /><col :style="{width: filter.deleted ? '120px' : '194px'}" /></colgroup>
+          <colgroup><col /><col style="width:140px" /><col style="width:108px" /><col style="width:154px" /><col style="width:180px" /></colgroup>
           <thead><tr>
-            <th>文档标题</th><th>分类</th><th>版本</th><th>发布状态</th><th>{{ filter.deleted ? '删除时间' : '签收' }}</th>
+            <th>文档</th><th>发布状态</th><th>版本</th>
             <th :aria-sort="sortDir === 'desc' ? 'descending' : 'ascending'"><button class="hr-sort-button" @click="toggleSort('updated_at')">更新时间 <ArrowDown v-if="sortDir === 'desc'" /><ArrowUp v-else /></button></th>
-            <th>操作</th>
+            <th class="hr-action-heading">操作</th>
           </tr></thead>
           <tbody>
-            <tr v-for="d in pagedDocs" :key="d.id" :class="{ 'hr-deleted-row': d.deleted_at }" :tabindex="d.deleted_at ? undefined : 0" @click="!d.deleted_at && goEdit(d.id)" @keydown.enter.self="!d.deleted_at && goEdit(d.id)">
-              <td><div class="hr-title-cell"><FileText /><div><span class="hr-document-title" :title="effectiveTitle(d)">{{ effectiveTitle(d) || '无标题文档' }}</span><span v-if="hasPendingDraft(d)" class="hr-draft-hint">有未发布修改</span></div></div></td>
-              <td>{{ catLabel(d.category) }}</td>
-              <td><span class="hr-version">{{ d.version || '—' }}</span><small v-if="d.draft_version && d.draft_version !== d.version">草稿 {{ d.draft_version }}</small></td>
-              <td><Badge :variant="statusVariant(displayStatus(d))">{{ statusLabel(displayStatus(d)) }}</Badge></td>
-              <td><template v-if="filter.deleted"><span>{{ fmtDate(d.deleted_at) }}</span><small>{{ fmtTime(d.deleted_at) }}</small></template><Badge v-else-if="effectiveRequiresSignoff(d)" variant="outline">需签收</Badge><span v-else class="text-muted-foreground">—</span></td>
-              <td><span class="hr-date">{{ fmtDate(d.updated_at) }}</span><small>{{ fmtTime(d.updated_at) }}</small></td>
-              <td @click.stop @keydown.stop><div class="hr-row-actions">
+            <tr v-for="d in pagedDocs" :key="d.id" :class="{ 'hr-deleted-row': d.deleted_at }">
+              <td class="hr-doc-name"><div class="hr-title-cell"><span class="hr-document-icon"><FileText /></span><div class="min-w-0"><button v-if="!d.deleted_at" class="hr-document-title" :title="effectiveTitle(d)" @click="goPreview(d)">{{ effectiveTitle(d) || '无标题文档' }}</button><span v-else class="hr-document-title">{{ effectiveTitle(d) || '无标题文档' }}</span><div class="hr-document-meta"><span>{{ catLabel(d.category) }}</span><span v-if="effectiveRequiresSignoff(d)" class="hr-signoff-label"><span />需签收</span><span v-if="d.deleted_at">删除于 {{ fmtDate(d.deleted_at) }} {{ fmtTime(d.deleted_at) }}</span></div></div></div></td>
+              <td data-label="发布状态"><Badge :variant="statusVariant(displayStatus(d))">{{ statusLabel(displayStatus(d)) }}</Badge><span v-if="hasPendingDraft(d)" class="hr-draft-hint">有未发布修改</span></td>
+              <td data-label="版本"><span class="hr-version">{{ d.version || '—' }}</span><small v-if="d.draft_version && d.draft_version !== d.version">草稿 {{ d.draft_version }}</small></td>
+              <td data-label="最近更新"><span class="hr-date">{{ fmtDate(d.updated_at) }}</span><small>{{ fmtTime(d.updated_at) }}</small></td>
+              <td class="hr-actions-cell"><div class="hr-row-actions">
                 <Button v-if="d.deleted_at" variant="outline" size="sm" :disabled="busy[d.id]" @click="openUndelete(d)"><RotateCcw />恢复</Button>
                 <template v-else>
-                  <Button v-if="displayStatus(d) === 'offline' && !hasPendingDraft(d)" variant="ghost" size="sm" class="text-primary" :disabled="busy[d.id]" @click="openRestore(d)">重新上架</Button>
-                  <Button v-else-if="displayStatus(d) === 'published' && !hasPendingDraft(d)" variant="ghost" size="sm" class="text-primary" @click="openPush(d)">推送企微</Button>
-                  <Button v-else variant="ghost" size="sm" class="text-primary" :disabled="busy[d.id]" @click="openPublish(d)">发布</Button>
-                  <Button variant="ghost" size="sm" @click="goEdit(d.id)">编辑</Button>
+                  <Button variant="ghost" size="sm" @click="goPreview(d)">预览</Button>
+                  <Button variant="outline" size="sm" @click="goEdit(d.id)">编辑</Button>
                   <DropdownMenu><template #trigger><Button variant="ghost" size="icon-sm" aria-label="更多文档操作"><Ellipsis /></Button></template>
-                    <DropdownMenuItem @select="goPreview(d)"><Eye />预览文档</DropdownMenuItem>
+                    <DropdownMenuItem v-if="displayStatus(d) === 'offline' && !hasPendingDraft(d)" :disabled="busy[d.id]" @select="openRestore(d)"><RotateCcw />重新上架</DropdownMenuItem>
+                    <DropdownMenuItem v-else-if="displayStatus(d) === 'published' && !hasPendingDraft(d)" :disabled="busy[d.id]" @select="openPush(d)"><Send />推送企微</DropdownMenuItem>
+                    <DropdownMenuItem v-else :disabled="busy[d.id]" @select="openPublish(d)"><Upload />发布文档</DropdownMenuItem>
                     <DropdownMenuItem @select="openVersions(d)"><History />历史版本</DropdownMenuItem>
                     <DropdownMenuItem v-if="canOffline(d)" destructive :disabled="busy[d.id]" @select="openOffline(d)"><Archive />下架</DropdownMenuItem>
                     <DropdownMenuItem v-if="canDelete(d)" destructive :disabled="busy[d.id]" @select="openDelete(d)"><Trash2 />删除</DropdownMenuItem>
@@ -84,17 +83,7 @@ HrDocAdminView — HR 文档 CMS 管理后台（列表 + 状态筛选 + 直接�
       </div>
     </section>
 
-    <Dialog v-model:open="versionsModal.open" :title="versionsModal.title + ' · 历史版本'" size="lg" class="portal-editor-floating">
-      <div v-if="versionsModal.loading" class="hr-list-loading">正在加载历史版本…</div>
-      <div v-else-if="versionsModal.versions.length" class="overflow-x-auto"><table class="data-table hr-version-table"><thead><tr><th>版本</th><th>标题</th><th>发布人</th><th>发布时间</th><th>操作</th></tr></thead><tbody>
-        <tr v-for="v in versionsModal.versions" :key="v.version"><td>{{ v.version }}</td><td>{{ v.title }}</td><td>{{ v.published_by || '—' }}</td><td>{{ v.published_at ? v.published_at.slice(0,16).replace('T',' ') : '—' }}</td><td><Button variant="ghost" size="sm" @click="viewVersion(versionsModal.id,v.version)">查看快照</Button></td></tr>
-      </tbody></table></div>
-      <EmptyState v-else title="暂无已发布版本" description="首次发布后自动保留版本快照。" compact />
-    </Dialog>
-    <Dialog v-model:open="snapshotModal.open" :title="snapshotModal.title + ' · ' + snapshotModal.version" size="xl" class="portal-editor-floating">
-      <HrBlocksRenderer v-if="snapshotModal.blocks" :blocks="snapshotModal.blocks" />
-      <HrDocRenderer v-else :html="snapshotModal.html" />
-    </Dialog>
+    <PortalHrVersionsDialog v-model:open="versionsModal.open" :document-id="versionsModal.id" :title="versionsModal.title" />
 
     <!-- 发布确认（v1.9：审批已下线，发布是唯一推进动作，确认后立即对员工可见） -->
     <ConfirmDialog
@@ -171,11 +160,10 @@ import { useRoute, useRouter } from 'vue-router'
 import ConfirmDialog from '../../components/ui/ConfirmDialog.vue'
 import HrDocPushDialog from '../../components/hr/HrDocPushDialog.vue'
 import HrLayoutJobsLauncher from '../../components/ui/HrLayoutJobsLauncher.vue'
-import HrDocRenderer from '../../components/HrDocRenderer.vue'
-import HrBlocksRenderer from '../../components/HrBlocksRenderer.vue'
+import PortalHrVersionsDialog from '../../../components/PortalHrVersionsDialog.vue'
 import { articleApi } from '../../../bridge/api'
-import { PageHeader, Button, Input, Select, Badge, Pagination, EmptyState, DropdownMenu, DropdownMenuItem, Dialog } from '../../../bridge/oa-ui'
-import { Plus, RefreshCw, Search, Files, FileText, Trash2, LoaderCircle, ArrowDown, ArrowUp, RotateCcw, Ellipsis, Eye, History, Archive } from '@lucide/vue'
+import { PageHeader, Button, Input, Select, Badge, Pagination, EmptyState, DropdownMenu, DropdownMenuItem } from '../../../bridge/oa-ui'
+import { Plus, RefreshCw, Search, Files, FileText, Trash2, LoaderCircle, ArrowDown, ArrowUp, RotateCcw, Ellipsis, History, Archive, Send, Upload } from '@lucide/vue'
 import { useToast } from '../../composables/useToast'
 
 const toast = useToast()
@@ -184,6 +172,7 @@ const route = useRoute()
 
 const docs = ref([])
 const loading = ref(false)
+const loadError = ref('')
 const busy = reactive({})
 
 // 筛选状态同步进 URL query：去编辑器再返回（或刷新）时搜索/筛选不丢
@@ -355,17 +344,21 @@ watch(pageSize, () => { page.value = 1 })
 // 数据变少时把页码夹回合法范围
 watch(pageCount, (n) => { if (page.value > n) page.value = n })
 
+let listRequest = 0
 async function loadDocs() {
+  const request = ++listRequest
   loading.value = true
+  loadError.value = ''
   try {
     // v1.22：deleted=true 切到回收站（后端过滤），默认只拉正常文档
     const r = await articleApi.adminList(filter.deleted ? { deleted: 1 } : {})
+    if (request !== listRequest) return
     // api interceptor 已 unwrap envelope → r === {success, data, error}；docs 数组在 r.data
     docs.value = r.data || []
   } catch (e) {
-    toast.show('加载失败：' + (e.response?.data?.detail || e.message), 'err')
+    if (request === listRequest) loadError.value = '加载失败：' + (e.response?.data?.detail || e.message)
   } finally {
-    loading.value = false
+    if (request === listRequest) loading.value = false
   }
 
 }
@@ -580,41 +573,12 @@ async function onPushed(result) {
 // 操作列的「⋯」菜单
 
 
-const versionsModal = reactive({ open: false, id: 0, title: '', loading: false, versions: [] })
-async function openVersions(d) {
+const versionsModal = reactive({ open: false, id: 0, title: '' })
+function openVersions(d) {
   versionsModal.id = d.id
   versionsModal.title = d.title
   versionsModal.open = true
-  versionsModal.loading = true
-  versionsModal.versions = []
-  try {
-    const r = await articleApi.adminVersions(d.id)
-    versionsModal.versions = r.data || []
-  } catch (e) {
-    toast.show('加载历史失败', 'err')
-  } finally {
-    versionsModal.loading = false
-  }
 }
-function closeVersions() { versionsModal.open = false }
-
-const snapshotModal = reactive({ open: false, title: '', version: '', html: '', blocks: null })
-async function viewVersion(id, version) {
-  try {
-    const r = await articleApi.adminVersion(id, version)
-    snapshotModal.title = r.data.title
-    snapshotModal.version = version
-    snapshotModal.html = r.data.content_html
-    // 块格式版本的快照存 content_blocks（HTML 列留 NULL），非空才走块渲染
-    snapshotModal.blocks = Array.isArray(r.data.content_blocks) && r.data.content_blocks.length > 0
-      ? r.data.content_blocks
-      : null
-    snapshotModal.open = true
-  } catch (e) {
-    toast.show('加载快照失败', 'err')
-  }
-}
-function closeSnapshot() { snapshotModal.open = false }
 
 onMounted(loadDocs)
 </script>
@@ -625,8 +589,8 @@ onMounted(loadDocs)
 .hr-list-tabs { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border); }
 .hr-view-switch { display:flex; align-items:center; gap:4px; }
 .hr-result-count { color:var(--muted-foreground); font-size:12px; white-space:nowrap; }
-.hr-filter-toolbar { padding:16px 18px; gap:10px; }
-.hr-search { position:relative; width:240px; }
+.hr-filter-toolbar { display:flex; flex-wrap:wrap; padding:16px 18px; gap:10px; }
+.hr-search { position:relative; flex:1; min-width:220px; }
 .hr-search > :deep(svg) { position:absolute; width:15px; height:15px; left:11px; top:11px; color:var(--muted-foreground); pointer-events:none; }
 .hr-search :deep(input) { padding-left:33px; }
 .hr-category-filter { width:154px; } .hr-status-filter { width:138px; } .hr-range-filter { width:150px; }
@@ -637,21 +601,33 @@ onMounted(loadDocs)
 .hr-list-loading { display:flex; justify-content:center; align-items:center; gap:9px; min-height:200px; font-size:13px; color:var(--muted-foreground); }
 .hr-list-loading > svg { width:18px; height:18px; }
 .hr-table-scroll { overflow:auto; border-top:1px solid var(--border); scrollbar-width:thin; }
-.hr-doc-table { min-width:1080px; width:100%; table-layout:fixed; }
+.hr-doc-table { --hr-list-surface:color-mix(in srgb,var(--card) 75%,var(--background)); min-width:860px; width:100%; table-layout:fixed; }
 .hr-doc-table :is(thead,tbody) { display:table-header-group; } .hr-doc-table tbody { display:table-row-group; }
 .hr-doc-table tr { display:table-row; } .hr-doc-table :is(th,td) { display:table-cell; vertical-align:middle; text-align:left; padding:13px 16px; }
-.hr-doc-table tbody tr { cursor:pointer; } .hr-doc-table tbody tr:focus-visible { outline:2px solid var(--ring); outline-offset:-2px; }
+.hr-doc-table tbody tr { background:var(--hr-list-surface); }
+.hr-doc-table tbody tr:hover { background:color-mix(in srgb,var(--primary) 3%,var(--hr-list-surface)); }
 .hr-doc-table td { white-space:normal; font-size:13px; line-height:1.5; }
 .hr-doc-table td small { display:block; margin-top:3px; font-size:11px; color:var(--muted-foreground); font-weight:400; }
-.hr-title-cell { display:flex; align-items:center; gap:10px; min-width:0; }
-.hr-title-cell > svg { width:17px; height:17px; flex-shrink:0; color:var(--muted-foreground); }
+.hr-title-cell { display:flex; align-items:center; gap:12px; min-width:0; }
+.hr-document-icon { display:grid; flex:0 0 34px; height:38px; place-items:center; border:1px solid transparent; border-radius:8px; background:var(--info-soft); color:var(--primary); }
+.hr-document-icon svg { width:18px; height:18px; }
 .hr-title-cell > div { min-width:0; }
-.hr-document-title { display:block; color:var(--foreground); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hr-document-title { display:-webkit-box; max-width:100%; padding:0; border:0; background:transparent; color:var(--foreground); font-size:14px; font-weight:550; line-height:1.65; overflow:hidden; -webkit-line-clamp:2; -webkit-box-orient:vertical; text-align:left; overflow-wrap:anywhere; }
+button.hr-document-title { cursor:pointer; }
+button.hr-document-title:hover { color:var(--primary); }
+button.hr-document-title:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.hr-document-meta { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:5px; color:var(--muted-foreground); font-size:11px; line-height:1.6; }
+.hr-signoff-label { display:inline-flex; align-items:center; gap:5px; }
+.hr-signoff-label > span { width:4px; height:4px; border-radius:50%; background:var(--primary); }
 .hr-draft-hint { display:block; margin-top:3px; font-size:11px; font-weight:400; color:var(--warning); }
 .hr-date,.hr-version { font-variant-numeric:tabular-nums; }
 .hr-sort-button { display:inline-flex; align-items:center; gap:5px; cursor:pointer; background:transparent; border:0; font:inherit; color:inherit; }
 .hr-sort-button svg { width:13px; height:13px; }
-.hr-row-actions { display:flex; align-items:center; gap:0; white-space:nowrap; }
+.hr-row-actions { display:flex; align-items:center; justify-content:flex-end; gap:5px; white-space:nowrap; }
+.hr-doc-table .hr-action-heading { text-align:right; padding-right:28px; }
+.hr-doc-table .hr-actions-cell { position:sticky; right:0; background:var(--hr-list-surface); }
+.hr-doc-table tbody tr:hover .hr-actions-cell { background:color-mix(in srgb,var(--primary) 3%,var(--hr-list-surface)); }
+.hr-load-error { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:24px; color:var(--destructive); font-size:13px; }
 .hr-row-actions :deep(button) { padding-left:8px; padding-right:8px; }
 .hr-deleted-row { cursor:default !important; }
 .hr-pagination-row { display:flex; align-items:center; gap:16px; padding:14px 18px; border-top:1px solid var(--border); }
@@ -659,4 +635,20 @@ onMounted(loadDocs)
 .hr-page-size { display:flex; align-items:center; gap:8px; color:var(--muted-foreground); font-size:12px; white-space:nowrap; }
 .hr-page-size > :deep(button) { width:88px; }
 @media(max-width:700px) { .hr-list-panel { margin-top:16px; } .hr-filter-toolbar { display:grid; grid-template-columns:1fr 1fr; padding:12px; } .hr-search { width:100%; grid-column:1/-1; } .hr-category-filter,.hr-status-filter,.hr-range-filter { width:100%; } .hr-list-tabs,.hr-pagination-row { padding:12px; } .hr-pagination-row { align-items:stretch; flex-direction:column; } }
+@media(max-width:767px) {
+  .hr-table-scroll { overflow:visible; padding:0 12px 12px; border-top:0; }
+  .oa-hr-admin .hr-doc-table { display:block; min-width:0; width:100%; table-layout:auto; }
+  .oa-hr-admin .hr-doc-table colgroup, .oa-hr-admin .hr-doc-table thead { display:none; }
+  .oa-hr-admin .hr-doc-table tbody { display:grid; gap:10px; }
+  .oa-hr-admin .hr-doc-table tr { display:grid; grid-template-columns:1fr 1fr; gap:0; padding:14px; border:1px solid var(--border); border-radius:9px; background:var(--card); }
+  .oa-hr-admin .hr-doc-table td { display:block; padding:8px 0; border:0; }
+  .oa-hr-admin .hr-doc-table td::before { content:attr(data-label); display:block; margin-bottom:5px; color:var(--muted-foreground); font-size:10px; }
+  .oa-hr-admin .hr-doc-table .hr-doc-name { grid-column:1/-1; padding-top:0; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .hr-doc-name::before, .hr-actions-cell::before { display:none!important; }
+  .oa-hr-admin .hr-doc-table .hr-actions-cell { position:static; display:flex; align-items:flex-end; padding-bottom:7px; background:transparent; }
+  .hr-title-cell { gap:10px; }
+  .hr-document-icon { flex-basis:32px; height:36px; }
+  .hr-document-title { font-size:13px; }
+  .hr-row-actions { width:100%; gap:4px; }
+}
 </style>

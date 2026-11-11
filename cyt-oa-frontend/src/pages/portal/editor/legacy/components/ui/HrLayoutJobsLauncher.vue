@@ -31,6 +31,7 @@
     <HrLayoutJobsDrawer
       v-model:open="open"
       :jobs="jobs"
+      :theme="theme"
       @apply="onApply"
       @retry="onRetry"
       @remove="onRemove"
@@ -52,7 +53,7 @@ const route = useRoute()
 // 编辑器页会 provide 这个函数；其它页面 inject 到 null
 const applyToEditor = inject('hrLayoutApply', null)
 
-defineProps({ hideWhenEmpty: { type: Boolean, default: false } })
+defineProps({ hideWhenEmpty: { type: Boolean, default: false }, theme: { type: String, default: '' } })
 
 const jobs = ref([])
 const open = ref(false)

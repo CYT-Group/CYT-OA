@@ -66,15 +66,15 @@
 .portal-editor-scope.portal-editor-frame .toggle input:checked + .st-switch-track { background:var(--primary); }
 .portal-editor-scope.portal-editor-frame .blk-card { border-color:#dce3ed; border-radius:8px; box-shadow:none; }
 .portal-editor-scope.portal-editor-frame .blk-hd { padding:9px 10px; background:#f7f9fc; border-color:#e5eaf1; font-family:var(--font-sans); }
-.portal-editor-scope.portal-editor-frame .blk-badge { color:#2563eb; background:#e9f0fe; }
+.portal-editor-scope.portal-editor-frame .blk-badge { color:var(--primary); background:var(--info-soft); }
 .portal-editor-scope.portal-editor-frame .blk-preview { border-color:#e5eaf1; border-radius:7px; background:#fafbfd; }
 .portal-editor-scope.portal-editor-frame .blk-preview-cap { color:#738095; font-family:var(--font-sans); font-size:11px; }
 .portal-editor-scope.portal-editor-frame :is(.hbe-input,.hbe-ta,.hbe-select) { border-color:#dce3ed; border-radius:6px; }
-.portal-editor-scope.portal-editor-frame .rte { --v:#2563eb; border-color:#dce3ed; border-radius:7px; }
+.portal-editor-scope.portal-editor-frame .rte { --v:var(--primary); border-color:#dce3ed; border-radius:7px; }
 .portal-editor-scope.portal-editor-frame .rte-toolbar { padding:7px; background:#f7f9fc; border-color:#e5eaf1; font-family:var(--font-sans); }
 .portal-editor-scope.portal-editor-frame .rte-toolbar button { border-color:#dce3ed; color:#344256; background:white; }
-.portal-editor-scope.portal-editor-frame .rte-toolbar button.active { color:white; background:#2563eb; border-color:#2563eb; }
-.portal-editor-scope.portal-editor-frame .hbe-add-item, .portal-editor-scope.portal-editor-frame .gap-plus { border-color:#c8d5e8; color:#2563eb; background:#f7faff; }
+.portal-editor-scope.portal-editor-frame .rte-toolbar button.active { color:var(--primary-foreground); background:var(--primary); border-color:var(--primary); }
+.portal-editor-scope.portal-editor-frame .hbe-add-item, .portal-editor-scope.portal-editor-frame .gap-plus { border-color:var(--input); color:var(--primary); background:var(--info-soft); }
 .portal-editor-scope.portal-editor-frame .oa-hr-preview { min-width:0; }
 .portal-editor-scope.portal-editor-frame .oa-hr-preview > .page-header { margin-bottom:20px; }
 .portal-editor-scope.portal-editor-frame .oa-hr-preview .pv-banner { display:flex; gap:8px; align-items:center; margin:0 0 16px; padding:10px 14px; border:1px solid var(--border); border-radius:8px; background:var(--card); font-size:12px; }
