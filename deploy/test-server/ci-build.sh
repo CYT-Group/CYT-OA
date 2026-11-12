@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Jenkins「cyt-oa-deploy」构建步骤总入口。工作区 = 从 GitHub 取下的临时源码目录。
+# Jenkins「cyt-oa-deploy」构建步骤总入口；Jenkins 原生 Git 检出到工作区。
 #   SKIP_DEPLOY=1 / true 只构建推镜像、不重启容器（Jenkins 布尔参数传的是 true/false）。
 
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
 echo "==> 工作区: $ROOT"
+if [[ -f "$ROOT/.deploy-branch" ]]; then
+  echo "==> 发布分支: $(cat "$ROOT/.deploy-branch")"
+fi
 if [[ -f "$ROOT/.deploy-sha" ]]; then
   echo "==> 源码提交: $(cut -c1-12 "$ROOT/.deploy-sha")"
 else

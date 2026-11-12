@@ -1,6 +1,6 @@
 # CYT-OA 测试服编排（1Panel「容器 → 编排」/ docker compose 通用）
 #
-# 四个容器：db（OA 专用 MySQL 8）+ redis（OA 专用缓存）+ api（Spring Boot）+ web（nginx 托管的 Vue SPA）。
+# 四个容器：db（OA 专用 PostgreSQL）+ redis（OA 专用缓存）+ api（Spring Boot）+ web（nginx 托管的 Vue SPA）。
 # 浏览器只访问 web 的 8091；/api 与 /admin-api 由 web 在容器内网反代到 api，不经过宿主机。
 # 数据库和缓存都是独立容器/独立卷，不碰 CS、Common、Portal 的现有数据。
 #
@@ -9,22 +9,19 @@
 
 services:
   db:
-    image: mysql:8.0
+    image: postgres:17-alpine
     container_name: cyt-oa-db
     environment:
       TZ: Asia/Shanghai
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-cyt_oa_center}
-      MYSQL_USER: ${MYSQL_USER:-cyt_oa}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 里配置 MYSQL_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 里配置 MYSQL_ROOT_PASSWORD}
-    command:
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_bin
-      - --default-time-zone=+08:00
+      POSTGRES_DB: ${POSTGRES_DB:-cyt_oa_center}
+      POSTGRES_USER: ${POSTGRES_USER:-cyt_oa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 里配置 POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+    command: ["postgres", "-c", "timezone=Asia/Shanghai"]
     volumes:
-      - oa_mysql:/var/lib/mysql
+      - oa_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -58,22 +55,27 @@ services:
       # 显式指定 test：不要用默认 local profile，避免误读本机 application-local.yml
       SPRING_PROFILES_ACTIVE: test
       CYT_CENTER_PORT: "48081"
-      CYT_MYSQL_HOST: db
-      CYT_MYSQL_PORT: "3306"
-      CYT_MYSQL_DATABASE: ${MYSQL_DATABASE:-cyt_oa_center}
-      CYT_MYSQL_USERNAME: ${MYSQL_USER:-cyt_oa}
-      CYT_MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 里配置 MYSQL_PASSWORD}
+      CYT_PG_HOST: db
+      CYT_PG_PORT: "5432"
+      CYT_PG_DATABASE: ${POSTGRES_DB:-cyt_oa_center}
+      CYT_PG_USERNAME: ${POSTGRES_USER:-cyt_oa}
+      CYT_PG_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 里配置 POSTGRES_PASSWORD}
       CYT_REDIS_HOST: redis
       CYT_REDIS_PORT: "6379"
       CYT_REDIS_DATABASE: "0"
       CYT_REDIS_PASSWORD: ""
-      # 测试服：用 system-seed.sql 自带的 admin / admin123 登录，不接企微、不接门户 SSO
+      # 测试服：用 PostgreSQL 初始种子中的 admin / admin123 登录，定时同步与门户 SSO 默认关闭
       CYT_PASSWORD_LOGIN_ENABLED: "true"
       CYT_DEV_IDENTITY_ENABLED: "false"
       CYT_DIRECTORY_SYNC_ENABLED: "false"
       CYT_WECOM_HR_SYNC_ENABLED: "false"
       CYT_SSO_ENABLED: "false"
-      CYT_WECOM_GATEWAY_URL: ""
+      # 企微审批模板按需接入 Common 网关；.env 必须显式传入容器，不能写死空字符串
+      CYT_WECOM_GATEWAY_URL: ${CYT_WECOM_GATEWAY_URL:-}
+      CYT_WECOM_API_KEY: ${CYT_WECOM_API_KEY:-}
+      CYT_WECOM_SYSTEM_ID: ${CYT_WECOM_SYSTEM_ID:-oa}
+      CYT_WECOM_CORP_ID: ${CYT_WECOM_CORP_ID:-}
+      CYT_WECOM_ALLOW_DEV_IDENTITY: "false"
     ports:
       - "127.0.0.1:${OA_API_PORT:-8092}:48081"
     healthcheck:
@@ -101,5 +103,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  oa_mysql:
+  oa_postgres:
   oa_redis:

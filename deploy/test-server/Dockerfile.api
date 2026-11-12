@@ -15,7 +15,7 @@ RUN mvn -B -q -Dmaven.test.skip=true package
 FROM ${BASE_REGISTRY}library/eclipse-temurin:21-jre-noble
 WORKDIR /app
 COPY --from=build /build/target/cyt-oa-backend-1.0.0.jar /app/app.jar
-# 首次部署要按 README 顺序导入建表脚本，镜像里带一份，避免服务器另存源码
+# 镜像携带数据库资源供排查；结构变更由部署入口的 Flyway 执行
 COPY cyt-oa-backend/src/main/resources/db /app/db
 ENV TZ=Asia/Shanghai
 EXPOSE 48081

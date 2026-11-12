@@ -26,6 +26,10 @@ set +a
 WEB_PORT="${OA_WEB_PORT:-8091}"
 API_PORT="${OA_API_PORT:-8092}"
 
+if [[ "${OA_MIGRATIONS_APPLIED:-0}" != 1 ]]; then
+  bash "$ROOT/deploy/test-server/db-upgrade.sh" "$ROOT"
+fi
+
 if [[ "${SKIP_PULL:-0}" != "1" ]]; then
   echo "==> 拉取最新镜像"
   docker compose pull api web 2>&1 | tail -6
