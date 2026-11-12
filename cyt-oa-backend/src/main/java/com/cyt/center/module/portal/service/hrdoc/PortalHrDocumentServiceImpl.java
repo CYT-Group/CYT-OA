@@ -10,11 +10,11 @@ import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentAliasDO
 import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentDraftVersionDO;
 import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentEntryBindingDO;
 import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentVersionDO;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentAliasMapper;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentDraftVersionMapper;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentEntryBindingMapper;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentMapper;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentVersionMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentAliasMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentDraftVersionMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentEntryBindingMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentVersionMapper;
 import com.cyt.center.module.portal.domain.hrdoc.HrDocumentBlockValidator;
 import com.cyt.center.module.portal.domain.hrdoc.HrDocumentValidator;
 import com.cyt.center.module.portal.service.support.PortalAccess;
@@ -738,7 +738,7 @@ public class PortalHrDocumentServiceImpl implements PortalHrDocumentService {
         return sha256Hex(JsonUtils.toJsonString(canonicalJson(values)));
     }
 
-    /** MySQL JSON 会重排嵌套键；凭据必须与 Python sort_keys=True 一样递归规范化。 */
+    /** JSON 对象的键顺序不影响内容；凭据与 Python sort_keys=True 一样递归规范化。 */
     private Object canonicalJson(Object value) {
         if(value instanceof Map<?,?> input){Map<String,Object> sorted=new TreeMap<>();input.forEach((key,item)->sorted.put(key.toString(),canonicalJson(item)));return sorted;}
         if(value instanceof List<?> input)return input.stream().map(this::canonicalJson).toList();

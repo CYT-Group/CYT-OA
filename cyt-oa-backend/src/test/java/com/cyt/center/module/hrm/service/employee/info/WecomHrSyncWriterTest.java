@@ -2,7 +2,7 @@ package com.cyt.center.module.hrm.service.employee.info;
 
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.*;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.*;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.*;
 import org.junit.jupiter.api.*;
 import java.time.*;
 import java.util.*;
@@ -13,13 +13,13 @@ import static org.mockito.ArgumentMatchers.*;
 class WecomHrSyncWriterTest {
     final HrmEmployeeMapper employees=mock(HrmEmployeeMapper.class);
     final HrmEmployeeWecomSyncMapper states=mock(HrmEmployeeWecomSyncMapper.class);
-    final com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeChangeRecordMapper changes=mock(com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeChangeRecordMapper.class);
+    final com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeChangeRecordMapper changes=mock(com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeChangeRecordMapper.class);
     final WecomHrSyncWriter writer=new WecomHrSyncWriter(employees,states,changes);
     @BeforeEach void updates(){when(employees.update(isNull(),any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(1);}
     @BeforeAll static void mapping(){com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(new com.baomidou.mybatisplus.core.MybatisConfiguration(),"test"),HrmEmployeeDO.class);com.baomidou.mybatisplus.core.metadata.TableInfoHelper.initTableInfo(new org.apache.ibatis.builder.MapperBuilderAssistant(new com.baomidou.mybatisplus.core.MybatisConfiguration(),"state"),HrmEmployeeWecomSyncDO.class);}
     @Test void missingSchemaStopsSyncWithUpgradeInstructions(){
         var error = assertThrows(BizException.class, writer::requireSchema);
-        assertTrue(error.getMessage().contains("db/wecom-hr-sync-schema.sql"));
+        assertTrue(error.getMessage().contains("db/postgresql/migration/"));
         verifyNoInteractions(employees);
         verify(states).countSyncTable();
         verifyNoMoreInteractions(states);

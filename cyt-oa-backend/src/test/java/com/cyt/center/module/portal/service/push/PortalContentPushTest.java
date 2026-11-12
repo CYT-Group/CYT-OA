@@ -2,7 +2,7 @@ package com.cyt.center.module.portal.service.push;
 
 import com.cyt.center.core.integration.WecomGatewayClient;
 import com.cyt.center.module.portal.dal.dataobject.news.PortalNewsDO;
-import com.cyt.center.module.portal.dal.mysql.push.PortalContentPushRepository;
+import com.cyt.center.module.portal.dal.postgresql.push.PortalContentPushRepository;
 import com.cyt.center.module.portal.service.support.PortalOperator;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import com.fasterxml.jackson.databind.ObjectMapper;

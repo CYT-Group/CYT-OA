@@ -7,7 +7,7 @@ import com.cyt.center.core.result.PageResult;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.oa.controller.admin.supply.vo.item.*;
 import com.cyt.center.module.oa.dal.dataobject.supply.*;
-import com.cyt.center.module.oa.dal.mysql.supply.*;
+import com.cyt.center.module.oa.dal.postgresql.supply.*;
 import com.cyt.center.module.system.api.dept.DeptApi;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;

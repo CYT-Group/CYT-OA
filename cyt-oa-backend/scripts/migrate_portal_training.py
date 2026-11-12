@@ -1,11 +1,11 @@
-"""B3 培训中心迁移：Portal Postgres → OA MySQL（课程 / 课时 / 课时进度 / 课程级进度）。
+"""B3 培训中心迁移：Portal Postgres → OA PostgreSQL（课程 / 课时 / 课时进度 / 课程级进度）。
 
 用法：
     python scripts/migrate_portal_training.py --dry-run   # 只报数，不写库
     python scripts/migrate_portal_training.py             # 真正写入
 
 行 id 一律原样保留：课时按 course_id 引用课程、课时进度按 lesson_id 引用课时，重新编号等于把关系打断。
-MySQL 里已存在的 id 直接跳过，中途失败可重复执行接着跑。category_id 引用的 portal_categories
+PostgreSQL 里已存在的 id 直接跳过，中途失败可重复执行接着跑。category_id 引用的 portal_categories
 已在批次 2 迁入（id 保留），FK 天然满足。
 
 口径出处：docs/Portal管理面迁移契约.md §一「培训中心」、§二「类型转换口径」、§四 批次 3。
@@ -19,11 +19,11 @@ import os
 import sys
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import portal_time as pt  # noqa: E402
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn  # noqa: E402
+from migrate_portal_identity import read_pg_dsn  # noqa: E402
 
 # 插入顺序即外键依赖顺序：先课程、再课时、再课时进度、再课程级进度（课程级进度无 FK，排最后无妨）
 TABLES = [
@@ -47,7 +47,7 @@ def _json_array(value):
 
 
 def _pages(value):
-    """JSONB 文本原样（pages）：asyncpg 读回的是已解析的 list，重新 dumps 成 JSON 文本交给 MySQL JSON 列校验。"""
+    """JSONB 文本原样（pages）：asyncpg 读回的是已解析的 list，重新 dumps 成 JSON 文本交给 PostgreSQL JSON 列校验。"""
     if value is None:
         return None
     if isinstance(value, str):
@@ -125,7 +125,7 @@ def clock(value, stats):
 
 
 def _write(cur, table, rows, dry_run, report, label):
-    """rows 是 (id, 列名字典) 的列表；MySQL 里已有的 id 跳过；500 行一批送（防 max_allowed_packet 顶爆）。"""
+    """rows 是 (id, 列名字典) 的列表；PostgreSQL 里已有的 id 跳过；按 500 行分批写入，控制内存占用。"""
     cur.execute("select id from %s" % table)
     done = {r[0] for r in cur.fetchall()}
     todo = [row for rid, row in rows if rid not in done]
@@ -139,23 +139,24 @@ def _write(cur, table, rows, dry_run, report, label):
 
 
 def migrate(portal, dry_run):
-    my = pymysql.connect(**read_mysql_conf())
-    cur = my.cursor()
-    report = {}
-    stats = {"utc_era": 0, "cutover_day": 0}
-
-    for src, dst in TABLES:
-        rows = build(src, portal[src], stats)
-        _write(cur, dst, rows, dry_run, report, dst)
-
-    report["按 UTC 段 +8h 的时间值"] = stats["utc_era"]
-    report["落在切换当天(需复核)"] = stats["cutover_day"]
-    report["completed_at 恒 +8h(应用层 utcnow)"] = "是"
-
+    my = connect_target(readonly=dry_run)
     try:
+        cur = my.cursor()
+        report = {}
+        stats = {"utc_era": 0, "cutover_day": 0}
+
+        for src, dst in TABLES:
+            rows = build(src, portal[src], stats)
+            _write(cur, dst, rows, dry_run, report, dst)
+
+        report["按 UTC 段 +8h 的时间值"] = stats["utc_era"]
+        report["落在切换当天(需复核)"] = stats["cutover_day"]
+        report["completed_at 恒 +8h(应用层 utcnow)"] = "是"
+
         if dry_run:
             my.rollback()
         else:
+            advance_target_sequences(my)
             my.commit()
     except Exception:
         my.rollback()  # 半途失败不留半套培训数据

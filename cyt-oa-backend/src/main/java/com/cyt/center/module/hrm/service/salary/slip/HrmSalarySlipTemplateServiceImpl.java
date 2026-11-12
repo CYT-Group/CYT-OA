@@ -8,7 +8,7 @@ import com.cyt.center.module.hrm.controller.admin.salary.vo.slip.template.HrmSal
 import com.cyt.center.module.hrm.controller.admin.salary.vo.slip.template.HrmSalarySlipTemplateSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryOptionDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.slip.HrmSalarySlipTemplateDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.slip.HrmSalarySlipTemplateMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.slip.HrmSalarySlipTemplateMapper;
 import com.cyt.center.module.hrm.enums.salary.config.HrmSalaryOptionCodeEnum;
 import com.cyt.center.module.hrm.enums.salary.slip.HrmSalarySlipTemplateCategoryEnum;
 import com.cyt.center.module.hrm.enums.salary.slip.HrmSalarySlipTemplateOptionTypeEnum;

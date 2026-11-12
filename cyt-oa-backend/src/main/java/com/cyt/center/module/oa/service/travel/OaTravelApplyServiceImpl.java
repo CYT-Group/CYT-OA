@@ -12,7 +12,7 @@ import com.cyt.center.module.approval.service.WecomApprovalBridge;
 import com.cyt.center.module.bpm.enums.task.BpmProcessInstanceStatusEnum;
 import com.cyt.center.module.oa.controller.admin.travel.vo.apply.*;
 import com.cyt.center.module.oa.dal.dataobject.travel.OaTravelApplyDO;
-import com.cyt.center.module.oa.dal.mysql.travel.OaTravelApplyMapper;
+import com.cyt.center.module.oa.dal.postgresql.travel.OaTravelApplyMapper;
 import com.cyt.center.module.oa.dal.redis.no.OaNoRedisDAO;
 import com.cyt.center.module.system.api.user.AdminUserApi;
 import com.cyt.center.module.system.api.user.dto.AdminUserRespDTO;

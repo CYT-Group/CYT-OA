@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PortalHrPublicationRevisionTest {
     final PortalHrDocumentServiceImpl service=new PortalHrDocumentServiceImpl();
-    @Test void savedRevisionSurvivesMysqlNestedJsonKeyReordering(){
+    @Test void savedRevisionSurvivesNestedJsonKeyReordering(){
         var before=doc();var after=doc();
         before.setDraftCover(ordered("bg_type","gradient","desc","封面"));
         after.setDraftCover(ordered("desc","封面","bg_type","gradient"));

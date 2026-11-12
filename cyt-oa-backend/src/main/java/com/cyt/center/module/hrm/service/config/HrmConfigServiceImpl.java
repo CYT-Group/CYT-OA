@@ -2,7 +2,7 @@ package com.cyt.center.module.hrm.service.config;
 
 import cn.hutool.core.collection.CollUtil;
 import com.cyt.center.module.hrm.dal.dataobject.config.HrmConfigDO;
-import com.cyt.center.module.hrm.dal.mysql.config.HrmConfigMapper;
+import com.cyt.center.module.hrm.dal.postgresql.config.HrmConfigMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

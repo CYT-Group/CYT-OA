@@ -17,7 +17,7 @@ import com.cyt.center.module.hrm.dal.dataobject.insurance.employee.HrmInsuranceE
 import com.cyt.center.module.hrm.dal.dataobject.insurance.monthrecord.HrmInsuranceMonthEmployeeRecordDO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.monthrecord.HrmInsuranceMonthEmployeeRecordDO.Project;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.monthrecord.HrmInsuranceMonthRecordDO;
-import com.cyt.center.module.hrm.dal.mysql.insurance.monthrecord.HrmInsuranceMonthEmployeeRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.insurance.monthrecord.HrmInsuranceMonthEmployeeRecordMapper;
 import com.cyt.center.module.hrm.enums.MessageTemplateConstants;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeEntryStatusEnum;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeStatusEnum;

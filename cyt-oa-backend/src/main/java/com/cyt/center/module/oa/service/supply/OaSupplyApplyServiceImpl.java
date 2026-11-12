@@ -14,7 +14,7 @@ import com.cyt.center.module.bpm.enums.task.BpmProcessInstanceStatusEnum;
 import com.cyt.center.module.oa.controller.admin.supply.vo.apply.*;
 import com.cyt.center.module.oa.controller.admin.supply.vo.issue.*;
 import com.cyt.center.module.oa.dal.dataobject.supply.*;
-import com.cyt.center.module.oa.dal.mysql.supply.*;
+import com.cyt.center.module.oa.dal.postgresql.supply.*;
 import com.cyt.center.module.oa.dal.redis.no.OaNoRedisDAO;
 import com.cyt.center.module.oa.enums.supply.*;
 import com.cyt.center.module.system.api.user.AdminUserApi;

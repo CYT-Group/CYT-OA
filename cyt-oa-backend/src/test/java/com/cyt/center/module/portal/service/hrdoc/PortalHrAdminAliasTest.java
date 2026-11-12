@@ -1,8 +1,8 @@
 package com.cyt.center.module.portal.service.hrdoc;
 
 import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentDO;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentAliasMapper;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentAliasMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 import static org.junit.jupiter.api.Assertions.*;

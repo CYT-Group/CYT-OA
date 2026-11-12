@@ -10,7 +10,7 @@ import com.cyt.center.module.oa.controller.admin.supply.vo.issue.OaSupplyIssuePa
 import com.cyt.center.module.oa.controller.admin.supply.vo.issue.OaSupplyReturnReqVO;
 import com.cyt.center.module.oa.dal.dataobject.supply.OaSupplyApplyDO;
 import com.cyt.center.module.oa.dal.dataobject.supply.OaSupplyApplyItemDO;
-import com.cyt.center.module.oa.dal.mysql.supply.OaSupplyApplyItemMapper;
+import com.cyt.center.module.oa.dal.postgresql.supply.OaSupplyApplyItemMapper;
 import com.cyt.center.module.oa.enums.supply.OaSupplyApplyItemStatusEnum;
 import com.cyt.center.module.oa.enums.supply.OaSupplyManageTypeEnum;
 import com.cyt.center.module.system.api.user.AdminUserApi;

@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.integration.*;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeMapper;
 import com.cyt.center.module.system.mapper.SysUserMapper;
 import com.cyt.center.module.system.model.entity.SysUser;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,10 +1,10 @@
-"""B3 展会日历 / 新品动态迁移：Portal Postgres → OA MySQL（批次 3-2）。
+"""B3 展会日历 / 新品动态迁移：Portal Postgres → OA PostgreSQL（批次 3-2）。
 
 用法：
     python scripts/migrate_portal_events_products.py --dry-run   # 只报数，不写库
     python scripts/migrate_portal_events_products.py             # 真正写入
 
-行 id 一律原样保留；MySQL 里已存在的 id 直接跳过，中途失败可以重复执行同一命令接着跑。
+行 id 一律原样保留；PostgreSQL 里已存在的 id 直接跳过，中途失败可以重复执行同一命令接着跑。
 
 口径出处：docs/Portal管理面迁移契约.md 批次 3-2。
 时间换算见 portal_time.py（Portal 的 PG 服务端时钟在 2026-07-23 从 UTC 切到 Asia/Shanghai）。
@@ -16,13 +16,13 @@ import os
 import sys
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import portal_time as pt  # noqa: E402
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn  # noqa: E402
+from migrate_portal_identity import read_pg_dsn  # noqa: E402
 
-# PG 表名与 MySQL 表名一致（两张表都没在 Portal 侧改过名）
+# PG 表名与 PostgreSQL 表名一致（两张表都没在 Portal 侧改过名）
 TABLES = [
     ("portal_events", "portal_events"),
     ("portal_products", "portal_products"),
@@ -30,12 +30,12 @@ TABLES = [
 
 
 def _flag(value):
-    """boolean → tinyint(1)，MySQL 没有 boolean，写 Python bool 会落成 1/0 但读回来是 int。"""
+    """Portal boolean → OA SMALLINT，保留 Java 既有 0/1 状态约定。"""
     return None if value is None else int(bool(value))
 
 
 def _date(value):
-    """DATE 列：Portal 返回 datetime.date，转成 'YYYY-MM-DD' 字符串交给 MySQL。"""
+    """DATE 列：Portal 返回 datetime.date，转成 'YYYY-MM-DD' 字符串交给 PostgreSQL。"""
     return None if value is None else str(value)
 
 
@@ -49,7 +49,7 @@ async def fetch_portal():
 
 
 def _write(cur, table, rows, dry_run, report, label):
-    """rows 是 (id, 列名字典) 的列表；MySQL 里已有的 id 跳过，按 500 行一批送。"""
+    """rows 是 (id, 列名字典) 的列表；PostgreSQL 里已有的 id 跳过，按 500 行一批送。"""
     rows.sort(key=lambda r: r[0])
     cur.execute("select id from %s" % table)
     done = {r[0] for r in cur.fetchall()}
@@ -99,24 +99,25 @@ def build(src, table_rows):
 
 
 def migrate(portal, dry_run):
-    my = pymysql.connect(**read_mysql_conf())
-    cur = my.cursor()
-    report = {}
-    all_stats = {"utc_era": 0, "cutover_day": 0}
-
-    for src, dst in TABLES:
-        rows, stats = build(src, portal[src])
-        _write(cur, dst, rows, dry_run, report, dst)
-        for k in ("utc_era", "cutover_day"):
-            all_stats[k] += stats[k]
-
-    report["按 UTC 段 +8h 的时间值"] = all_stats["utc_era"]
-    report["落在切换当天(需复核)"] = all_stats["cutover_day"]
-
+    my = connect_target(readonly=dry_run)
     try:
+        cur = my.cursor()
+        report = {}
+        all_stats = {"utc_era": 0, "cutover_day": 0}
+
+        for src, dst in TABLES:
+            rows, stats = build(src, portal[src])
+            _write(cur, dst, rows, dry_run, report, dst)
+            for k in ("utc_era", "cutover_day"):
+                all_stats[k] += stats[k]
+
+        report["按 UTC 段 +8h 的时间值"] = all_stats["utc_era"]
+        report["落在切换当天(需复核)"] = all_stats["cutover_day"]
+
         if dry_run:
             my.rollback()
         else:
+            advance_target_sequences(my)
             my.commit()
     except Exception:
         my.rollback()  # 半途失败不留半套内容数据

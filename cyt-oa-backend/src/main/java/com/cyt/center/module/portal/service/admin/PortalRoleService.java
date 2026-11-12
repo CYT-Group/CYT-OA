@@ -31,7 +31,7 @@ public class PortalRoleService {
         requireAdmin();
         var roles =
                 jdbc.queryForList(
-                        "SELECT id,code,name,built_in AS builtIn,remark FROM sys_role ORDER BY id");
+                        "SELECT id,code,name,built_in AS \"builtIn\",remark FROM sys_role ORDER BY id");
         for (var role : roles)
             role.put("permissions", permissions(((Number) role.get("id")).longValue()));
         return Map.of(
@@ -92,13 +92,13 @@ public class PortalRoleService {
             throw new BizException("角色管理和密钥管理能力不能转授");
         // 保留角色已有的 OA 权限，仅替换 Portal 能力位。
         jdbc.update(
-                "DELETE rm FROM sys_role_menu rm JOIN sys_menu m ON m.id=rm.menu_id WHERE"
+                "DELETE FROM sys_role_menu rm USING sys_menu m WHERE m.id=rm.menu_id AND"
                     + " rm.role_id=? AND LEFT(m.permission,4)='can_'",
                 id);
         for (String permission : requested)
             jdbc.update(
-                    "INSERT IGNORE INTO sys_role_menu(role_id,menu_id) SELECT ?,id FROM sys_menu"
-                        + " WHERE permission=?",
+                    "INSERT INTO sys_role_menu(role_id,menu_id) SELECT ?,id FROM sys_menu"
+                        + " WHERE permission=? ON CONFLICT (role_id,menu_id) DO NOTHING",
                     id,
                     permission);
         audit.record(

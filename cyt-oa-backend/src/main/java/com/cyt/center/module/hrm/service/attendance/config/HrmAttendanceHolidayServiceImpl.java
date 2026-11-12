@@ -6,7 +6,7 @@ import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.attendance.vo.holiday.HrmAttendanceHolidayPageReqVO;
 import com.cyt.center.module.hrm.controller.admin.attendance.vo.holiday.HrmAttendanceHolidaySaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.attendance.config.HrmAttendanceHolidayDO;
-import com.cyt.center.module.hrm.dal.mysql.attendance.config.HrmAttendanceHolidayMapper;
+import com.cyt.center.module.hrm.dal.postgresql.attendance.config.HrmAttendanceHolidayMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

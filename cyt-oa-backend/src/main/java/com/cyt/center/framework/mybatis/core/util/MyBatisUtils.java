@@ -4,7 +4,6 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.func.Func1;
 import cn.hutool.core.lang.func.LambdaUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -14,7 +13,6 @@ import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cyt.center.framework.common.pojo.PageParam;
 import com.cyt.center.framework.common.pojo.SortingField;
-import com.cyt.center.framework.mybatis.core.enums.DbTypeEnum;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -32,15 +30,6 @@ import java.util.stream.IntStream;
 public class MyBatisUtils {
 
     private static final Pattern SAFE_COLUMN_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_]+(\\.[a-zA-Z0-9_]+)*$");
-
-    private static final String FIND_IN_SET_VALUE_PLACEHOLDER = "#{value}";
-
-    private static final String FIND_IN_SET_COLUMN_PLACEHOLDER = "#{column}";
-
-    /**
-     * 本项目固定使用 MySQL，无需按运行时数据源识别方言
-     */
-    static final DbType DB_TYPE = DbType.MYSQL;
 
     public static <T> Page<T> buildPage(PageParam pageParam) {
         return buildPage(pageParam, null);
@@ -150,7 +139,7 @@ public class MyBatisUtils {
     }
 
     /**
-     * 跨数据库的 find_in_set 实现
+     * PostgreSQL 逗号分隔列表成员匹配
      *
      * @param columnName 字段名称
      * @return sql
@@ -160,7 +149,7 @@ public class MyBatisUtils {
     }
 
     /**
-     * 跨数据库的 find_in_set 实现，适用于同一个 apply 语句中有多个参数的场景
+     * PostgreSQL 逗号分隔列表成员匹配，适用于同一个 apply 语句中有多个参数的场景
      *
      * @param columnName 字段名称
      * @param paramIndex apply 参数序号
@@ -171,7 +160,7 @@ public class MyBatisUtils {
     }
 
     /**
-     * 跨数据库的 find_in_set 实现，适用于同一字段匹配多个参数的场景
+     * PostgreSQL 逗号分隔列表成员匹配，适用于同一字段匹配多个参数的场景
      *
      * 每个参数生成一个 find_in_set 条件，并使用 OR 连接。
      *
@@ -180,32 +169,22 @@ public class MyBatisUtils {
      * @return sql
      */
     public static String findInSet(String columnName, Collection<?> values) {
-        return findInSet(DB_TYPE, columnName, values);
-    }
-
-    static String findInSet(DbType dbType, String columnName, Collection<?> values) {
         if (CollUtil.isEmpty(values)) {
             throw new IllegalArgumentException("Values cannot be empty");
         }
         return IntStream.range(0, values.size())
-                .mapToObj(index -> findInSet(dbType, columnName, index))
+                .mapToObj(index -> findInSet(columnName, index))
                 .collect(Collectors.joining(" OR "));
     }
 
     private static String findInSet(String columnName, int paramIndex) {
-        return findInSet(DB_TYPE, columnName, paramIndex);
-    }
-
-    static String findInSet(DbType dbType, String columnName, int paramIndex) {
         if (!isSafeColumnName(columnName)) {
             throw new IllegalArgumentException("Invalid column name: " + columnName);
         }
         if (paramIndex < 0) {
             throw new IllegalArgumentException("Invalid param index: " + paramIndex);
         }
-        return DbTypeEnum.getFindInSetTemplate(dbType)
-                .replace(FIND_IN_SET_COLUMN_PLACEHOLDER, columnName)
-                .replace(FIND_IN_SET_VALUE_PLACEHOLDER, "{" + paramIndex + "}");
+        return "POSITION(',' || CAST({" + paramIndex + "} AS TEXT) || ',' IN ',' || " + columnName + " || ',') > 0";
     }
 
     /**

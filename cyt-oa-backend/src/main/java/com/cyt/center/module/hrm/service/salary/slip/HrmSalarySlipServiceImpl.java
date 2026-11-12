@@ -9,7 +9,7 @@ import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.monthrecord.HrmSalaryMonthEmployeeRecordDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.slip.HrmSalarySlipDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.slip.HrmSalarySlipTemplateDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.slip.HrmSalarySlipMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.slip.HrmSalarySlipMapper;
 import com.cyt.center.module.hrm.enums.MessageTemplateConstants;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import com.cyt.center.module.system.api.notify.NotifyMessageSendApi;

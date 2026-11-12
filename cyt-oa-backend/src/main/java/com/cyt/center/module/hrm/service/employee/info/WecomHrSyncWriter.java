@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.integration.WecomHrDates;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.*;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.*;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.*;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeChangeRecordDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeChangeRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeChangeRecordMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +30,7 @@ public class WecomHrSyncWriter {
     /** 只读预检：升级遗漏时在读取上游和写员工档案之前明确失败。 */
     public void requireSchema() {
         if (states.countSyncTable() != 1)
-            throw new BizException("企微花名册同步尚未完成数据库升级：请管理员执行 db/wecom-hr-sync-schema.sql，本次未写入");
+            throw new BizException("企微花名册同步尚未完成数据库升级：请管理员通过 Flyway 执行 db/postgresql/migration/ 下的数据库迁移，本次未写入");
     }
 
     @Transactional(rollbackFor = Exception.class)

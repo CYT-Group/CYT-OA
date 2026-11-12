@@ -5,7 +5,7 @@ import com.cyt.center.core.result.PageResult;
 import com.cyt.center.framework.common.pojo.PageParam;
 import com.cyt.center.module.portal.controller.admin.feedback.vo.PortalFeedbackSubmitReqVO;
 import com.cyt.center.module.portal.dal.dataobject.feedback.PortalFeedbackDO;
-import com.cyt.center.module.portal.dal.mysql.feedback.PortalFeedbackMapper;
+import com.cyt.center.module.portal.dal.postgresql.feedback.PortalFeedbackMapper;
 import com.cyt.center.module.portal.service.support.PortalOperator;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import jakarta.annotation.Resource;

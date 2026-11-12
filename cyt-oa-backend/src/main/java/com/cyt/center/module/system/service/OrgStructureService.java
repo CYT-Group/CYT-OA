@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.result.PageResult;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeMapper;
 import com.cyt.center.module.system.mapper.SysDeptMapper;
 import com.cyt.center.module.system.mapper.SysUserDeptMapper;
 import com.cyt.center.module.system.mapper.SysUserMapper;

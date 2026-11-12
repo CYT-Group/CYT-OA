@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PasswordHasherTest {
 
-    /** 与 db/system-seed.sql 里 dev 账号的散列保持一致；改种子文件必须同步改这里。 */
+    /** 与 db/postgresql/migration/V20261112_002__initial_seed.sql 里 dev 账号的散列保持一致；改种子文件必须同步改这里。 */
     private static final String SEEDED_DEV_HASH =
             "pbkdf2:sha256:210000$m3g503RNYWhLM6ctXjG2dw==$UHKQeq5ibcoaOaW1xVYAJjdhzDh1IXfx9VAeG7+WjHE=";
 

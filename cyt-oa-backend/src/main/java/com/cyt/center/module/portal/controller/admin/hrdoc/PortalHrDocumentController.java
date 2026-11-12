@@ -52,7 +52,7 @@ import static com.cyt.center.framework.security.core.util.SecurityFrameworkUtils
 @RequiredArgsConstructor
 @SaCheckPermission(PortalCapability.EDIT_HR_DOCUMENTS)
 public class PortalHrDocumentController {
-    private final com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrEditorRepository editorRepository;
+    private final com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrEditorRepository editorRepository;
     private final com.cyt.center.module.portal.service.push.PortalContentPushService contentPush;
 
     public record PushRequest(String audience, java.util.List<String> notifyDeptScope,

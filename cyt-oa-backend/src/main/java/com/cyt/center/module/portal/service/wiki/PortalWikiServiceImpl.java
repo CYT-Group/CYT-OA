@@ -5,7 +5,7 @@ import com.cyt.center.framework.common.util.json.JsonUtils;
 import com.cyt.center.module.portal.controller.admin.wiki.vo.PortalWikiPageReqVO;
 import com.cyt.center.module.portal.controller.admin.wiki.vo.PortalWikiSaveReqVO;
 import com.cyt.center.module.portal.dal.dataobject.wiki.PortalWikiDO;
-import com.cyt.center.module.portal.dal.mysql.wiki.PortalWikiMapper;
+import com.cyt.center.module.portal.dal.postgresql.wiki.PortalWikiMapper;
 import com.cyt.center.module.portal.service.support.PortalAccess;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import com.cyt.center.module.portal.service.support.PortalOperator;

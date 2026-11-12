@@ -9,8 +9,8 @@ import com.cyt.center.module.hrm.controller.admin.insurance.vo.scheme.HrmInsuran
 import com.cyt.center.module.hrm.controller.admin.insurance.vo.scheme.HrmInsuranceSchemeSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.config.HrmInsuranceSchemeProjectDO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.config.HrmInsuranceSchemeDO;
-import com.cyt.center.module.hrm.dal.mysql.insurance.config.HrmInsuranceSchemeProjectMapper;
-import com.cyt.center.module.hrm.dal.mysql.insurance.config.HrmInsuranceSchemeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.insurance.config.HrmInsuranceSchemeProjectMapper;
+import com.cyt.center.module.hrm.dal.postgresql.insurance.config.HrmInsuranceSchemeMapper;
 import com.cyt.center.module.hrm.enums.insurance.config.HrmInsuranceProjectTypeEnum;
 import com.cyt.center.module.hrm.enums.insurance.config.HrmInsuranceSchemeTypeEnum;
 import com.cyt.center.module.hrm.service.insurance.employee.HrmInsuranceEmployeeInfoService;

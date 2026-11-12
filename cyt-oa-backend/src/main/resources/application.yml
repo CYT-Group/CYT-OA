@@ -1,3 +1,5 @@
+# 公共配置：框架设置、业务默认值和环境变量入口。
+# 本机连接与开发开关放 application-local.yml；线上连接与开关放 application-prod.properties。
 server:
   port: ${CYT_CENTER_PORT:48081}
   servlet:
@@ -16,15 +18,16 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
   datasource:
-    url: jdbc:mysql://${CYT_MYSQL_HOST:127.0.0.1}:${CYT_MYSQL_PORT:3306}/${CYT_MYSQL_DATABASE:cyt_oa_center}?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
-    username: ${CYT_MYSQL_USERNAME:root}
-    password: ${CYT_MYSQL_PASSWORD:}
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 仅保留环境变量映射，供 test 等环境注入；local / prod 中配置各自的连接信息。
+    url: jdbc:postgresql://${CYT_PG_HOST}:${CYT_PG_PORT:5432}/${CYT_PG_DATABASE}?stringtype=unspecified&options=-c%20TimeZone=Asia/Shanghai
+    username: ${CYT_PG_USERNAME}
+    password: ${CYT_PG_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
   data:
     redis:
       # 连接工厂由 Redisson 提供（见 redisson-spring-boot-starter），Lettuce 已在 pom 里排除
-      # 默认用 1 号库：本机与线上都和旧单体的 0 号库共用实例，隔开免得单号自增、缓存键互相污染
-      host: ${CYT_REDIS_HOST:127.0.0.1}
+      # 连接信息由对应环境文件或部署环境变量提供，不在公共配置中指定本机地址。
+      host: ${CYT_REDIS_HOST}
       port: ${CYT_REDIS_PORT:6379}
       database: ${CYT_REDIS_DATABASE:1}
       password: ${CYT_REDIS_PASSWORD:}
@@ -87,7 +90,7 @@ cyt:
   wecom:
     gateway-url: ${CYT_WECOM_GATEWAY_URL:}
     api-key: ${CYT_WECOM_API_KEY:}
-    system-id: ${CYT_WECOM_SYSTEM_ID:portal}
+    system-id: ${CYT_WECOM_SYSTEM_ID:oa}
     allow-dev-identity: ${CYT_WECOM_ALLOW_DEV_IDENTITY:false}
     corp-id: ${CYT_WECOM_CORP_ID:}
     # 请假审批在 common-api 里绑定的业务模板别名，不是企微 template_id
@@ -107,12 +110,3 @@ cyt:
     work-report:
       # 工作汇报 PDF 导出的中文字体；留空则按常见系统路径回退（Windows simhei / Linux Noto CJK）
       pdf-font: ${CYT_OA_WORK_REPORT_PDF_FONT:}
-  portal:
-    # 培训资料 NAS MinIO（PortalMediaStorage 调用时直接读同名环境变量，凭据轮换免重启；
-    # 此处仅作部署对齐占位，任一 endpoint/access-key/secret-key 为空 = 未配置 → 相关端点 503）
-    nas-minio:
-      endpoint: ${NAS_MINIO_ENDPOINT:}
-      access-key: ${NAS_MINIO_ACCESS_KEY:}
-      secret-key: ${NAS_MINIO_SECRET_KEY:}
-      bucket: ${NAS_MINIO_BUCKET:cyt-training}
-      region: ${NAS_MINIO_REGION:us-east-1}

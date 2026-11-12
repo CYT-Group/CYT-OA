@@ -18,7 +18,7 @@ import java.util.Map;
 /**
  * 培训中心用例：课程/课时/进度、发布下架门禁、员工端可见性（口径 docs/Portal管理面迁移契约.md §一「培训中心」）。
  *
- * 逐条对齐 Portal 的 application/training.py；层划分照那边——SQL 只在 dal/mysql/training，本层只串规则与事务。
+ * 逐条对齐 Portal 的 application/training.py；层划分照那边——SQL 只在 dal/postgresql/training，本层只串规则与事务。
  * 媒体预签名（MinIO）、NAS 目录导入、培训统计看板在本批次不做，留 TODO。
  */
 public interface PortalTrainingService {

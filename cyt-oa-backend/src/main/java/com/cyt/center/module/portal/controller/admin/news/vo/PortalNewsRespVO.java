@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * 动态列表行：不含正文。
  *
- * 列表刻意不返回 content（MEDIUMTEXT 富文本，一页 20 条能把响应撑到几百 KB），
+ * 列表刻意不返回 content（TEXT 富文本，一页 20 条能把响应撑到几百 KB），
  * 详情接口才带。Portal 的列表 wire 同样省略正文。
  */
 @Schema(description = "管理后台 - 公司动态 Response VO（列表行）")

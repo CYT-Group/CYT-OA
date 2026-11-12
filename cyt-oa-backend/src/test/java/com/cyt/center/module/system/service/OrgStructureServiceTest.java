@@ -1,7 +1,7 @@
 package com.cyt.center.module.system.service;
 
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeMapper;
 import com.cyt.center.module.system.mapper.*;
 import com.cyt.center.module.system.model.entity.SysDept;
 import com.cyt.center.module.system.model.entity.SysUser;

@@ -16,7 +16,7 @@ import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.candidate.HrmRecruitCandidateDO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.config.HrmRecruitChannelDO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.post.HrmRecruitPostDO;
-import com.cyt.center.module.hrm.dal.mysql.recruit.candidate.HrmRecruitCandidateMapper;
+import com.cyt.center.module.hrm.dal.postgresql.recruit.candidate.HrmRecruitCandidateMapper;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeEntryStatusEnum;
 import com.cyt.center.module.hrm.enums.recruit.candidate.HrmRecruitCandidateStatusEnum;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;

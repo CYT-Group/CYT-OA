@@ -4,7 +4,7 @@ import com.cyt.center.core.exception.AuthException;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.security.CurrentUser;
 import com.cyt.center.framework.common.util.json.JsonUtils;
-import com.cyt.center.module.portal.dal.mysql.rollout.PortalEntryRolloutRepository;
+import com.cyt.center.module.portal.dal.postgresql.rollout.PortalEntryRolloutRepository;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 
 import lombok.RequiredArgsConstructor;

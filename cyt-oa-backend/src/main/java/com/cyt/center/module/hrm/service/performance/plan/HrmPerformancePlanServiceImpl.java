@@ -16,7 +16,7 @@ import com.cyt.center.module.hrm.dal.dataobject.performance.config.HrmPerformanc
 import com.cyt.center.module.hrm.dal.dataobject.performance.plan.HrmPerformancePlanDO;
 import com.cyt.center.module.hrm.dal.dataobject.performance.plan.HrmPerformancePlanDO.Scope;
 import com.cyt.center.module.hrm.dal.dataobject.performance.config.HrmPerformanceResultTemplateDO;
-import com.cyt.center.module.hrm.dal.mysql.performance.plan.HrmPerformancePlanMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.plan.HrmPerformancePlanMapper;
 import com.cyt.center.module.hrm.enums.performance.plan.HrmPerformancePlanOperationTypeEnum;
 import com.cyt.center.module.hrm.enums.performance.plan.HrmPerformancePlanScopeTypeEnum;
 import com.cyt.center.module.hrm.enums.performance.plan.HrmPerformancePlanStatusEnum;

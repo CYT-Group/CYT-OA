@@ -1,10 +1,10 @@
-"""B1 身份与权限地基迁移：Portal Postgres → OA MySQL。
+"""B1 身份与权限地基迁移：Portal Postgres → OA PostgreSQL。
 
 用法：
     python scripts/migrate_portal_identity.py --dry-run   # 只报数，不写库
     python scripts/migrate_portal_identity.py             # 真正写入
 
-凭据不写进本文件：MySQL 读 application.yml/application-local.yml，PG 读 CYT-Portal 的 .env。
+凭据不写进本文件：PostgreSQL 读 application.yml/application-local.yml，PG 读 CYT-Portal 的 .env。
 口径出处：docs/Portal管理面迁移契约.md §一「身份与权限」。
 """
 
@@ -15,7 +15,7 @@ import re
 import sys
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
 import portal_time as pt
 
@@ -62,41 +62,6 @@ CAPABILITY_LABELS = {
 }
 
 
-def _resolve(value):
-    """占位符可能嵌在 JDBC 串中间（jdbc:mysql://${HOST:x}:${PORT:y}/db），逐个替换。"""
-    def sub(m):
-        return os.environ.get(m.group(1)) or (m.group(2) or "")
-    return re.sub(r"\$\{([^:}]+)(?::([^}]*))?\}", sub, value).strip()
-
-
-def read_mysql_conf():
-    conf = {}
-    for name in ("application.yml", "application-local.yml"):
-        path = os.path.join(API_ROOT, "src", "main", "resources", name)
-        if not os.path.exists(path):
-            continue
-        text = open(path, encoding="utf-8").read()
-        for key, pattern in (
-            ("url", r"url:\s*(jdbc:mysql://\S+)"),
-            ("username", r"username:\s*(\S+)"),
-            ("password", r"password:\s*(\S+)"),
-        ):
-            m = re.search(pattern, text, re.M)
-            if m:
-                conf[key] = _resolve(m.group(1))  # 后读的 application-local.yml 覆盖 application.yml
-    jdbc = conf["url"].split("?")[0]
-    host_port, db = jdbc.replace("jdbc:mysql://", "").rsplit("/", 1)
-    host, _, port = host_port.partition(":")
-    return {
-        "host": host or "127.0.0.1",
-        "port": int(port or 3306),
-        "user": conf.get("username", "root"),
-        "password": conf.get("password", ""),
-        "database": db,
-        "charset": "utf8mb4",
-    }
-
-
 def read_pg_dsn():
     env = open(os.path.join(PORTAL_BACKEND, ".env"), encoding="utf-8").read()
     url = re.search(r"^DATABASE_URL=(.+)$", env, re.M).group(1).strip()
@@ -135,214 +100,215 @@ async def fetch_portal():
 
 
 def migrate(dept_rows, user_rows, role_rows, grant_rows, audit_rows, dry_run):
-    my = pymysql.connect(**read_mysql_conf())
-    cur = my.cursor()
-    report = {}
-
-    depts = {r["id"]: dict(r) for r in dept_rows}
-
-    # ── 部门 ──
-    dept_written = 0
-    for r in dept_rows:
-        leaders = r["leader_userids"]
-        if isinstance(leaders, str):
-            leaders = json.loads(leaders)
-        leaders = [x for x in (leaders or []) if x]
-        payload = (
-            r["id"], r["parent_id"] or 0, r["name"], dept_path(depts, r["id"]),
-            int(r["sort_order"] or 0), leaders[0] if leaders else "",
-            json.dumps(leaders, ensure_ascii=False) if leaders else None,
-            1 if r["is_active"] else 0,
-        )
-        if not dry_run:
-            cur.execute(
-                "INSERT INTO sys_dept (id, parent_id, name, path, sort_order, leader_userid, leader_userids, active)"
-                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
-                " ON DUPLICATE KEY UPDATE parent_id=VALUES(parent_id), name=VALUES(name), path=VALUES(path),"
-                " sort_order=VALUES(sort_order), leader_userid=VALUES(leader_userid),"
-                " leader_userids=VALUES(leader_userids), active=VALUES(active)",
-                payload,
-            )
-        dept_written += 1
-    report["sys_dept"] = dept_written
-
-    # ── 角色：Portal 的角色键补进 sys_role，已有的 admin/hr 不覆盖 ──
-    role_ids = {}
-    cur.execute("select id, code from sys_role")
-    for rid, code in cur.fetchall():
-        role_ids[code] = rid
-    roles_new = 0
-    for r in role_rows:
-        if r["key"] in role_ids:
-            continue
-        if not dry_run:
-            cur.execute(
-                "INSERT INTO sys_role (code, name, built_in, remark) VALUES (%s,%s,0,%s)",
-                (r["key"], r["name"], r["description"] or ""),
-            )
-            role_ids[r["key"]] = cur.lastrowid
-        else:
-            # dry-run 拿不到 lastrowid，给个合成 id，否则下游的关联计数会全部落空
-            role_ids[r["key"]] = SYNTH_BASE + roles_new
-        roles_new += 1
-    report["sys_role 新增"] = roles_new
-
-    # ── 能力位 → 按钮权限；权限矩阵 → sys_role_menu ──
-    cur.execute("select id, permission from sys_menu")
-    menu_by_perm = {p: i for i, p in cur.fetchall()}
-    next_menu_id = max(menu_by_perm.values()) + 1 if menu_by_perm else 1
-    new_menus = 0
-    for key in sorted({g["permission_key"] for g in grant_rows}):
-        if key in menu_by_perm:
-            continue
-        menu_by_perm[key] = next_menu_id
-        if not dry_run:
-            cur.execute(
-                "INSERT INTO sys_menu (id, parent_id, name, type, path, permission, sort_order, visible)"
-                " VALUES (%s,0,%s,'button','',%s,%s,1)",
-                (next_menu_id, CAPABILITY_LABELS.get(key, key), key, next_menu_id),
-            )
-        next_menu_id += 1
-        new_menus += 1
-    report["sys_menu 新增能力位"] = new_menus
-
-    cur.execute("select role_id, menu_id from sys_role_menu")
-    existing_grants = {(a, b) for a, b in cur.fetchall()}
-    added_grants = 0
-    for g in grant_rows:
-        role_id = role_ids.get(g["role_key"])
-        menu_id = menu_by_perm.get(g["permission_key"])
-        if not role_id or role_id < 0 or not menu_id or (role_id, menu_id) in existing_grants:
-            continue
-        if not dry_run:
-            cur.execute("INSERT INTO sys_role_menu (role_id, menu_id) VALUES (%s,%s)", (role_id, menu_id))
-        existing_grants.add((role_id, menu_id))
-        added_grants += 1
-    report["sys_role_menu 新增"] = added_grants
-
-    # ── 用户：Portal 的 username 就是企微 userid，所以要同时按 username 和 wecom_userid 认人，
-    #    否则本地 admin（username=admin / wecom_userid=zhangwei）会和企微同名账号撞出两条记录。
-    cur.execute("select id, username, wecom_userid from sys_user")
-    user_ids = {}
-    by_wecom = {}
-    for i, u, w in cur.fetchall():
-        user_ids[u] = i
-        if w:
-            by_wecom[w] = i
-    portal_id_to_sys = {}
-    users_new = users_upd = 0
-    for r in user_rows:
-        dept_ids = r["department_ids"]
-        if isinstance(dept_ids, str):
-            dept_ids = json.loads(dept_ids)
-        main_dept = dept_ids[0] if dept_ids else None
-        name = r["display_name"] or r["username"]
-        sid = user_ids.get(r["username"]) or by_wecom.get(r["username"])
-        if sid:
-            if not dry_run:
-                cur.execute(
-                    "UPDATE sys_user SET name=%s, main_dept_id=%s, mobile=%s, email=%s, avatar=%s, enabled=%s,"
-                    " wecom_userid=COALESCE(wecom_userid,%s) WHERE id=%s",
-                    (name, main_dept, r["phone"] or "", r["email"] or "", r["avatar_url"] or "",
-                     1 if r["is_active"] else 0, r["username"], sid),
-                )
-            users_upd += 1
-        else:
-            if not dry_run:
-                cur.execute(
-                    "INSERT INTO sys_user (wecom_userid, username, name, position, main_dept_id, mobile, email,"
-                    " avatar, enabled) VALUES (%s,%s,%s,'',%s,%s,%s,%s,%s)",
-                    (r["username"], r["username"], name, main_dept, r["phone"] or "", r["email"] or "",
-                     r["avatar_url"] or "", 1 if r["is_active"] else 0),
-                )
-                user_ids[r["username"]] = cur.lastrowid
-            else:
-                user_ids[r["username"]] = SYNTH_BASE + users_new
-            sid = user_ids[r["username"]]
-            users_new += 1
-        user_ids[r["username"]] = sid
-        if sid > 0:
-            portal_id_to_sys[r["id"]] = sid
-        if sid > 0 and dept_ids and not dry_run:
-            for did in dept_ids:
-                cur.execute(
-                    "INSERT INTO sys_user_dept (user_id, dept_id) VALUES (%s,%s)"
-                    " ON DUPLICATE KEY UPDATE dept_id=VALUES(dept_id)",
-                    (sid, did),
-                )
-        if sid > 0 and r["role"] and not dry_run:
-            rid = role_ids.get(r["role"])
-            if rid and rid > 0:
-                cur.execute(
-                    "INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (%s,%s)", (sid, rid)
-                )
-    report["sys_user 新增/已存在"] = "%d/%d" % (users_new, users_upd)
-
-    # ── 档案：168 份生日与入职日期只存在于 Portal，落到 hrm_employee ──
-    cur.execute("select id, user_id from hrm_employee where deleted = 0")
-    emp_by_user = {u: i for i, u in cur.fetchall() if u}
-    emp_new = emp_upd = 0
-    for r in user_rows:
-        sid = portal_id_to_sys.get(r["id"])
-        if not sid:
-            continue
-        dept_ids = r["department_ids"]
-        if isinstance(dept_ids, str):
-            dept_ids = json.loads(dept_ids)
-        row = {
-            "name": r["display_name"] or r["username"], "user_id": sid, "mobile": r["phone"] or "",
-            "email": r["email"] or "", "birthday": r["birthday"], "entry_time": r["hire_date"],
-            "dept_id": dept_ids[0] if dept_ids else None,
-            "celebration_opt_out": 1 if r["celebration_opt_out"] else 0,
-            "entry_status": 1 if r["is_active"] else 4,
-        }
-        if sid in emp_by_user:
-            if not dry_run:
-                cols = [k for k in row if k != "user_id"]
-                cur.execute(
-                    "UPDATE hrm_employee SET %s WHERE id=%%s" % ", ".join("%s=%%s" % c for c in cols),
-                    tuple(row[c] for c in cols) + (emp_by_user[sid],),
-                )
-            emp_upd += 1
-        else:
-            if not dry_run:
-                cur.execute(
-                    "INSERT INTO hrm_employee (%s) VALUES (%s)" % (", ".join(row), ", ".join(["%s"] * len(row))),
-                    tuple(row.values()),
-                )
-                emp_by_user[sid] = cur.lastrowid
-            emp_new += 1
-    report["hrm_employee 新增/更新"] = "%d/%d" % (emp_new, emp_upd)
-    report["其中有生日或入职日期"] = sum(1 for r in user_rows if r["birthday"] or r["hire_date"])
-
-    # ── 操作日志 ──
-    cur.execute("select id, username from sys_user")
-    uid_by_username = {u: i for i, u in cur.fetchall()}
-    logs = 0
-    cutover_rows = 0
-    for a in audit_rows:
-        occurred_at = pt.server_clock(a["created_at"])
-        cutover_rows += pt.is_cutover_day(a["created_at"])
-        if not dry_run:
-            cur.execute(
-                "INSERT INTO sys_operate_log (trace_id, user_id, user_type, type, sub_type, biz_id, action,"
-                " target_table, before_value, after_value, comment, user_ip, created_at)"
-                " VALUES (%s,%s,2,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                (
-                    a["trace_id"] or "", uid_by_username.get(a["actor"]), "后台管理", a["action"] or "",
-                    _biz_id(a["target_id"]), "", a["target_table"] or "", a["before_value"], a["after_value"],
-                    a["comment"] or "", a["ip"] or "", occurred_at,
-                ),
-            )
-        logs += 1
-    report["sys_operate_log"] = logs
-    # 不写 created_at 的话 MySQL 会用 CURRENT_TIMESTAMP 兜底，364 行历史日志全变成「迁移执行的那一刻」
-    report["审计时间落在时钟切换当天"] = cutover_rows
-
+    my = connect_target(readonly=dry_run)
     try:
+        cur = my.cursor()
+        report = {}
+
+        depts = {r["id"]: dict(r) for r in dept_rows}
+
+        # ── 部门 ──
+        dept_written = 0
+        for r in dept_rows:
+            leaders = r["leader_userids"]
+            if isinstance(leaders, str):
+                leaders = json.loads(leaders)
+            leaders = [x for x in (leaders or []) if x]
+            payload = (
+                r["id"], r["parent_id"] or 0, r["name"], dept_path(depts, r["id"]),
+                int(r["sort_order"] or 0), leaders[0] if leaders else "",
+                json.dumps(leaders, ensure_ascii=False) if leaders else None,
+                1 if r["is_active"] else 0,
+            )
+            if not dry_run:
+                cur.execute(
+                    "INSERT INTO sys_dept (id, parent_id, name, path, sort_order, leader_userid, leader_userids, active)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,%s)"
+                    " ON CONFLICT (id) DO UPDATE SET parent_id=EXCLUDED.parent_id, name=EXCLUDED.name, path=EXCLUDED.path,"
+                    " sort_order=EXCLUDED.sort_order, leader_userid=EXCLUDED.leader_userid,"
+                    " leader_userids=EXCLUDED.leader_userids, active=EXCLUDED.active",
+                    payload,
+                )
+            dept_written += 1
+        report["sys_dept"] = dept_written
+
+        # ── 角色：Portal 的角色键补进 sys_role，已有的 admin/hr 不覆盖 ──
+        role_ids = {}
+        cur.execute("select id, code from sys_role")
+        for rid, code in cur.fetchall():
+            role_ids[code] = rid
+        roles_new = 0
+        for r in role_rows:
+            if r["key"] in role_ids:
+                continue
+            if not dry_run:
+                cur.execute(
+                    "INSERT INTO sys_role (code, name, built_in, remark) VALUES (%s,%s,0,%s) RETURNING id",
+                    (r["key"], r["name"], r["description"] or ""),
+                )
+                role_ids[r["key"]] = cur.fetchone()[0]
+            else:
+                # dry-run 不插入取 ID，给个合成 id，否则下游的关联计数会全部落空
+                role_ids[r["key"]] = SYNTH_BASE + roles_new
+            roles_new += 1
+        report["sys_role 新增"] = roles_new
+
+        # ── 能力位 → 按钮权限；权限矩阵 → sys_role_menu ──
+        cur.execute("select id, permission from sys_menu")
+        menu_by_perm = {p: i for i, p in cur.fetchall()}
+        next_menu_id = max(menu_by_perm.values()) + 1 if menu_by_perm else 1
+        new_menus = 0
+        for key in sorted({g["permission_key"] for g in grant_rows}):
+            if key in menu_by_perm:
+                continue
+            menu_by_perm[key] = next_menu_id
+            if not dry_run:
+                cur.execute(
+                    "INSERT INTO sys_menu (id, parent_id, name, type, path, permission, sort_order, visible)"
+                    " VALUES (%s,0,%s,'button','',%s,%s,1)",
+                    (next_menu_id, CAPABILITY_LABELS.get(key, key), key, next_menu_id),
+                )
+            next_menu_id += 1
+            new_menus += 1
+        report["sys_menu 新增能力位"] = new_menus
+
+        cur.execute("select role_id, menu_id from sys_role_menu")
+        existing_grants = {(a, b) for a, b in cur.fetchall()}
+        added_grants = 0
+        for g in grant_rows:
+            role_id = role_ids.get(g["role_key"])
+            menu_id = menu_by_perm.get(g["permission_key"])
+            if not role_id or role_id < 0 or not menu_id or (role_id, menu_id) in existing_grants:
+                continue
+            if not dry_run:
+                cur.execute("INSERT INTO sys_role_menu (role_id, menu_id) VALUES (%s,%s)", (role_id, menu_id))
+            existing_grants.add((role_id, menu_id))
+            added_grants += 1
+        report["sys_role_menu 新增"] = added_grants
+
+        # ── 用户：Portal 的 username 就是企微 userid，所以要同时按 username 和 wecom_userid 认人，
+        #    否则本地 admin（username=admin / wecom_userid=zhangwei）会和企微同名账号撞出两条记录。
+        cur.execute("select id, username, wecom_userid from sys_user")
+        user_ids = {}
+        by_wecom = {}
+        for i, u, w in cur.fetchall():
+            user_ids[u] = i
+            if w:
+                by_wecom[w] = i
+        portal_id_to_sys = {}
+        users_new = users_upd = 0
+        for r in user_rows:
+            dept_ids = r["department_ids"]
+            if isinstance(dept_ids, str):
+                dept_ids = json.loads(dept_ids)
+            main_dept = dept_ids[0] if dept_ids else None
+            name = r["display_name"] or r["username"]
+            sid = user_ids.get(r["username"]) or by_wecom.get(r["username"])
+            if sid:
+                if not dry_run:
+                    cur.execute(
+                        "UPDATE sys_user SET name=%s, main_dept_id=%s, mobile=%s, email=%s, avatar=%s, enabled=%s,"
+                        " wecom_userid=COALESCE(wecom_userid,%s) WHERE id=%s",
+                        (name, main_dept, r["phone"] or "", r["email"] or "", r["avatar_url"] or "",
+                         1 if r["is_active"] else 0, r["username"], sid),
+                    )
+                users_upd += 1
+            else:
+                if not dry_run:
+                    cur.execute(
+                        "INSERT INTO sys_user (wecom_userid, username, name, position, main_dept_id, mobile, email,"
+                        " avatar, enabled) VALUES (%s,%s,%s,'',%s,%s,%s,%s,%s) RETURNING id",
+                        (r["username"], r["username"], name, main_dept, r["phone"] or "", r["email"] or "",
+                         r["avatar_url"] or "", 1 if r["is_active"] else 0),
+                    )
+                    user_ids[r["username"]] = cur.fetchone()[0]
+                else:
+                    user_ids[r["username"]] = SYNTH_BASE + users_new
+                sid = user_ids[r["username"]]
+                users_new += 1
+            user_ids[r["username"]] = sid
+            if sid > 0:
+                portal_id_to_sys[r["id"]] = sid
+            if sid > 0 and dept_ids and not dry_run:
+                for did in dept_ids:
+                    cur.execute(
+                        "INSERT INTO sys_user_dept (user_id, dept_id) VALUES (%s,%s)"
+                        " ON CONFLICT (user_id,dept_id) DO NOTHING",
+                        (sid, did),
+                    )
+            if sid > 0 and r["role"] and not dry_run:
+                rid = role_ids.get(r["role"])
+                if rid and rid > 0:
+                    cur.execute(
+                        "INSERT INTO sys_user_role (user_id, role_id) VALUES (%s,%s) ON CONFLICT DO NOTHING", (sid, rid)
+                    )
+        report["sys_user 新增/已存在"] = "%d/%d" % (users_new, users_upd)
+
+        # ── 档案：168 份生日与入职日期只存在于 Portal，落到 hrm_employee ──
+        cur.execute("select id, user_id from hrm_employee where deleted = 0")
+        emp_by_user = {u: i for i, u in cur.fetchall() if u}
+        emp_new = emp_upd = 0
+        for r in user_rows:
+            sid = portal_id_to_sys.get(r["id"])
+            if not sid:
+                continue
+            dept_ids = r["department_ids"]
+            if isinstance(dept_ids, str):
+                dept_ids = json.loads(dept_ids)
+            row = {
+                "name": r["display_name"] or r["username"], "user_id": sid, "mobile": r["phone"] or "",
+                "email": r["email"] or "", "birthday": r["birthday"], "entry_time": r["hire_date"],
+                "dept_id": dept_ids[0] if dept_ids else None,
+                "celebration_opt_out": 1 if r["celebration_opt_out"] else 0,
+                "entry_status": 1 if r["is_active"] else 4,
+            }
+            if sid in emp_by_user:
+                if not dry_run:
+                    cols = [k for k in row if k != "user_id"]
+                    cur.execute(
+                        "UPDATE hrm_employee SET %s WHERE id=%%s" % ", ".join("%s=%%s" % c for c in cols),
+                        tuple(row[c] for c in cols) + (emp_by_user[sid],),
+                    )
+                emp_upd += 1
+            else:
+                if not dry_run:
+                    cur.execute(
+                        "INSERT INTO hrm_employee (%s) VALUES (%s) RETURNING id" % (", ".join(row), ", ".join(["%s"] * len(row))),
+                        tuple(row.values()),
+                    )
+                    emp_by_user[sid] = cur.fetchone()[0]
+                emp_new += 1
+        report["hrm_employee 新增/更新"] = "%d/%d" % (emp_new, emp_upd)
+        report["其中有生日或入职日期"] = sum(1 for r in user_rows if r["birthday"] or r["hire_date"])
+
+        # ── 操作日志 ──
+        cur.execute("select id, username from sys_user")
+        uid_by_username = {u: i for i, u in cur.fetchall()}
+        logs = 0
+        cutover_rows = 0
+        for a in audit_rows:
+            occurred_at = pt.server_clock(a["created_at"])
+            cutover_rows += pt.is_cutover_day(a["created_at"])
+            if not dry_run:
+                cur.execute(
+                    "INSERT INTO sys_operate_log (trace_id, user_id, user_type, type, sub_type, biz_id, action,"
+                    " target_table, before_value, after_value, comment, user_ip, created_at)"
+                    " VALUES (%s,%s,2,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        a["trace_id"] or "", uid_by_username.get(a["actor"]), "后台管理", a["action"] or "",
+                        _biz_id(a["target_id"]), "", a["target_table"] or "", a["before_value"], a["after_value"],
+                        a["comment"] or "", a["ip"] or "", occurred_at,
+                    ),
+                )
+            logs += 1
+        report["sys_operate_log"] = logs
+        # 不写 created_at 的话 PostgreSQL 会用 CURRENT_TIMESTAMP 兜底，364 行历史日志全变成「迁移执行的那一刻」
+        report["审计时间落在时钟切换当天"] = cutover_rows
+
         if dry_run:
             my.rollback()
         else:
+            advance_target_sequences(my)
             my.commit()
     except Exception:
         my.rollback()  # 半途失败不留半套身份数据

@@ -1,11 +1,11 @@
-"""B4 电竞室迁移：Portal Postgres → OA MySQL（开放规则 / 预约单 / 审批快照 / 流水）。
+"""B4 电竞室迁移：Portal Postgres → OA PostgreSQL（开放规则 / 预约单 / 审批快照 / 流水）。
 
 用法：
     python scripts/migrate_portal_esports.py --dry-run   # 只报数，不写库
     python scripts/migrate_portal_esports.py             # 真正写入
 
 行 id 一律原样保留：steps/logs 按 booking_id 引用预约单，重新编号等于把关系打断。
-MySQL 里已存在的 id 直接跳过，中途失败可重复执行接着跑。settings 单行表 id 恒 = 1。
+PostgreSQL 里已存在的 id 直接跳过，中途失败可重复执行接着跑。settings 单行表 id 恒 = 1。
 
 口径出处：docs/Portal管理面迁移契约.md §三「电竞室」、§二「类型转换口径」、§四 批次 4。
 
@@ -22,11 +22,11 @@ import os
 import sys
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import portal_time as pt  # noqa: E402
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn  # noqa: E402
+from migrate_portal_identity import read_pg_dsn  # noqa: E402
 
 # 插入顺序即外键依赖顺序：settings 先行（无 FK），bookings 再行，steps/logs 引用 bookings
 TABLES = [
@@ -38,7 +38,7 @@ TABLES = [
 
 
 def _json(value):
-    """JSONB → JSON 文本：asyncpg 读回已解析的 list/dict，重新 dumps 交给 MySQL JSON 列校验。"""
+    """JSONB → JSON 文本：asyncpg 读回已解析的 list/dict，重新 dumps 交给 PostgreSQL JSON 列校验。"""
     if value is None:
         return None
     if isinstance(value, str):
@@ -47,17 +47,17 @@ def _json(value):
 
 
 def _bool(value):
-    """PG boolean → MySQL TINYINT(1)。"""
+    """PG boolean → OA PostgreSQL SMALLINT 0/1。"""
     if value is None:
         return None
     return 1 if value else 0
 
 
 def _time(value):
-    """datetime.time / datetime.date 原样透传（pymysql 自带 escape），统一 str 化最稳。"""
+    """datetime.time / datetime.date 转成 ISO 文本，由 PostgreSQL 目标列解析。"""
     if value is None:
         return None
-    return value.strftime("%H:%M:%S") if hasattr(value, "strftime") else value
+    return value.isoformat() if hasattr(value, "isoformat") else value
 
 
 async def fetch_portal():
@@ -119,7 +119,7 @@ def build(src, table_rows, stats):
 
 
 def _write(cur, table, rows, dry_run, report):
-    """rows 是 (id, 列名字典) 的列表；MySQL 里已有的 id 跳过；500 行一批送（防 max_allowed_packet 顶爆）。"""
+    """rows 是 (id, 列名字典) 的列表；PostgreSQL 里已有的 id 跳过；按 500 行分批写入，控制内存占用。"""
     cur.execute("select id from %s" % table)
     done = {r[0] for r in cur.fetchall()}
     todo = [row for rid, row in rows if rid not in done]
@@ -133,21 +133,22 @@ def _write(cur, table, rows, dry_run, report):
 
 
 def migrate(portal, dry_run):
-    my = pymysql.connect(**read_mysql_conf())
-    cur = my.cursor()
-    report = {}
-    stats = {"rows": 0}
-
-    for src, dst in TABLES:
-        rows = build(src, portal[src], stats)
-        _write(cur, dst, rows, dry_run, report)
-
-    report["时间换算（恒 +8h，应用层 utcnow）"] = "是"
-
+    my = connect_target(readonly=dry_run)
     try:
+        cur = my.cursor()
+        report = {}
+        stats = {"rows": 0}
+
+        for src, dst in TABLES:
+            rows = build(src, portal[src], stats)
+            _write(cur, dst, rows, dry_run, report)
+
+        report["时间换算（恒 +8h，应用层 utcnow）"] = "是"
+
         if dry_run:
             my.rollback()
         else:
+            advance_target_sequences(my)
             my.commit()
     except Exception:
         my.rollback()  # 半途失败不留半套电竞室数据

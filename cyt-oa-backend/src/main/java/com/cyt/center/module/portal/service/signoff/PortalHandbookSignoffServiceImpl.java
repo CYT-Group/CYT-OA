@@ -4,9 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cyt.center.module.portal.controller.admin.signoff.vo.PortalSignoffSignReqVO;
 import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentDO;
 import com.cyt.center.module.portal.dal.dataobject.signoff.PortalHandbookSignoffDO;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentAliasMapper;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrDocumentMapper;
-import com.cyt.center.module.portal.dal.mysql.signoff.PortalHandbookSignoffMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentAliasMapper;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrDocumentMapper;
+import com.cyt.center.module.portal.dal.postgresql.signoff.PortalHandbookSignoffMapper;
 import com.cyt.center.module.portal.service.support.PortalOperator;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import com.cyt.center.module.system.api.dept.DeptApi;
@@ -53,7 +53,7 @@ public class PortalHandbookSignoffServiceImpl implements PortalHandbookSignoffSe
     @Resource
     private PortalHandbookSignoffMapper signoffMapper;
     @Resource
-    private com.cyt.center.module.portal.dal.mysql.signoff.PortalSignoffDocumentRepository signoffDocuments;
+    private com.cyt.center.module.portal.dal.postgresql.signoff.PortalSignoffDocumentRepository signoffDocuments;
     @Resource
     private PortalHrDocumentMapper documentMapper;
     @Resource
@@ -65,11 +65,11 @@ public class PortalHandbookSignoffServiceImpl implements PortalHandbookSignoffSe
     @Resource
     private DeptApi deptApi;
     @Resource
-    private com.cyt.center.module.portal.dal.mysql.signoff.PortalSignoffTargetRepository signoffTargets;
+    private com.cyt.center.module.portal.dal.postgresql.signoff.PortalSignoffTargetRepository signoffTargets;
     @Resource
     private com.cyt.center.core.integration.WecomGatewayClient notificationGateway;
     @Resource
-    private com.cyt.center.module.portal.dal.mysql.signoff.PortalSignoffNotificationRepository notificationRepository;
+    private com.cyt.center.module.portal.dal.postgresql.signoff.PortalSignoffNotificationRepository notificationRepository;
     @Resource
     private com.cyt.center.module.portal.service.support.PortalAudit notificationAudit;
 

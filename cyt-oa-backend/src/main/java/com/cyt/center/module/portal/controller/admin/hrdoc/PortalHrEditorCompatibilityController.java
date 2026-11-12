@@ -2,7 +2,7 @@ package com.cyt.center.module.portal.controller.admin.hrdoc;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cyt.center.core.result.Result;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrEditorRepository;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrEditorRepository;
 import com.cyt.center.module.portal.service.hrdoc.PortalHrEditorCompatibilityService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;

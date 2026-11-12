@@ -35,8 +35,8 @@ public class WorkspaceTeamAttendanceService {
         String from=" FROM oa_attendance a LEFT JOIN sys_user u ON u.id=a.user_id LEFT JOIN sys_dept d ON d.id=u.main_dept_id WHERE "+where;
         Long total=jdbc.queryForObject("SELECT COUNT(*)"+from,Long.class,args.toArray());
         var pageArgs=new ArrayList<>(args);pageArgs.add(pageSize);pageArgs.add((pageNo-1)*pageSize);
-        var list=PortalRows.camel(jdbc.queryForList("SELECT CAST(a.id AS CHAR) AS id,CAST(a.user_id AS CHAR) AS user_id,u.name,d.name AS dept_name,a.attendance_time,a.type,a.status,a.status AS result,a.remark"+from+" ORDER BY a.attendance_time DESC,a.id DESC LIMIT ? OFFSET ?",pageArgs.toArray()));
-        var summary=jdbc.queryForMap("SELECT COUNT(*) AS records,COALESCE(SUM(a.status=1),0) AS normal,COALESCE(SUM(a.status=2),0) AS late,COALESCE(SUM(a.status=3),0) AS early,COALESCE(SUM(a.status=4),0) AS `leave`,COALESCE(SUM(a.status=5),0) AS travel"+from,args.toArray());
+        var list=PortalRows.camel(jdbc.queryForList("SELECT CAST(a.id AS TEXT) AS id,CAST(a.user_id AS TEXT) AS user_id,u.name,d.name AS dept_name,a.attendance_time,a.type,a.status,a.status AS result,a.remark"+from+" ORDER BY a.attendance_time DESC,a.id DESC LIMIT ? OFFSET ?",pageArgs.toArray()));
+        var summary=jdbc.queryForMap("SELECT COUNT(*) AS records,COALESCE(SUM(CASE WHEN a.status=1 THEN 1 ELSE 0 END),0) AS normal,COALESCE(SUM(CASE WHEN a.status=2 THEN 1 ELSE 0 END),0) AS late,COALESCE(SUM(CASE WHEN a.status=3 THEN 1 ELSE 0 END),0) AS early,COALESCE(SUM(CASE WHEN a.status=4 THEN 1 ELSE 0 END),0) AS \"leave\",COALESCE(SUM(CASE WHEN a.status=5 THEN 1 ELSE 0 END),0) AS travel"+from,args.toArray());
         return Map.of("list",list,"total",total==null?0:total,"pageNo",pageNo,"pageSize",pageSize,"summary",summary);
     }
 }

@@ -1,5 +1,8 @@
 # 企微组织、员工档案与账号
 
+> 数据库使用 PostgreSQL，初始化和升级统一通过 `src/main/resources/db/postgresql/migration/` 的版本迁移。
+> 操作见[后端 README](../README.md#3-建表与初始数据)与[数据库规范](../src/main/resources/db/postgresql/migration/README.md)。
+
 CYT-OA 使用现有 common-api 网关读取企微通讯录，不读取 Portal 数据库，也不复制 Portal 的企微密钥。
 同步规则参考 CYT-Portal 的 `backend/application/employee_sync.py`、`backend/services/wework_hr.py` 和
 `docs/DATA_CONTRACT.md`。Portal 作为接入方式与字段归属参考，本次没有修改 Portal。
@@ -56,10 +59,10 @@ common-api 已提供花名册操作，OA 通过服务端网关客户端调用：
 
 ## 数据库升级
 
-新库使用更新后的 `hrm-schema.sql`、`dict-seed.sql`，其中已包含 `hrm_employee_wecom_sync` 同步基线表。
-已有库启用花名册同步前，须由管理员执行 `src/main/resources/db/wecom-hr-sync-schema.sql`；脚本只建缺失表，不修改员工日期。
+新库通过 `src/main/resources/db/postgresql/migration/` 的全部版本迁移初始化，其中已包含
+`hrm_employee_wecom_sync` 同步基线表、花名册运行记录及所需字典和约束。已有 PostgreSQL 库在启用同步前执行 Flyway 待应用版本。
 手动同步、定时同步和冲突确认都会先只读检查该表，缺表时明确提示升级，不读取企微或写入员工档案。
-已有库执行 `src/main/resources/db/organization-archive-upgrade.sql`。它仅添加有效账号关联的唯一约束和
-“待完善”字典项，并将企微部门排序列扩展为 BIGINT（企微 uint32 可超过有符号 INT）；检测到重复关联时停止，交由 HR 核对，不合并或删除历史记录。
+初始结构已包含有效账号关联的唯一约束、“待完善”字典项和 BIGINT 部门排序列（企微 uint32 可超过有符号 INT）。
+后续数据导入若出现重复账号关联，由 HR 核对处理，不自动合并或删除历史记录。
 
 本次验证使用独立 Maven 输出目录，避免与 IDEA 的运行构建相互覆盖。上线时仍需重新构建并重启后端。

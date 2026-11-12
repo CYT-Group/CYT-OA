@@ -42,7 +42,7 @@ import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeQuitInfoDO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.config.HrmInsuranceSchemeDO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.config.HrmRecruitChannelDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeMapper;
 import com.cyt.center.module.hrm.enums.MessageTemplateConstants;
 import com.cyt.center.module.hrm.enums.employee.config.HrmEmployeeArchiveFieldEnum;
 import com.cyt.center.module.hrm.enums.employee.employment.HrmEmployeeChangeTypeEnum;

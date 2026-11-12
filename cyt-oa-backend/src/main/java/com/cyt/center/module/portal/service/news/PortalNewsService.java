@@ -10,7 +10,7 @@ import com.cyt.center.module.portal.dal.dataobject.news.PortalNewsDO;
 /**
  * 公司动态用例：状态机、可见性、审批与审计在这层（口径 docs/Portal管理面迁移契约.md §一「内容管理」）。
  *
- * 逐条对齐 Portal 的 application/news.py；层划分照那边——SQL 只在 dal/mysql/news，
+ * 逐条对齐 Portal 的 application/news.py；层划分照那边——SQL 只在 dal/postgresql/news，
  * 本层只串规则与事务。
  */
 public interface PortalNewsService {

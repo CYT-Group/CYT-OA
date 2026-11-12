@@ -11,7 +11,7 @@ import com.cyt.center.module.hrm.controller.admin.recruit.vo.channel.HrmRecruitC
 import com.cyt.center.module.hrm.controller.admin.recruit.vo.channel.HrmRecruitChannelSaveReqVO;
 import com.cyt.center.module.hrm.controller.admin.recruit.vo.channel.HrmRecruitChannelStatusReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.config.HrmRecruitChannelDO;
-import com.cyt.center.module.hrm.dal.mysql.recruit.config.HrmRecruitChannelMapper;
+import com.cyt.center.module.hrm.dal.postgresql.recruit.config.HrmRecruitChannelMapper;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;

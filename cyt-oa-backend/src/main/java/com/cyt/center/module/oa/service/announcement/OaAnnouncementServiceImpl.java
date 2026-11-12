@@ -8,8 +8,8 @@ import com.cyt.center.module.oa.controller.admin.announcement.vo.OaAnnouncementP
 import com.cyt.center.module.oa.controller.admin.announcement.vo.OaAnnouncementSaveReqVO;
 import com.cyt.center.module.oa.dal.dataobject.announcement.OaAnnouncementDO;
 import com.cyt.center.module.oa.dal.dataobject.announcement.OaAnnouncementReceiverDO;
-import com.cyt.center.module.oa.dal.mysql.announcement.OaAnnouncementMapper;
-import com.cyt.center.module.oa.dal.mysql.announcement.OaAnnouncementReceiverMapper;
+import com.cyt.center.module.oa.dal.postgresql.announcement.OaAnnouncementMapper;
+import com.cyt.center.module.oa.dal.postgresql.announcement.OaAnnouncementReceiverMapper;
 import com.cyt.center.module.system.api.user.AdminUserApi;
 import com.cyt.center.module.system.api.user.dto.AdminUserRespDTO;
 import jakarta.annotation.Resource;

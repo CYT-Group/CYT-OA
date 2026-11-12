@@ -8,8 +8,7 @@ import java.util.regex.Pattern;
 /**
  * 日期统计、逗号分隔列表关联、JSON 数组匹配、行数限制、分批删除 SQL 片段的方言工具类
  *
- * 芋道原版会按运行时数据源识别 PostgreSQL、Oracle、SQL Server 等方言；本项目固定 MySQL，
- * 因此只保留 MySQL 片段（即原版的“原有 SQL 片段”分支），方法签名保持不变，
+ * 本项目使用 PostgreSQL，SQL 片段统一按 PostgreSQL 生成，方法签名保持不变，
  * 移植的 Mapper XML / 注解可以继续用
  * ${@com.cyt.center.framework.mybatis.core.util.SqlDialectUtils@formatDate('create_time')} 的方式调用。
  *
@@ -26,25 +25,25 @@ public class SqlDialectUtils {
     // ========== 日期字符串 ==========
 
     /**
-     * 按天格式化为 yyyy-MM-dd 字符串，即 DATE_FORMAT(column, '%Y-%m-%d')
+     * 按天格式化为 yyyy-MM-dd 字符串，即 TO_CHAR(column, 'YYYY-MM-DD')
      *
      * @param column 列名
      * @return SQL 片段
      */
     public static String formatDate(String column) {
         checkColumn(column);
-        return "DATE_FORMAT(" + column + ", '%Y-%m-%d')";
+        return "TO_CHAR(" + column + ", 'YYYY-MM-DD')";
     }
 
     /**
-     * 按月格式化为 yyyyMM 字符串，即 DATE_FORMAT(column, '%Y%m')
+     * 按月格式化为 yyyyMM 字符串，即 TO_CHAR(column, 'YYYYMM')
      *
      * @param column 列名
      * @return SQL 片段
      */
     public static String formatYearMonth(String column) {
         checkColumn(column);
-        return "DATE_FORMAT(" + column + ", '%Y%m')";
+        return "TO_CHAR(" + column + ", 'YYYYMM')";
     }
 
     /**
@@ -55,7 +54,7 @@ public class SqlDialectUtils {
      */
     public static String formatYearDashMonth(String column) {
         checkColumn(column);
-        return "CONCAT(EXTRACT(YEAR FROM " + column + "), '-', LPAD(CONCAT(EXTRACT(MONTH FROM " + column + ")), 2, '0'))";
+        return "TO_CHAR(" + column + ", 'YYYY-MM')";
     }
 
     /**
@@ -101,7 +100,7 @@ public class SqlDialectUtils {
      */
     public static String month(String column) {
         checkColumn(column);
-        return "MONTH(" + column + ")";
+        return "EXTRACT(MONTH FROM " + column + ")";
     }
 
     /**
@@ -112,7 +111,7 @@ public class SqlDialectUtils {
      */
     public static String year(String column) {
         checkColumn(column);
-        return "YEAR(" + column + ")";
+        return "EXTRACT(YEAR FROM " + column + ")";
     }
 
     /**
@@ -123,7 +122,7 @@ public class SqlDialectUtils {
      */
     public static String dayOfMonth(String column) {
         checkColumn(column);
-        return "DAYOFMONTH(" + column + ")";
+        return "EXTRACT(DAY FROM " + column + ")";
     }
 
     // ========== 聚合 ==========
@@ -140,13 +139,13 @@ public class SqlDialectUtils {
     public static String customerDealCycle(String beginColumn, String endColumn) {
         checkColumn(beginColumn);
         checkColumn(endColumn);
-        return "COALESCE(TRUNCATE(AVG(TIMESTAMPDIFF(DAY, " + beginColumn + ", " + endColumn + ")), 1), 0)";
+        return "COALESCE(TRUNC(AVG(TRUNC(EXTRACT(EPOCH FROM (" + endColumn + " - " + beginColumn + ")) / 86400)), 1), 0)";
     }
 
     // ========== 其它 ==========
 
     /**
-     * MySQL 无需 DUAL，返回空串，保持与芋道原版相同的调用方式
+     * PostgreSQL 无需 DUAL，返回空串，保持与芋道原版相同的调用方式
      *
      * @return SQL 片段
      */
@@ -171,7 +170,7 @@ public class SqlDialectUtils {
     public static String findInSetColumn(String valueColumn, String listColumn) {
         checkIdColumn(valueColumn);
         checkColumn(listColumn);
-        return "FIND_IN_SET(" + valueColumn + ", " + listColumn + ")";
+        return "CAST(" + valueColumn + " AS TEXT) = ANY(STRING_TO_ARRAY(" + listColumn + ", ','))";
     }
 
     // ========== JSON 数组 ==========
@@ -185,7 +184,7 @@ public class SqlDialectUtils {
      */
     public static String jsonArrayContains(String column, boolean wrapArray) {
         checkColumn(column);
-        return wrapArray ? "JSON_CONTAINS(" + column + ", JSON_ARRAY({0}))" : "JSON_CONTAINS(" + column + ", {0})";
+        return "CAST(" + column + " AS jsonb) @> " + (wrapArray ? "jsonb_build_array(CAST({0} AS bigint))" : "CAST({0} AS jsonb)");
     }
 
     // ========== 行数限制 ==========
@@ -196,7 +195,7 @@ public class SqlDialectUtils {
      * 仅用于 XML 或注解中手写的 SQL；使用 Wrapper 查询时，使用 BaseMapperX 的 selectListLimitN(queryWrapper, limit)
      *
      * @param rows    行数，不能为负数
-     * @param ordered 语句是否已有 ORDER BY，MySQL 该参数不影响结果
+     * @param ordered 语句是否已有 ORDER BY，PostgreSQL 该参数不影响结果
      * @return SQL 片段
      */
     public static String limitRows(int rows, boolean ordered) {
@@ -222,7 +221,7 @@ public class SqlDialectUtils {
 
     /**
      * 分批删除 column &lt; #{valueParam} 的记录，每次最多删除 #{limitParam} 行；
-     * 语句为 DELETE FROM table WHERE column &lt; #{valueParam} LIMIT #{limitParam}
+     * 通过 id 子查询限制每批删除数量，兼容 PostgreSQL 的 DELETE 语法
      *
      * 要求表的主键列为 id；表名、列名只能是代码中固定的常量，值均使用 #{} 绑定
      *
@@ -237,7 +236,8 @@ public class SqlDialectUtils {
         checkColumn(column);
         checkParam(valueParam);
         checkParam(limitParam);
-        return "DELETE FROM " + table + " WHERE " + column + " < #{" + valueParam + "} LIMIT #{" + limitParam + "}";
+        return "DELETE FROM " + table + " WHERE id IN (SELECT id FROM " + table + " WHERE " + column
+                + " < #{" + valueParam + "} ORDER BY id LIMIT #{" + limitParam + "})";
     }
 
     // ========== 校验 ==========
@@ -278,13 +278,13 @@ public class SqlDialectUtils {
     }
 
     /**
-     * 兼容芋道原版按数据源 URL 判断的写法，本项目固定 MySQL，仅保留入口避免移植时逐个改调用点
+     * 兼容芋道原版按数据源 URL 判断的写法，本项目固定 PostgreSQL，仅保留入口避免移植时逐个改调用点
      *
      * @param url JDBC URL
      * @return 是否为受支持的数据库
      */
     public static boolean isSupportedUrl(String url) {
-        return StrUtil.contains(url, ":mysql:") || StrUtil.contains(url, ":mariadb:");
+        return StrUtil.contains(url, ":postgresql:");
     }
 
 }

@@ -2,8 +2,8 @@ package com.cyt.center.module.portal.service.news;
 
 import com.cyt.center.module.portal.dal.dataobject.news.PortalNewsCommentDO;
 import com.cyt.center.module.portal.dal.dataobject.news.PortalNewsLikeDO;
-import com.cyt.center.module.portal.dal.mysql.news.PortalNewsCommentMapper;
-import com.cyt.center.module.portal.dal.mysql.news.PortalNewsLikeMapper;
+import com.cyt.center.module.portal.dal.postgresql.news.PortalNewsCommentMapper;
+import com.cyt.center.module.portal.dal.postgresql.news.PortalNewsLikeMapper;
 import com.cyt.center.module.portal.service.support.PortalAccess;
 import com.cyt.center.module.portal.service.support.PortalOperator;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;

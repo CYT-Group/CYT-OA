@@ -6,7 +6,7 @@ import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.salarycard.HrmEmployeeSalaryCardSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeSalaryCardDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeSalaryCardMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeSalaryCardMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

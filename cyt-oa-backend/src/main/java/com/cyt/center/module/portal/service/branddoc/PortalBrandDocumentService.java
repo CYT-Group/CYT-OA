@@ -2,7 +2,7 @@ package com.cyt.center.module.portal.service.branddoc;
 
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.result.PageResult;
-import com.cyt.center.module.portal.dal.mysql.branddoc.PortalBrandDocumentRepository;
+import com.cyt.center.module.portal.dal.postgresql.branddoc.PortalBrandDocumentRepository;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import com.cyt.center.module.portal.service.support.PortalDocumentStorage;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;

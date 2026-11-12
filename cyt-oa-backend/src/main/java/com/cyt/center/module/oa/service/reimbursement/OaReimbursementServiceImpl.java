@@ -11,7 +11,7 @@ import com.cyt.center.module.oa.controller.admin.reimbursement.vo.OaReimbursemen
 import com.cyt.center.module.oa.controller.admin.reimbursement.vo.OaReimbursementSaveReqVO;
 import com.cyt.center.module.oa.controller.admin.reimbursement.vo.OaReimbursementSubmitReqVO;
 import com.cyt.center.module.oa.dal.dataobject.reimbursement.OaReimbursementDO;
-import com.cyt.center.module.oa.dal.mysql.reimbursement.OaReimbursementMapper;
+import com.cyt.center.module.oa.dal.postgresql.reimbursement.OaReimbursementMapper;
 import com.cyt.center.module.system.api.dict.DictDataApi;
 import com.cyt.center.module.system.api.user.AdminUserApi;
 import jakarta.annotation.Resource;

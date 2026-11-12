@@ -1,10 +1,10 @@
-"""B4 员工反馈迁移：Portal Postgres（bot.employee_feedback）→ OA MySQL（portal_feedback）。
+"""B4 员工反馈迁移：Portal Postgres（bot.employee_feedback）→ OA PostgreSQL（portal_feedback）。
 
 用法：
     python scripts/migrate_portal_feedback.py --dry-run   # 只报数，不写库
     python scripts/migrate_portal_feedback.py             # 真正写入
 
-行 id 原样保留；MySQL 已存在的 id 跳过。口径出处：
+行 id 原样保留；PostgreSQL 已存在的 id 跳过。口径出处：
 docs/Portal管理面迁移契约.md §一「员工反馈」、§二「类型转换口径」、§四 批次 4。
 时间换算见 portal_time.py；JSONB（image_urls）文本原样；wecom_userid → username。
 """
@@ -16,11 +16,11 @@ import os
 import sys
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import portal_time as pt  # noqa: E402
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn  # noqa: E402
+from migrate_portal_identity import read_pg_dsn  # noqa: E402
 
 SRC_TABLE = "bot.employee_feedback"
 DST_TABLE = "portal_feedback"
@@ -70,25 +70,26 @@ def clock(value, stats):
 
 
 def migrate(rows, dry_run):
-    my = pymysql.connect(**read_mysql_conf())
-    cur = my.cursor()
-    stats = {"utc_era": 0, "cutover_day": 0}
-    data = build(rows, stats)
-
-    cur.execute("select id from %s" % DST_TABLE)
-    done = {r[0] for r in cur.fetchall()}
-    todo = [row for rid, row in data if rid not in done]
-    for start in range(0, len(todo), 500):
-        chunk = todo[start:start + 500]
-        cols = list(chunk[0].keys())
-        sql = "INSERT INTO %s (%s) VALUES (%s)" % (DST_TABLE, ", ".join(cols), ", ".join(["%s"] * len(cols)))
-        if not dry_run:
-            cur.executemany(sql, [tuple(row[c] for c in cols) for row in chunk])
-
+    my = connect_target(readonly=dry_run)
     try:
+        cur = my.cursor()
+        stats = {"utc_era": 0, "cutover_day": 0}
+        data = build(rows, stats)
+
+        cur.execute("select id from %s" % DST_TABLE)
+        done = {r[0] for r in cur.fetchall()}
+        todo = [row for rid, row in data if rid not in done]
+        for start in range(0, len(todo), 500):
+            chunk = todo[start:start + 500]
+            cols = list(chunk[0].keys())
+            sql = "INSERT INTO %s (%s) VALUES (%s)" % (DST_TABLE, ", ".join(cols), ", ".join(["%s"] * len(cols)))
+            if not dry_run:
+                cur.executemany(sql, [tuple(row[c] for c in cols) for row in chunk])
+
         if dry_run:
             my.rollback()
         else:
+            advance_target_sequences(my)
             my.commit()
     finally:
         my.close()

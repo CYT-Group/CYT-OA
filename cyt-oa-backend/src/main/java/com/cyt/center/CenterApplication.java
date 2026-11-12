@@ -11,8 +11,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @EnableScheduling
 @SpringBootApplication
-// 自建模块的 mapper 在 *.mapper，从芋道移植过来的沿用 *.dal.mysql，两边都要扫到
-@MapperScan({"com.cyt.center.module.**.mapper", "com.cyt.center.module.**.dal.mysql"})
+// 自建模块的 mapper 在 *.mapper，从芋道移植过来的沿用 *.dal.postgresql，两边都要扫到
+@MapperScan({"com.cyt.center.module.**.mapper", "com.cyt.center.module.**.dal.postgresql"})
 public class CenterApplication {
 
     public static void main(String[] args) {

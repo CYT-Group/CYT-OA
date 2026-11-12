@@ -10,7 +10,7 @@ import java.util.Map;
 /**
  * 通用分类用例：事务边界、权限策略、审计都在这层（口径 docs/Portal管理面迁移契约.md §一「通用分类」）。
  *
- * 层职责与 Portal 的分层一一对应——SQL 只在 dal/mysql/category，形状与 attrs / code 的校验规则
+ * 层职责与 Portal 的分层一一对应——SQL 只在 dal/postgresql/category，形状与 attrs / code 的校验规则
  * 只在 domain/PortalCategoryScope，本层负责把它们串起来并管好事务。
  */
 public interface PortalCategoryService {

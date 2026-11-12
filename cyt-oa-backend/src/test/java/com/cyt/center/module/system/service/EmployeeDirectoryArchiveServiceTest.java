@@ -2,8 +2,8 @@ package com.cyt.center.module.system.service;
 
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeMapper;
-import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeChangeRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeChangeRecordMapper;
 import com.cyt.center.module.system.model.entity.SysUser;
 import org.junit.jupiter.api.Test;
 import java.util.List;

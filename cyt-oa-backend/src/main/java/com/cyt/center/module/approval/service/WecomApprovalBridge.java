@@ -5,7 +5,7 @@ import cn.hutool.core.util.StrUtil;
 import com.cyt.center.core.integration.WecomApprovalClient;
 import com.cyt.center.core.integration.WecomGatewayException;
 import com.cyt.center.module.approval.dal.dataobject.WecomApprovalLinkDO;
-import com.cyt.center.module.approval.dal.mysql.WecomApprovalLinkMapper;
+import com.cyt.center.module.approval.dal.postgresql.WecomApprovalLinkMapper;
 import com.cyt.center.module.bpm.enums.task.BpmProcessInstanceStatusEnum;
 import com.cyt.center.module.system.api.user.AdminUserApi;
 import com.cyt.center.module.system.api.user.dto.AdminUserRespDTO;

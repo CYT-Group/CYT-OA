@@ -22,7 +22,7 @@ import com.cyt.center.module.hrm.dal.dataobject.salary.employee.HrmSalaryChangeR
 import com.cyt.center.module.hrm.dal.dataobject.salary.employee.HrmSalaryEmployeeInfoDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.monthrecord.HrmSalaryMonthRecordDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryOptionDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.employee.HrmSalaryEmployeeInfoMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.employee.HrmSalaryEmployeeInfoMapper;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeStatusEnum;
 import com.cyt.center.module.hrm.enums.salary.employee.HrmSalaryBatchAdjustTypeEnum;
 import com.cyt.center.module.hrm.enums.salary.employee.HrmSalaryChangeReasonEnum;

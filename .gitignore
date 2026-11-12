@@ -7,14 +7,19 @@
 **/target/
 **/target2/
 **/target-parameter-check/
+**/target-*-check/
 **/node_modules/
 **/dist/
 *.class
 *.log
 *.tsbuildinfo
+**/__pycache__/
+*.py[cod]
 
-# 本机配置：只提交 .example
+# 环境配置含真实地址与凭据，不提交 Git
+**/.env
 **/application-local.yml
+**/application-prod.properties
 **/.env.local
 **/.env.*.local
 
@@ -34,3 +39,8 @@ _*.txt
 
 # 本地浏览器验收截图与临时脚本
 .screenshots/
+
+# Jenkins 构建元数据
+.jenkins-build/
+.deploy-sha
+.deploy-branch

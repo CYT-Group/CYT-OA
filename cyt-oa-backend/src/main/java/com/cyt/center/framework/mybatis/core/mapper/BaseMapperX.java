@@ -32,29 +32,28 @@ import java.util.Map;
  * 1. {@link BaseMapper} 为 MyBatis Plus 的基础接口，提供基础的 CRUD 能力
  * 2. {@link MPJBaseMapper} 为 MyBatis Plus Join 的基础接口，提供连表 Join 能力
  *
- * 与芋道原版的差异（本项目只用 MySQL，因此做了刻意简化）：
+ * 与芋道原版的差异（本项目使用 PostgreSQL，因此做了刻意简化）：
  * 1. 分页返回 {@link PageResult} 来自 com.cyt.center.core.result，与个人中心已有接口保持一致；
  * 2. 锁定读不再依赖自定义 SqlInjector（SelectForUpdateMethod）、ForUpdateInnerInterceptor、
- *    JdbcUtils 的方言识别，直接用 MySQL 原生的 FOR UPDATE / LIMIT 1 FOR UPDATE 拼在 SQL 末尾；
- *    Oracle 的“候选主键 + 重试”方案一并去掉；
- * 3. insertBatch 不再判断 SQL Server 分支，统一走 Db.saveBatch。
+ *    JdbcUtils 的方言识别，直接用 PostgreSQL 的 FOR UPDATE / LIMIT 1 FOR UPDATE 拼在 SQL 末尾；
+ * 3. insertBatch 统一走 Db.saveBatch。
  */
 public interface BaseMapperX<T> extends MPJBaseMapper<T> {
 
     /**
      * Wrapper 的 set(column, null, mapping) 使用：显式声明 VARCHAR 类型
      *
-     * 原因：未指定 jdbcType 时，null 值按 MyBatis 的 jdbcTypeForNull（默认 OTHER）传入，Oracle、达梦等数据库可能报错
+     * 显式约定字符串列的空值类型，避免依赖驱动推断。
      */
     String JDBC_TYPE_VARCHAR = "jdbcType=VARCHAR";
 
     /**
-     * MySQL 锁定读：追加在 SQL 末尾的 FOR UPDATE
+     * PostgreSQL 锁定读：追加在 SQL 末尾的 FOR UPDATE
      */
     String FOR_UPDATE = "FOR UPDATE";
 
     /**
-     * MySQL 锁定读，且只取第一条：追加在 SQL 末尾
+     * PostgreSQL 锁定读，且只取第一条：追加在 SQL 末尾
      */
     String LIMIT_1_FOR_UPDATE = "LIMIT 1 " + FOR_UPDATE;
 
@@ -223,8 +222,7 @@ public interface BaseMapperX<T> extends MPJBaseMapper<T> {
      *
      * 注意：需要在事务中调用，否则锁会立即释放；queryWrapper 未设置排序时，为任意一条满足条件的记录（只适合判断是否存在）
      *
-     * 原版对 Oracle 走“查候选主键、按主键加锁、重读首行”的重试循环，本项目只有 MySQL，
-     * 直接使用 LIMIT 1 FOR UPDATE 一条 SQL 完成
+     * PostgreSQL 直接使用 LIMIT 1 FOR UPDATE 一条 SQL 完成。
      *
      * @param queryWrapper 查询条件
      * @return 实体
@@ -236,7 +234,7 @@ public interface BaseMapperX<T> extends MPJBaseMapper<T> {
     /**
      * 追加锁定读的子句。
      *
-     * 说明：MySQL 的 FOR UPDATE 必须出现在语句末尾，这里用 Wrapper.last 拼接；
+     * 说明：PostgreSQL 的 FOR UPDATE 必须出现在语句末尾，这里用 Wrapper.last 拼接；
      * 调用方的 Wrapper 一般只在方法内构造，last 被本方法占用，若调用方已自行设置 last 则会报错，
      * 与原版的“锁定读的查询条件不能使用 last”约束一致。
      *

@@ -17,7 +17,7 @@ import com.cyt.center.module.me.model.vo.MeVos.ReminderPreference;
 import com.cyt.center.module.oa.controller.admin.announcement.vo.OaAnnouncementPageReqVO;
 import com.cyt.center.module.oa.dal.dataobject.announcement.OaAnnouncementDO;
 import com.cyt.center.module.oa.dal.dataobject.workreport.OaWorkReportDO;
-import com.cyt.center.module.oa.dal.mysql.workreport.OaWorkReportMapper;
+import com.cyt.center.module.oa.dal.postgresql.workreport.OaWorkReportMapper;
 import com.cyt.center.module.oa.enums.workreport.OaWorkReportTypeEnum;
 import com.cyt.center.module.oa.service.announcement.OaAnnouncementService;
 import lombok.RequiredArgsConstructor;

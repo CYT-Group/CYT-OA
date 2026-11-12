@@ -267,9 +267,8 @@ public class DirectorySnapshotWriter {
     }
 
     /**
-     * uk_sys_user_wecom / uk_sys_user_username 都是 utf8mb4_0900_ai_ci，MySQL 认为 DengXue 就是 dengxue，
-     * Java 的 Map 不这么认为。两边口径不统一时，改过大小的同一个人会被判成新人再插一遍，
-     * 撞唯一键后整个同步回滚。
+     * 与 sys_user 上 LOWER(username) / LOWER(wecom_userid) 唯一索引保持一致。
+     * 同一人的 userid 仅改变大小写时应更新现有账号，避免创建重复身份或触发唯一键冲突。
      */
     private static String normalizeUserid(String value) {
         return value.toLowerCase(Locale.ROOT);

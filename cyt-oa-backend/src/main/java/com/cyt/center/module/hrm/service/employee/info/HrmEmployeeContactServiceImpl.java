@@ -3,7 +3,7 @@ package com.cyt.center.module.hrm.service.employee.info;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.contact.HrmEmployeeContactSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeContactDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeContactMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeContactMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

@@ -191,7 +191,7 @@ public class PortalAiService {
         task(name);
         // 配置行在首次写入时也必须占锁，避免两个管理员同时生成相同版本号。
         jdbc.update(
-                "INSERT IGNORE INTO portal_ai_task_settings(task_name,updated_by) VALUES(?,?)",
+                "INSERT INTO portal_ai_task_settings(task_name,updated_by) VALUES(?,?) ON CONFLICT (task_name) DO NOTHING",
                 name,
                 currentUser.require().username());
         jdbc.queryForList(
@@ -363,8 +363,8 @@ public class PortalAiService {
         jdbc.update(
                 "INSERT INTO"
                     + " portal_ai_provider_settings(provider,is_default,tier_fast,tier_standard,tier_quality,updated_by)"
-                    + " VALUES('gemini',1,?,?,?,?) ON DUPLICATE KEY UPDATE"
-                    + " tier_fast=VALUES(tier_fast),tier_standard=VALUES(tier_standard),tier_quality=VALUES(tier_quality),updated_by=VALUES(updated_by),updated_at=NOW()",
+                    + " VALUES('gemini',1,?,?,?,?) ON CONFLICT (provider) DO UPDATE SET"
+                    + " tier_fast=EXCLUDED.tier_fast,tier_standard=EXCLUDED.tier_standard,tier_quality=EXCLUDED.tier_quality,updated_by=EXCLUDED.updated_by,updated_at=NOW()",
                 blank(body.get("tierFast")),
                 blank(body.get("tierStandard")),
                 blank(body.get("tierQuality")),
@@ -382,8 +382,8 @@ public class PortalAiService {
         jdbc.update(
                 "INSERT INTO"
                     + " portal_ai_provider_settings(provider,is_default,api_key_ciphertext,api_key_hint,api_key_updated_by,api_key_updated_at)"
-                    + " VALUES('gemini',1,?,?,?,NOW()) ON DUPLICATE KEY UPDATE"
-                    + " api_key_ciphertext=VALUES(api_key_ciphertext),api_key_hint=VALUES(api_key_hint),api_key_updated_by=VALUES(api_key_updated_by),api_key_updated_at=NOW()",
+                    + " VALUES('gemini',1,?,?,?,NOW()) ON CONFLICT (provider) DO UPDATE SET"
+                    + " api_key_ciphertext=EXCLUDED.api_key_ciphertext,api_key_hint=EXCLUDED.api_key_hint,api_key_updated_by=EXCLUDED.api_key_updated_by,api_key_updated_at=NOW()",
                 encrypted,
                 "…" + key.substring(Math.max(0, key.length() - 4)),
                 currentUser.require().username());
@@ -672,7 +672,7 @@ public class PortalAiService {
                         jdbc.queryForMap(
                                 "SELECT COUNT(*) AS calls,SUM(cost_usd) AS cost_usd,SUM(tokens_in)"
                                     + " AS tokens_in,SUM(tokens_out) AS"
-                                    + " tokens_out,SUM(status<>'ok') AS errors FROM"
+                                    + " tokens_out,SUM(CASE WHEN status<>'ok' THEN 1 ELSE 0 END) AS errors FROM"
                                     + " portal_api_call_log WHERE called_at>=? AND called_at<?",
                                 from,
                                 to)),

@@ -10,8 +10,8 @@ import asyncio
 import json
 from datetime import datetime, timezone, timedelta
 import asyncpg
-import pymysql
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn
+from portal_target import connect_target, advance_target_sequences
+from migrate_portal_identity import read_pg_dsn
 
 SHANGHAI = timezone(timedelta(hours=8))
 
@@ -53,7 +53,7 @@ async def fetch_portal():
 
 
 def migrate(rows, apply=False):
-    connection = pymysql.connect(**read_mysql_conf())
+    connection = connect_target(readonly=not apply)
     report = {"source": len(rows), "insert": 0, "skip": 0, "interrupted": 0, "unmapped": []}
     try:
         with connection.cursor() as cursor:
@@ -79,6 +79,7 @@ def migrate(rows, apply=False):
             if report["unmapped"] and apply:
                 raise ValueError("存在未映射提交人，未写入任何任务：" + json.dumps(report["unmapped"], ensure_ascii=False))
         if apply:
+            advance_target_sequences(connection)
             connection.commit()
         else:
             connection.rollback()

@@ -14,7 +14,7 @@ import com.cyt.center.module.oa.controller.admin.leave.vo.OaLeaveApplyPageReqVO;
 import com.cyt.center.module.oa.controller.admin.leave.vo.OaLeaveApplySaveReqVO;
 import com.cyt.center.module.oa.controller.admin.leave.vo.OaLeaveApplySubmitReqVO;
 import com.cyt.center.module.oa.dal.dataobject.leave.OaLeaveApplyDO;
-import com.cyt.center.module.oa.dal.mysql.leave.OaLeaveApplyMapper;
+import com.cyt.center.module.oa.dal.postgresql.leave.OaLeaveApplyMapper;
 import com.cyt.center.module.oa.enums.leave.OaLeaveTypeEnum;
 import com.cyt.center.module.system.api.user.AdminUserApi;
 import com.cyt.center.module.system.api.user.dto.AdminUserRespDTO;

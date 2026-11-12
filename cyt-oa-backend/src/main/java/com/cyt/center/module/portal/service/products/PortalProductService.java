@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 新品动态用例（逐条对齐 Portal 的 application/products.py）。
  *
- * 无审批流：创建即 published；SQL 只在 dal/mysql/products，本层只串规则与事务。
+ * 无审批流：创建即 published；SQL 只在 dal/postgresql/products，本层只串规则与事务。
  */
 public interface PortalProductService {
 

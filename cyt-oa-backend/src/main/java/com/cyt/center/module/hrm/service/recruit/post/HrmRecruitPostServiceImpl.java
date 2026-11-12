@@ -8,7 +8,7 @@ import com.cyt.center.module.hrm.controller.admin.recruit.vo.post.HrmRecruitPost
 import com.cyt.center.module.hrm.controller.admin.recruit.vo.post.HrmRecruitPostSaveReqVO;
 import com.cyt.center.module.hrm.controller.admin.recruit.vo.post.HrmRecruitPostStatusReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.post.HrmRecruitPostDO;
-import com.cyt.center.module.hrm.dal.mysql.recruit.post.HrmRecruitPostMapper;
+import com.cyt.center.module.hrm.dal.postgresql.recruit.post.HrmRecruitPostMapper;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeEntryStatusEnum;
 import com.cyt.center.module.hrm.enums.recruit.post.HrmRecruitPostStatusEnum;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;

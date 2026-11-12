@@ -1,5 +1,8 @@
 # HR 制度编辑器接口迁移
 
+> 数据库使用 PostgreSQL，初始化和升级统一通过 `src/main/resources/db/postgresql/migration/` 的版本迁移。
+> 操作见[后端 README](../README.md#3-建表与初始数据)与[数据库规范](../src/main/resources/db/postgresql/migration/README.md)。
+
 核对来源为 `CYT-Portal/frontend/src/views/admin/HrDocEditorView.vue`、`HrDocAdminView.vue`、`HrDocPreviewView.vue` 及其实际使用的历史、排版、推送、封面设置组件。新接口统一 `/admin-api/portal/hrdoc`，能力位统一 `can_edit_hr_documents`。员工公开读制度仍使用 app 接口；管理接口允许编辑人读取草稿，不应用员工部门范围过滤。
 
 ## 文档、草稿与版本
@@ -19,7 +22,7 @@
 
 已有字段全量保留：引言 `intro`、主题 `theme`、封面图 `coverImage`、标签 `tags`、目录 `tocEnabled/tocPosition`、整屏封面 `cover`、PDF 下载开关 `downloadPdfEnabled`、签收卡 `signoff`，正式/草稿双列按原三态晋升。整体 cover/signoff JSON 键名保留原值，例如 `bg_type`、`nav_tabs`、`ack_label`、`button_text`。`blocks` 内 `activeTab/subHeader/document_id/button_text` 等原键不做递归命名转换。
 
-发布凭据递归规范化所有 JSON 对象键顺序，并按 MySQL 秒精度规范化状态时间；数据库重排 JSON 键不会造成“保存后立即发布”误报并发冲突。
+发布凭据递归规范化所有 JSON 对象键顺序，并按秒精度规范化状态时间；JSON 序列化的键顺序不会造成“保存后立即发布”误报并发冲突。
 
 预览读 `/get`，客户端自行选择草稿或发布版本。原 PDF 是浏览器打印/CSS 导出，无服务端 PDF 生成 API。图片仍通过已迁移的 multipart 图片上传 API；新私有卷保存图片，公开图片读路径供渲染使用。
 
@@ -60,6 +63,6 @@
 
 ## 历史任务迁移与验证
 
-新增 DDL：`src/main/resources/db/portal-hr-layout-jobs-schema.sql`，包含任务和限流记次两表。新增脚本 `scripts/migrate_portal_hr_layout_jobs.py`，默认 dry-run；`--apply` 才写入。保留源任务 ID、输入、成功 blocks、提交人、原始 aware 时间；按 username 映射新用户。源 `pending/running` 转失败并注明迁移中断，不自动调用付费 AI；未映射提交人或目标 ID 内容冲突均报错，绝不覆盖新 OA 任务。
+任务表 `portal_hr_layout_jobs` 和限流记次表 `portal_hr_layout_attempts` 已纳入 PostgreSQL 初始迁移。先按[后端 README](../README.md#3-建表与初始数据)初始化目标库，再使用 `scripts/migrate_portal_hr_layout_jobs.py` 搬迁历史任务；脚本默认 dry-run，`--apply` 才写入。保留源任务 ID、输入、成功 blocks、提交人、原始 aware 时间；按 username 映射新用户。源 `pending/running` 转失败并注明迁移中断，不自动调用付费 AI；未映射提交人或目标 ID 内容冲突均报错，绝不覆盖新 OA 任务。
 
 HR 本域 22 项 Java 单测及 3 项 Python 纯转换测试通过，覆盖结构补齐与过滤、相对图片/链接及表格格式保存、危险 HTML/CSS 清洗、遗漏原文保留、章节分段、Word 表格/段落顺序与英文空格、DTD/实体及压缩膨胀拒绝、文件 magic bytes、超长正文、测试推送不改稿、在线草稿正式快照推送、全员/定向上限、网关失败不伪装成功、历史别名管理解析、JSON 重排后的发布凭据和带时区任务迁移。实际 AI 付费调用、真实企微发送和生产库写入需另行联调，本次单测不触发。

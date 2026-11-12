@@ -7,7 +7,7 @@ import com.cyt.center.module.hrm.controller.admin.salary.vo.changetemplate.HrmSa
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryChangeTemplateDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryChangeTemplateDO.Option;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryOptionDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.config.HrmSalaryChangeTemplateMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.config.HrmSalaryChangeTemplateMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

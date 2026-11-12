@@ -4,7 +4,7 @@ import cn.hutool.core.util.ObjUtil;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.personalnote.HrmEmployeePersonalNoteCreateReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeePersonalNoteDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeePersonalNoteMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeePersonalNoteMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

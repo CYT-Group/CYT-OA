@@ -7,7 +7,7 @@ import com.cyt.center.module.hrm.controller.admin.insurance.vo.employeeinfo.HrmI
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.employee.HrmInsuranceEmployeeInfoDO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.config.HrmInsuranceSchemeDO;
-import com.cyt.center.module.hrm.dal.mysql.insurance.employee.HrmInsuranceEmployeeInfoMapper;
+import com.cyt.center.module.hrm.dal.postgresql.insurance.employee.HrmInsuranceEmployeeInfoMapper;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeEntryStatusEnum;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeStatusEnum;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;

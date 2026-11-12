@@ -5,7 +5,7 @@ import com.cyt.center.framework.common.util.json.JsonUtils;
 import com.cyt.center.module.portal.controller.admin.products.vo.PortalProductPageReqVO;
 import com.cyt.center.module.portal.controller.admin.products.vo.PortalProductSaveReqVO;
 import com.cyt.center.module.portal.dal.dataobject.products.PortalProductDO;
-import com.cyt.center.module.portal.dal.mysql.products.PortalProductMapper;
+import com.cyt.center.module.portal.dal.postgresql.products.PortalProductMapper;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

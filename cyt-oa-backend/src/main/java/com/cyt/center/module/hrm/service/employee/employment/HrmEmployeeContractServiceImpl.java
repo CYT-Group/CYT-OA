@@ -4,7 +4,7 @@ import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.contract.HrmEmployeeContractSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeContractDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeContractMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeContractMapper;
 import com.cyt.center.module.hrm.enums.employee.employment.HrmEmployeeContractTypeEnum;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;

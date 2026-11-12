@@ -4,7 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.changerecord.HrmEmployeeChangeRecordCreateReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeChangeRecordDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeChangeRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeChangeRecordMapper;
 import com.cyt.center.module.hrm.enums.employee.employment.HrmEmployeeChangeTypeEnum;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;

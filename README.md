@@ -20,6 +20,7 @@ CYT 企业数字化平台 - OA 协同子模块。员工在个人中心处理汇�
 - [配置说明](./cyt-oa-backend/docs/configuration.md) — 数据库、Redis、企微网关、SSO 与登录开关。
 - [组织与员工档案](./cyt-oa-backend/docs/organization-and-employees.md) — 企微字段归属、人事维护、账号状态及已有库升级。
 - [开发与验证（前端）](./cyt-oa-frontend/docs/development.md) — 类型检查与改动约定。
+- [数据库变更规范](./cyt-oa-backend/src/main/resources/db/postgresql/migration/README.md) — SQL 统一目录、版本命名、执行历史及部署前迁移。
 
 ## 主要功能
 
@@ -35,13 +36,13 @@ CYT 企业数字化平台 - OA 协同子模块。员工在个人中心处理汇�
 
 ```bash
 cd cyt-oa-backend
-cp src/main/resources/application-local.yml.example src/main/resources/application-local.yml
-mvn -DskipTests package
+# 准备并填写 src/main/resources/application-local.yml 中的本地连接信息
+mvn clean -DskipTests package
 java -jar target/cyt-oa-backend-1.0.0.jar   # http://localhost:48081
 ```
 
-首次启动前需先建库并执行 `src/main/resources/db/` 下的建表与种子脚本，
-顺序见后端 README 的「建表与初始数据」一节。`application-local.yml` 已被 Git 忽略，只提交 `.example`；
+首次启动前需先建库并执行 `src/main/resources/db/postgresql/migration/` 下的版本脚本，
+顺序见后端 README 的「建表与初始数据」一节。local / prod 环境文件已被 Git 忽略，需在构建环境中准备；
 服务起来后接口文档在 `/swagger-ui.html`。
 
 ### 前端
@@ -59,7 +60,7 @@ npm run dev    # http://localhost:4810
 
 ```text
 CYT-OA/
-├── cyt-oa-backend/       Spring Boot 后端：src/、db/、scripts/、sql/、docs/
+├── cyt-oa-backend/       Spring Boot 后端：src/、scripts/、docs/
 ├── cyt-oa-frontend/      Vue 前端：src/、public/、docs/
 └── .gitignore            统一排除 IDE、构建产物、本机配置与临时文件
 ```
@@ -74,7 +75,7 @@ CYT-OA/
 
 ## 技术栈
 
-Java 21 + Spring Boot 3.3.2 + MyBatis Plus + MySQL 8 + Redis + Warm-Flow + Vue 3 + TypeScript + Vite 6
+Java 21 + Spring Boot 3.3.2 + MyBatis Plus + PostgreSQL 17+ + Redis + Warm-Flow + Vue 3 + TypeScript + Vite 6
 
 ## License
 

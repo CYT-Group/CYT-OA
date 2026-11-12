@@ -5,7 +5,7 @@ import cn.hutool.core.util.ObjUtil;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.salary.vo.taxrule.HrmSalaryTaxRuleSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryTaxRuleDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.config.HrmSalaryTaxRuleMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.config.HrmSalaryTaxRuleMapper;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;

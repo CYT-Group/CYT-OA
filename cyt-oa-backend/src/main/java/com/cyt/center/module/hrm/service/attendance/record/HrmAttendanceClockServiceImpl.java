@@ -16,7 +16,7 @@ import com.cyt.center.module.hrm.controller.admin.portal.attendance.vo.clock.Hrm
 import com.cyt.center.module.hrm.dal.dataobject.attendance.config.HrmAttendanceGroupDO;
 import com.cyt.center.module.hrm.dal.dataobject.attendance.record.HrmAttendanceClockDO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
-import com.cyt.center.module.hrm.dal.mysql.attendance.record.HrmAttendanceClockMapper;
+import com.cyt.center.module.hrm.dal.postgresql.attendance.record.HrmAttendanceClockMapper;
 import com.cyt.center.module.hrm.enums.attendance.record.HrmAttendanceClockButtonStatusEnum;
 import com.cyt.center.module.hrm.enums.attendance.record.HrmAttendanceClockSourceEnum;
 import com.cyt.center.module.hrm.enums.attendance.record.HrmAttendanceClockStageEnum;

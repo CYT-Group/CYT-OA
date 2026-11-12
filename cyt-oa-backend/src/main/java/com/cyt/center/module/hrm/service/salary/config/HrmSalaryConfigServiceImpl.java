@@ -6,7 +6,7 @@ import com.cyt.center.module.hrm.controller.admin.salary.vo.config.HrmSalaryConf
 import com.cyt.center.module.hrm.controller.admin.salary.vo.config.HrmSalaryConfigUpdateReqVO;
 import com.cyt.center.module.hrm.controller.admin.salary.vo.monthrecord.HrmSalaryMonthRecordCreateReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryConfigDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.config.HrmSalaryConfigMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.config.HrmSalaryConfigMapper;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;

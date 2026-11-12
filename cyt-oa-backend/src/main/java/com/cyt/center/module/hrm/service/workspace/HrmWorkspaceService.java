@@ -38,7 +38,7 @@ public class HrmWorkspaceService {
     private final HrmDocumentRenderer renderer;
 
     public List<Map<String,Object>> departments() {
-        return jdbc.queryForList("SELECT CAST(id AS CHAR) AS value,name AS label FROM sys_dept WHERE active=1 ORDER BY name,id");
+        return jdbc.queryForList("SELECT CAST(id AS TEXT) AS value,name AS label FROM sys_dept WHERE active=1 ORDER BY name,id");
     }
 
     public Map<String,Object> interviews(int page,int size,String search,Integer result) {
@@ -51,15 +51,15 @@ public class HrmWorkspaceService {
         if(result!=null) { from+=" AND i.result=?";args.add(result); }
         long total=jdbc.queryForObject("SELECT COUNT(*)"+from,Long.class,args.toArray());
         args.add(size);args.add((page-1)*size);
-        var rows=jdbc.queryForList("SELECT i.id,i.candidate_id AS candidateId,c.name AS candidateName,p.post_name AS postName,"
-                + "i.stage_number AS stageNumber,i.type,i.interview_time AS interviewTime,i.address,i.result,i.evaluate,i.cancel_reason AS cancelReason,"
-                + "e.name AS interviewEmployeeName"+from+" ORDER BY i.interview_time DESC,i.id DESC LIMIT ? OFFSET ?",args.toArray());
+        var rows=jdbc.queryForList("SELECT i.id,i.candidate_id AS \"candidateId\",c.name AS \"candidateName\",p.post_name AS \"postName\","
+                + "i.stage_number AS \"stageNumber\",i.type,i.interview_time AS \"interviewTime\",i.address,i.result,i.evaluate,i.cancel_reason AS \"cancelReason\","
+                + "e.name AS \"interviewEmployeeName\""+from+" ORDER BY i.interview_time DESC NULLS LAST,i.id DESC LIMIT ? OFFSET ?",args.toArray());
         return Map.of("list",rows,"total",total);
     }
 
     public List<Map<String,Object>> templates() {
-        return jdbc.queryForList("SELECT t.id,t.name,t.version,t.kind,t.contract_type AS contractType,t.scope,t.content,t.status,t.review_note AS reviewNote,"
-                + "t.created_at AS createdAt,t.reviewed_at AS reviewedAt,u.name AS creatorName FROM hrm_contract_template t "
+        return jdbc.queryForList("SELECT t.id,t.name,t.version,t.kind,t.contract_type AS \"contractType\",t.scope,t.content,t.status,t.review_note AS \"reviewNote\","
+                + "t.created_at AS \"createdAt\",t.reviewed_at AS \"reviewedAt\",u.name AS \"creatorName\" FROM hrm_contract_template t "
                 + "LEFT JOIN sys_user u ON u.id=t.creator ORDER BY t.id DESC");
     }
 
@@ -196,8 +196,8 @@ public class HrmWorkspaceService {
     }
 
     public Map<String,Object> document(long id) {
-        var list=jdbc.queryForList("SELECT d.id,d.employee_id AS employeeId,d.kind,d.content,d.effective_date AS effectiveDate,"
-                + "d.created_at AS createdAt,t.name AS templateName,t.version FROM hrm_employment_document d "
+        var list=jdbc.queryForList("SELECT d.id,d.employee_id AS \"employeeId\",d.kind,d.content,d.effective_date AS \"effectiveDate\","
+                + "d.created_at AS \"createdAt\",t.name AS \"templateName\",t.version FROM hrm_employment_document d "
                 + "JOIN hrm_contract_template t ON t.id=d.template_id WHERE d.id=?",id);
         if(list.isEmpty()) throw new BizException("文书不存在"); return list.getFirst();
     }
@@ -206,17 +206,17 @@ public class HrmWorkspaceService {
         var e=employees.validateEmployeeExists(id);
         var events=new ArrayList<Map<String,Object>>();
         if(e.getEntryTime()!=null) events.add(event("entry","入职登记",e.getEntryTime(),"入职时间以员工档案为准"));
-        for(var row:jdbc.queryForList("SELECT id,type,effect_time AS eventTime,applied_time AS appliedTime,remark,"
-                + "old_post_name AS oldPostName,new_post_name AS newPostName FROM hrm_employee_change_record "
+        for(var row:jdbc.queryForList("SELECT id,type,effect_time AS \"eventTime\",applied_time AS \"appliedTime\",remark,"
+                + "old_post_name AS \"oldPostName\",new_post_name AS \"newPostName\" FROM hrm_employee_change_record "
                 + "WHERE employee_id=? AND deleted=0 ORDER BY effect_time DESC,id DESC",id)) {
             var v=event("change",changeLabel(((Number)row.get("type")).intValue()),row.get("eventTime"),row.get("remark"));
             v.putAll(row); v.put("type","change"); events.add(v);
         }
-        for(var row:jdbc.queryForList("SELECT id,archive_time AS eventTime,result_level AS resultLevel,score FROM "
+        for(var row:jdbc.queryForList("SELECT id,archive_time AS \"eventTime\",result_level AS \"resultLevel\",score FROM "
                 + "hrm_performance_assessment WHERE employee_id=? AND deleted=0 AND archive_time IS NOT NULL",id)) {
             var v=event("performance","绩效归档",row.get("eventTime"),"等级："+row.get("resultLevel")+" / 得分："+row.get("score")); events.add(v);
         }
-        for(var row:jdbc.queryForList("SELECT d.id AS documentId,d.kind,d.created_at AS eventTime,t.name,t.version "
+        for(var row:jdbc.queryForList("SELECT d.id AS \"documentId\",d.kind,d.created_at AS \"eventTime\",t.name,t.version "
                 + "FROM hrm_employment_document d JOIN hrm_contract_template t ON t.id=d.template_id WHERE d.employee_id=?",id)) {
             var v=event("document","文书归档",row.get("eventTime"),row.get("name")+" / "+row.get("version")); v.putAll(row); v.put("type","document"); events.add(v);
         }
@@ -248,7 +248,7 @@ public class HrmWorkspaceService {
     private void lockEmployee(long id) { if(jdbc.queryForList("SELECT id FROM hrm_employee WHERE id=? AND deleted=0 FOR UPDATE",id).isEmpty()) throw new BizException("员工不存在"); }
     private String deptName(Long id) { if(id==null)return ""; var rows=jdbc.queryForList("SELECT name FROM sys_dept WHERE id=?",id);return rows.isEmpty()?"":String.valueOf(rows.getFirst().get("name")); }
     private Map<String,Object> previous(String key,String kind,String hash) {
-        var rows=jdbc.queryForList("SELECT employee_id AS employeeId,id AS documentId,kind,creator,request_hash AS requestHash FROM hrm_employment_document WHERE request_key=?",key);
+        var rows=jdbc.queryForList("SELECT employee_id AS \"employeeId\",id AS \"documentId\",kind,creator,request_hash AS \"requestHash\" FROM hrm_employment_document WHERE request_key=?",key);
         if(rows.isEmpty()) return null;
         var row=rows.getFirst();
         if(!kind.equals(row.get("kind")) || ((Number)row.get("creator")).longValue()!=current.requireUserId()) throw new BizException("请求编号已使用，请重新办理");
@@ -267,7 +267,7 @@ public class HrmWorkspaceService {
         catch(java.security.NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
     }
     private long insert(String sql,Object... args) {
-        var key=new GeneratedKeyHolder();jdbc.update(c->{var p=c.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS);for(int i=0;i<args.length;i++)p.setObject(i+1,args[i]);return p;},key);
+        var key=new GeneratedKeyHolder();jdbc.update(c->{var p=c.prepareStatement(sql,new String[]{"id"});for(int i=0;i<args.length;i++)p.setObject(i+1,com.cyt.center.core.config.PostgreSqlJdbcConfiguration.databaseValue(args[i]));return p;},key);
         return Objects.requireNonNull(key.getKey()).longValue();
     }
 }

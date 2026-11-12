@@ -1,28 +1,31 @@
 # Portal 管理面迁移契约
 
-> 版本 v1 ｜ 2026-11-10 ｜ 状态：迁移进行中（批次 1、2 已执行，批次 3、4 规划中）
-> 口径来源：`D:\code\CYT-Portal`（老门户，FastAPI + PostgreSQL）→ 本仓库（CYT OA，Java/Spring Boot + MySQL）
+> 数据库使用 PostgreSQL，初始化和升级统一通过 `src/main/resources/db/postgresql/migration/` 的版本迁移。
+> 操作见[后端 README](../README.md#3-建表与初始数据)与[数据库规范](../src/main/resources/db/postgresql/migration/README.md)。
+
+> 版本 v2 ｜ 2026-11-12 ｜ PostgreSQL 数据与管理接口契约
+> 口径来源：`D:\code\CYT-Portal`（门户，FastAPI + PostgreSQL）→ 本仓库（CYT OA，Java/Spring Boot + PostgreSQL）
 > 配套脚本：`scripts/migrate_portal_identity.py`（批次 1）、`scripts/migrate_portal_content.py`（批次 2）、`scripts/portal_time.py`（时间换算）
 
-> 2026-11-10 更新：本轮已将截图中的「后台管理 / HR 管理」接入 OA，并执行本机增量迁移；新增培训/HR 编辑器、物资、品牌、AI、合同、庆祝、简历面试及旧管理入口切流。当前落地范围、5 个历史孤立文档索引、附件缺失和部署配置以 [两组管理迁移执行记录](portal-admin-migration.md) 为准。下文批次规划保留为迁移历史，不代表所有旧状态仍有效。
+> 「后台管理 / HR 管理」由 OA 承接，包含培训/HR 编辑器、物资、品牌、AI、合同、庆祝、简历面试及管理入口切流。功能范围、5 个历史孤立文档索引、附件缺失和部署配置见[两组管理迁移](portal-admin-migration.md)。业务数据由搬迁脚本导入，初始版本仅包含结构与内置种子。
 
 ## 0. 目标架构与原则
 
-1. **OA 是唯一数据处理与管理中心**：所有写操作（审批、配置、台账、人事、上传、AI 配置）只在 OA 发生；唯一业务库是 OA MySQL。
+1. **OA 是唯一数据处理与管理中心**：所有写操作（审批、配置、台账、人事、上传、AI 配置）只在 OA 发生；业务库使用 OA PostgreSQL。
 2. **门户只做只读展示**：门户重写为**纯静态前端**（Vue 3 + Vite），直接调 OA 的 Open API（`/api/portal/*`）；不再有 Python 后端，不再读写 Portal PG。
 3. **身份统一在 OA**：企微为身份源；OA 完成登录与 SSO 签发，门户 token 即 OA token。
 4. **能力位不改名**：Portal 的 `can_*` 能力位原样映射为 OA 权限串（按钮级 `sys_menu`），SSO token 携带同一批字符串，直接复用 Portal 时代的能力矩阵。
-5. **迁移幂等可重入**：行 id 原样保留，MySQL 已存在的 id 跳过；中途失败可重复执行同一命令接着跑。脚本均支持 `--dry-run`（只报数不写库）。
+5. **迁移幂等可重入**：行 id 原样保留，目标库已存在的 id 跳过；中途失败可重复执行同一命令接着跑。脚本支持 `--dry-run`（只报数不写库），排版任务脚本默认只读、`--apply` 才写入；提交前推进 identity 序列。
 
 ---
 
-## 一、已迁移域（批次 1 / 2）
+## 一、身份与内容数据映射（批次 1 / 2）
 
-### 1.1 身份与权限（批次 1 · 已执行）
+### 1.1 身份与权限（批次 1）
 
 脚本：`scripts/migrate_portal_identity.py`
 
-| Portal PG | OA MySQL | 迁移口径 |
+| Portal PostgreSQL | OA PostgreSQL | 迁移口径 |
 |---|---|---|
 | `portal_departments` | `sys_dept` | 由 parent_id 链现算全路径 `path`（`/1/100/` 形式）；`leader_userids` 落 JSON |
 | `portal_users` | `sys_user` | Portal username 即企微 userid，按 username + wecom_userid **双键认人**（本地 admin 不与企微同名账号撞行） |
@@ -32,11 +35,11 @@
 | `portal_admin_audit` | `sys_operate_log` | `user_type=2`「后台管理」；`target_id` 取数字前缀当业务编号 |
 | `portal_employee_sync_jobs` | `sys_employee_sync_job` | **只建表不搬数据**（主键 PGUUID、状态带租约，是运行时态） |
 
-### 1.2 内容管理（批次 2 · 已执行）
+### 1.2 内容管理（批次 2）
 
 脚本：`scripts/migrate_portal_content.py`
 
-| Portal PG | OA MySQL |
+| Portal PostgreSQL | OA PostgreSQL |
 |---|---|
 | `portal_categories` | `portal_categories` |
 | `portal_news` | `portal_news` |
@@ -47,7 +50,7 @@
 
 - 行 id **原样保留**：点赞/评论按 news_id 引用动态，重新编号会打断关系。
 - `parent_id` 为空的先行插入（categories / comments 的 self-FK 不吃未来 id）。
-- 埋点表按 500 行/批写入（`max_allowed_packet` 限制）。
+- 埋点表按 500 行/批写入，限制单次批处理规模。
 
 ### 1.3 已上线的管理面与 Open API（`module/portal`）
 
@@ -75,23 +78,23 @@ Open API（`/api/portal/*`，供门户纯静态前端直连）：
 | Portal PG 类型 | 处理方式 |
 |---|---|
 | `ARRAY(String)` | 元素统一转字符串后落 JSON 数组（Java 端按 `List<String>` 读，防止 `"423"` 变数字） |
-| `boolean` | `tinyint(1)`（0/1） |
-| `jsonb` | 文本原样交给 MySQL JSON 列校验 |
+| `boolean` | `SMALLINT`（0/1），与 Java 布尔参数处理器及逻辑删除语义保持一致 |
+| `jsonb` | JSON 序列化文本写入 `TEXT`，数据库约束校验 JSON 合法性 |
 | 时间戳 | 经 `portal_time.py` 换算：Portal PG 服务端时钟在 **2026-07-23 从 UTC 切到 Asia/Shanghai**，历史时间戳须按 `server_clock()` 换算后落库，否则旧审计全变「迁移那一刻」 |
 
 ---
 
-## 三、待迁移域（批次 3 / 4 规划）
+## 三、管理域承接范围（批次 3 / 4）
 
 ### 3.1 门户内容剩余域（批次 3）
 
-| Portal 模块 | 管理面（迁 OA） | 门户保留的展示面 | OA 落点建议 |
+| Portal 模块 | 管理面（迁 OA） | 门户保留的展示面 | OA 落点 |
 |---|---|---|---|
 | `training.py` 培训中心 | 课程 CRUD、发布、必修配置、进度统计 | `/training/*` 浏览与学习；学习进度写操作走 OA | `module/portal` 新增 training 子域 |
 | `events.py` 展会日历 | 展会 CRUD | `/events`、`/event-detail` | `module/portal` events 子域 |
 | `products.py` 新品动态 | 新品 CRUD | `/product-center` 等展示页 | `module/portal` products 子域 |
-| `hr_documents.py` HR 文档 CMS | 双人审 CMS、版本快照 | 49 个 HR/SOP 路由的 cmsOrLegacy 渲染 | `module/portal` hrdoc 子域（**保留双人审 + 版本快照语义**） |
-| `handbook_signoff.py` 制度签收 | 签收看板、催签 | 员工签收动作（写 OA） | ✅ 已执行：签收 `/api/portal/handbook/sign` + 我的签收 `/api/portal/handbook/my-signoffs`（门户已切 OA）+ 签收统计 `/admin-api/portal/handbook/signoff-stats`；表 `portal-signoff-schema.sql`、迁移脚本 `scripts/migrate_portal_signoff.py`；**催签 notify-unsigned 依赖企微推送，随推送切片落地** |
+| `hr_documents.py` HR 文档 CMS | 草稿、发布、版本快照 | HR/SOP 路由的 cmsOrLegacy 渲染 | `module/portal` hrdoc 子域；完整块编辑、发布凭据、排版和推送接口见[HR 编辑器接口迁移](portal-hr-editor-api-migration.md) |
+| `handbook_signoff.py` 制度签收 | 签收看板、催签 | 员工签收动作（写 OA） | 签收 `/api/portal/handbook/sign` + 我的签收 `/api/portal/handbook/my-signoffs` + 签收统计 `/admin-api/portal/handbook/signoff-stats`；表 `portal_handbook_signoff` 纳入 PostgreSQL 初始结构，数据迁移脚本 `scripts/migrate_portal_signoff.py` |
 | `brand_docs.py` 品牌手册库 | 上传 / 替换 / 回滚 | `/brand-doc/:brand/:type` 展示 | `module/portal` brand-doc 子域 |
 
 ### 3.2 人事 / 协作 / 边缘域（批次 4）
@@ -100,11 +103,11 @@ Open API（`/api/portal/*`，供门户纯静态前端直连）：
 |---|---|
 | `samples.py` 样品库管理 | OA `module/oa` 新增样品台账 + 申请流程 |
 | `celebrations.py` / `wework_lab.py` 庆祝日历 + 生日贺礼 | OA（hrm 或 oa 模块），推送复用 OA 企微通道 |
-| `resumes.py` 简历识别 | 候选人结构化台账已由 ruoyi-hrm recruit 模块覆盖（已迁入 OA `module/hrm` recruit，含候选人/面试/渠道/岗位/岗位类型，表在 `hrm-schema.sql` + `dict-seed.sql`）；AI 解析「识别」部分依赖 AI 基建，随 AI 域一并落地 |
+| `resumes.py` 简历识别 | OA `module/hrm` recruit 覆盖候选人、面试、渠道、岗位和岗位类型，结构与字典纳入 PostgreSQL 初始版本；AI 解析、原件和面试流程由门户管理域承接 |
 | `api_costs.py` API 成本看板 | OA system 或独立监控页 |
 | `ai.py` / `ai_models.py` / `ai_settings.py` AI 管理 | OA 新增 AI 配置域（渠道 / 模型 / 提示词） |
-| `feedback.py` 员工反馈 | ✅ 已执行：管理面 `/admin-api/portal/feedback/page`（can_view_dashboards）+ 员工提交 Open API `/api/portal/feedback/submit`（门户已切 OA）；表 `portal-feedback-schema.sql`、迁移脚本 `scripts/migrate_portal_feedback.py`；AI 富化（sentiment/ai_summary/状态流转/指派）随 bot 落地 |
-| `esports.py` 电竞室 | ✅ 已执行：4 张表 `portal-esports-schema.sql`、迁移脚本 `scripts/migrate_portal_esports.py`、OA Open API `/api/portal/esports/*`（设置驱动多级审批 + 独占时段冲突检测，服务层能力判定 `can_manage_esports`/`can_view_all_esports`，门户 `esports.ts` 已切 OA）；通知（wecom_sync）依赖企微推送，随推送切片落地 |
+| `feedback.py` 员工反馈 | 管理面 `/admin-api/portal/feedback/page`（can_view_dashboards）+ 员工提交 Open API `/api/portal/feedback/submit`；表 `portal_feedback` 纳入 PostgreSQL 初始结构，迁移脚本 `scripts/migrate_portal_feedback.py`；AI 富化（sentiment/ai_summary/状态流转/指派）与 bot 集成独立交付 |
+| `esports.py` 电竞室 | 4 张表纳入 PostgreSQL 初始结构；迁移脚本 `scripts/migrate_portal_esports.py`、OA Open API `/api/portal/esports/*` 提供设置驱动的多级审批与独占时段冲突检测，服务层判定 `can_manage_esports`/`can_view_all_esports`；通知依赖企微推送通道 |
 | `wecom_bot.py` 企微智能助手（bot schema 4 表） | 迁 OA（新增 `module/bot` 或并入 portal） |
 | `chat.py` | 随 bot 一并评估 |
 | `upload.py` 文件上传（GCS） | OA 通用文件服务；门户展示文件改走 OA 文件 URL |
@@ -115,17 +118,16 @@ Open API（`/api/portal/*`，供门户纯静态前端直连）：
 
 ## 四、迁移批次与执行顺序
 
-- **批次 1 身份与权限** ✅ 已执行（脚本保留，可重复执行）
-- **批次 2 内容域** ✅ 已执行
-- **批次 3-1 培训中心** ✅ 已执行（本切片：4 张数据表 `portal-training-schema.sql`、迁移脚本 `scripts/migrate_portal_training.py`、OA 课程/课时/进度管理 API 与读侧 Open API、OA 前端「门户内容-培训课程」页、门户员工端展示页切 OA（`frontend/src/api/oa.ts` 接缝 + Vite `/api/oa` 代理）。**已完成后置切片**：媒体预签名（OA 接入 MinIO 客户端 `PortalMediaStorage`）、NAS 目录导入（`PortalTrainingTreeParser` + `/portal/training/import/scan`）、培训统计看板（`/portal/training/stats`）；门户培训管理页暂留至 OA 课时/分类管理 UI 齐平后下线）
-- **批次 3 门户内容剩余域**：展会 / 新品 / HR 文档 / 签收 / 品牌手册
-- **批次 3-4 HR 文档 CMS** 🚧 已执行「后端地基 + 门户读侧切流」：5 张表 `portal-hrdoc-schema.sql`、迁移脚本 `scripts/migrate_portal_hr_documents.py`、OA 管理面 `/admin-api/portal/hrdoc/*` 与读侧 Open API `/api/portal/hrdoc/*`、领域校验（19 种块/封面/签收）、Portal 员工端读侧切 OA Open API（`articleApi` 读方法 + `oa.ts` 错误码 1-060-800 映射）。**剩余**：OA 控制台编辑器（19 种块编辑器）、企微推送（需核对 OA `WecomGatewayClient`）、AI 智能排版（依赖 OA 尚无的 AI 基建）。
-- **批次 4 人事 / 协作 / 边缘域**：样品 / 庆祝 / 简历 / AI / 反馈 / 电竞 / bot / 上传
-- **批次 4-1 电竞室** ✅ 已执行：4 张表 `portal-esports-schema.sql`、迁移脚本 `scripts/migrate_portal_esports.py`（时间列统一 `app_utc` 恒 +8h，因 Portal `application/esports.py` 全部用 `datetime.utcnow()` 写）、OA Open API `/api/portal/esports/*`（`PortalEsportsOpenController` + 领域规则 `EsportsRules` + `PortalEsportsServiceImpl` 持锁 settings→booking→steps 串行化）、能力位 `can_manage_esports`/`can_view_all_esports`（`PortalCapability`）、错误码段 `1-060-920`、门户 `esports.ts`/`esports.test.ts` 切 OA + `oa.ts` 新增 `oaPut` 与 1-060-920 映射。**剩余**：通知（wecom_sync）随企微推送切片落地；多部门名在审批人/参加人列表收敛到主部门。
+- **身份与权限**：`scripts/migrate_portal_identity.py`，保留账号关联、角色与能力位。
+- **内容域**：`scripts/migrate_portal_content.py`，保留动态、知识库、分类、点赞、评论与浏览记录的 ID 和引用。
+- **培训中心**：`scripts/migrate_portal_training.py`；4 张表及相关权限纳入初始版本。OA 提供课程/课时/进度 API、MinIO 媒体预签名、NAS 目录导入（`PortalTrainingTreeParser` + `/portal/training/import/scan`）与统计看板（`/portal/training/stats`）。
+- **HR 文档 CMS**：`scripts/migrate_portal_hr_documents.py`；主文档、别名、固定入口绑定及两类版本快照纳入初始结构。管理面 `/admin-api/portal/hrdoc/*` 与读侧 `/api/portal/hrdoc/*` 提供块文档、封面、签收及历史路由兼容；编辑、排版和推送规则见[接口迁移说明](portal-hr-editor-api-migration.md)。
+- **展会 / 新品 / 签收 / 品牌 / 物资 / AI / 庆祝 / 简历**：结构和内置权限纳入初始版本，数据与附件按[两组管理迁移](portal-admin-migration.md#新环境的执行顺序)分批导入。
+- **电竞室**：`scripts/migrate_portal_esports.py`；时间列使用 `app_utc` 换算为北京时间，因为源 `application/esports.py` 以 `datetime.utcnow()` 写入。`PortalEsportsServiceImpl` 按 settings→booking→steps 持锁串行化，服务层校验 `can_manage_esports`/`can_view_all_esports`，错误码段为 `1-060-920`。
 
 每个模块的标准切换顺序：
 
-1. OA 建表（`src/main/resources/db/` 脚本）
+1. 用 Flyway 执行 `src/main/resources/db/postgresql/migration/` 全部版本，准备 OA 目标库
 2. 迁移脚本 dry-run → 正式执行（幂等）
 3. OA 管理面上线（`/admin-api/portal/*` + 前端「门户内容」分组）
 4. Open API 上线（`/api/portal/*`）

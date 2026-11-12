@@ -8,7 +8,7 @@ import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.performance.vo.assessmenttemplate.HrmPerformanceAssessmentTemplatePageReqVO;
 import com.cyt.center.module.hrm.controller.admin.performance.vo.assessmenttemplate.HrmPerformanceAssessmentTemplateSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.performance.config.HrmPerformanceAssessmentTemplateDO;
-import com.cyt.center.module.hrm.dal.mysql.performance.config.HrmPerformanceAssessmentTemplateMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.config.HrmPerformanceAssessmentTemplateMapper;
 import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Lazy;

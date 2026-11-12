@@ -1,5 +1,8 @@
 # 人事工作区
 
+> 数据库使用 PostgreSQL，初始化和升级统一通过 `src/main/resources/db/postgresql/migration/` 的版本迁移。
+> 操作见[后端 README](../README.md#3-建表与初始数据)与[数据库规范](../src/main/resources/db/postgresql/migration/README.md)。
+
 人事入口位于「管理中心 → 人事管理」。按提供的 `hr-system.html` 接入招聘、花名册、入离职、合同模板和员工生命周期；员工与组织继续使用现有 HRM 数据。
 
 ## 页面与复用范围
@@ -16,7 +19,7 @@
 
 ## 数据库与授权
 
-新增升级文件为 `src/main/resources/db/migration/V20261111_002__hrm_workspace.sql`，由仓库部署流程中的 Flyway 在更新应用前执行。全新环境先建立系统和 HRM 基础表，再执行此版本；不要修改已执行的历史迁移。本文件重复执行不会覆盖模板和文书。
+工作区结构与权限种子已纳入 `src/main/resources/db/postgresql/migration/` 的初始版本，由部署流程中的 Flyway 在更新应用前执行。全新环境从空库执行全部版本即可；后续变更新增版本文件，不修改已执行的迁移。
 
 新增三张表：`hrm_contract_template`、`hrm_employment_document`、`hrm_candidate_attachment`。员工和候选人不另建副本。已有员工合同仍写入 `hrm_employee_contract`。
 
@@ -30,4 +33,4 @@
 
 后端运行 `mvn test`；新增测试覆盖模板变量、重复提交、资料摘要、HRM 失败时停止归档、审核权限及取消/变更离职后的账号停用边界。前端运行 `npm run build`、`npm run test:navigation` 和 `npm run test:portal-rollout`。
 
-开发验收还在本机一次性 MySQL 库验证重复执行脚本、授权范围、事务回滚及生命周期/面试 SQL，完成后删除临时库。Playwright 以模拟接口验证招聘跟进、入离职确认、花名册刷新、归档读取、错误状态，以及 1440px、390px 和深色模式。此检查不等同于迁移后实际后端的完整联调。
+数据库检查使用一次性 PostgreSQL 测试库，验证初始化、授权范围、事务回滚及生命周期/面试 SQL。连接与执行方式见[开发说明](development.md#测试)。Playwright 以模拟接口验证招聘跟进、入离职确认、花名册刷新、归档读取、错误状态，以及 1440px、390px 和深色模式。此检查不等同于实际后端的完整联调。

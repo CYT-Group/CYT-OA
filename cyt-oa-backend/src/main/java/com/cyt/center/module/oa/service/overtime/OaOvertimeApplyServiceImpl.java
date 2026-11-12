@@ -12,7 +12,7 @@ import com.cyt.center.module.oa.controller.admin.overtime.vo.OaOvertimeApplyPage
 import com.cyt.center.module.oa.controller.admin.overtime.vo.OaOvertimeApplySaveReqVO;
 import com.cyt.center.module.oa.controller.admin.overtime.vo.OaOvertimeApplySubmitReqVO;
 import com.cyt.center.module.oa.dal.dataobject.overtime.OaOvertimeApplyDO;
-import com.cyt.center.module.oa.dal.mysql.overtime.OaOvertimeApplyMapper;
+import com.cyt.center.module.oa.dal.postgresql.overtime.OaOvertimeApplyMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

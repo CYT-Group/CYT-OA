@@ -7,9 +7,8 @@
 ```bash
 # 后端
 cd cyt-oa-backend
-cp src/main/resources/application-local.yml.example src/main/resources/application-local.yml
-# 按本机库/Redis 改这个文件，它已被 .gitignore 忽略
-mvn -DskipTests package
+# 准备并填写 src/main/resources/application-local.yml 中的本机库/Redis 配置（Git 忽略）
+mvn clean -DskipTests package
 java -jar target/cyt-oa-backend-1.0.0.jar
 
 # 前端
@@ -41,12 +40,15 @@ javac -parameters -encoding UTF-8 -proc:full -nowarn \
 
 ## 数据库
 
-没有接 Flyway，建表与种子数据按 `src/main/resources/db/*.sql` 手工执行，
-顺序见 [README.md](../README.md)。`local-demo-seed.sql` 只给开发机造演示数据，
-不要在共享库执行。
+新增数据库变更统一遵循 [数据库变更规范](../src/main/resources/db/postgresql/migration/README.md)，
+放在 `src/main/resources/db/postgresql/migration/`，通过部署入口的 Flyway 执行并记录版本；
+不在应用启动时自动迁移。新空库直接执行 `migrate`，后续部署应用待执行的版本。
+初始化顺序见 [README.md](../README.md)。`db/postgresql/local-demo-seed.sql` 只给开发机造演示数据。
 
-`scripts/` 下的迁移脚本从本地配置读库连接信息（`application-local.yml`、
-Portal 的 `.env`），脚本里不写口令。
+`scripts/` 下的 Portal 搬迁脚本读取 OA 的 PostgreSQL 配置与 Portal 的 `.env`，
+源库仍只读。先 `python -m pip install -r scripts/requirements.txt`，再使用各脚本的
+`--dry-run`（排版任务脚本默认 dry-run，`--apply` 才写入）核对。正式搬迁应在目标库停写期间进行，
+提交前会向前推进 identity 序列，避免保留历史 ID 后新数据主键冲突。脚本里不写口令。
 
 ## 测试
 
@@ -54,6 +56,12 @@ Portal 的 `.env`），脚本里不写口令。
 mvn test          # 后端，覆盖 SSO、密码、组织同步、档案边界和账号状态等
 cd cyt-oa-frontend && npx vue-tsc --noEmit   # 前端类型检查
 ```
+
+PostgreSQL 兼容测试需显式指定一次性测试库，不能指向业务库：设置
+`CYT_TEST_PG_URL=jdbc:postgresql://127.0.0.1:5432/oa_test?stringtype=unspecified`、
+`CYT_TEST_PG_USERNAME`、`CYT_TEST_PG_PASSWORD` 后运行 `mvn test`。
+Portal 搬迁脚本的测试使用 `OA_TEST_POSTGRES_DSN`，需具备创建和删除临时库的权限，
+运行 `python -B -m unittest discover -s scripts -v`；不设置连接时跳过真实数据库检查。
 
 前端没有单测框架，改动后至少手工走一遍受影响的页面；接口返回值可用
 `/swagger-ui.html` 直接调。

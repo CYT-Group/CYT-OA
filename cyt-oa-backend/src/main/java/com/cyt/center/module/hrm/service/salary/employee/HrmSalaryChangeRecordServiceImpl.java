@@ -3,7 +3,7 @@ package com.cyt.center.module.hrm.service.salary.employee;
 import cn.hutool.core.util.ObjUtil;
 import com.cyt.center.framework.common.util.date.LocalDateTimeUtils;
 import com.cyt.center.module.hrm.dal.dataobject.salary.employee.HrmSalaryChangeRecordDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.employee.HrmSalaryChangeRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.employee.HrmSalaryChangeRecordMapper;
 import com.cyt.center.module.hrm.enums.salary.employee.HrmSalaryChangeRecordStatusEnum;
 import com.cyt.center.module.hrm.enums.salary.employee.HrmSalaryChangeRecordTypeEnum;
 import jakarta.annotation.Resource;

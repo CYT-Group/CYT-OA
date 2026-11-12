@@ -8,7 +8,7 @@ import com.cyt.center.module.portal.dal.dataobject.wiki.PortalWikiDO;
 /**
  * 知识库用例：状态机、可见性、浏览计数与审批审计。
  *
- * 逐条对齐 Portal 的 application/wiki.py（那边层划分同 news，SQL 只在 dal/mysql/wiki）。
+ * 逐条对齐 Portal 的 application/wiki.py（那边层划分同 news，SQL 只在 dal/postgresql/wiki）。
  * 与公司动态同一套状态机，差别两处：没有 published_at 列，也没有推送意图。
  */
 public interface PortalWikiService {

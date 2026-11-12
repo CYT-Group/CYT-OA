@@ -1,8 +1,8 @@
 package com.cyt.center.module.portal.service.push;
 
 import com.cyt.center.core.exception.BizException;
-import com.cyt.center.module.portal.dal.mysql.push.PortalContentPushRepository;
-import com.cyt.center.module.portal.dal.mysql.news.PortalNewsMapper;
+import com.cyt.center.module.portal.dal.postgresql.push.PortalContentPushRepository;
+import com.cyt.center.module.portal.dal.postgresql.news.PortalNewsMapper;
 import com.cyt.center.module.portal.dal.dataobject.news.PortalNewsDO;
 import com.cyt.center.module.portal.dal.dataobject.hrdoc.PortalHrDocumentDO;
 import com.cyt.center.module.portal.service.admin.PortalRows;

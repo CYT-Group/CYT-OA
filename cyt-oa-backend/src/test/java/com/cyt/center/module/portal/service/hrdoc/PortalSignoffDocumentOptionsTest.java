@@ -6,7 +6,7 @@ import cn.dev33.satoken.annotation.handler.SaCheckPermissionHandler;
 import cn.dev33.satoken.exception.NotPermissionException;
 import cn.dev33.satoken.stp.StpLogic;
 import com.cyt.center.module.portal.controller.admin.signoff.PortalHandbookSignoffController;
-import com.cyt.center.module.portal.dal.mysql.signoff.PortalSignoffDocumentRepository;
+import com.cyt.center.module.portal.dal.postgresql.signoff.PortalSignoffDocumentRepository;
 import com.cyt.center.module.portal.domain.signoff.PortalSignoffDocumentOption;
 import com.cyt.center.module.portal.service.signoff.PortalHandbookSignoffServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;

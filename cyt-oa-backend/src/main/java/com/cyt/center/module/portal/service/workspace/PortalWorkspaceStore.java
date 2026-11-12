@@ -42,7 +42,7 @@ public class PortalWorkspaceStore {
     public long insert(String kind, String key, long owner, Long dept, Long parent, String title, String status, Map<String,Object> data) {
         var holder = new GeneratedKeyHolder();
         jdbc.update(c -> {
-            var p = c.prepareStatement("INSERT INTO portal_workspace_records(kind,record_key,owner_id,dept_id,parent_id,title,status,payload) VALUES(?,?,?,?,?,?,?,?)", Statement.RETURN_GENERATED_KEYS);
+            var p = c.prepareStatement("INSERT INTO portal_workspace_records(kind,record_key,owner_id,dept_id,parent_id,title,status,payload) VALUES(?,?,?,?,?,?,?,?)", new String[]{"id"});
             p.setString(1,kind);p.setString(2,key);p.setLong(3,owner);p.setObject(4,dept);p.setObject(5,parent);
             p.setString(6,title);p.setString(7,status);p.setString(8,encode(data));return p;
         },holder);

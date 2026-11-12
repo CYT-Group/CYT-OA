@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * 展会/活动日历用例（逐条对齐 Portal 的 application/events.py）。
  *
- * 无审批流：创建即 published；SQL 只在 dal/mysql/events，本层只串规则与事务。
+ * 无审批流：创建即 published；SQL 只在 dal/postgresql/events，本层只串规则与事务。
  */
 public interface PortalEventService {
 

@@ -1,7 +1,7 @@
 package com.cyt.center.module.portal.service.hrdoc;
 
 import com.cyt.center.core.exception.BizException;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrLayoutJobRepository;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrLayoutJobRepository;
 import com.cyt.center.module.portal.domain.hrdoc.HrDocumentBlockValidator;
 import com.cyt.center.module.portal.service.admin.PortalAiService;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;

@@ -2,12 +2,14 @@ package com.cyt.center.core.config;
 
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.autoconfigure.MybatisPlusPropertiesCustomizer;
+import com.baomidou.mybatisplus.autoconfigure.ConfigurationCustomizer;
 import com.baomidou.mybatisplus.core.config.GlobalConfig;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor;
 import com.cyt.center.framework.mybatis.core.dataobject.BaseDO;
 import com.cyt.center.framework.mybatis.core.handler.DefaultDBFieldHandler;
+import com.cyt.center.framework.mybatis.core.type.NumericBooleanTypeHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,9 +21,18 @@ import org.springframework.context.annotation.Configuration;
 public class MybatisPlusConfig {
 
     @Bean
+    public ConfigurationCustomizer numericBooleanTypeCustomizer() {
+        return configuration -> {
+            var handler = new NumericBooleanTypeHandler();
+            configuration.getTypeHandlerRegistry().register(Boolean.class, handler);
+            configuration.getTypeHandlerRegistry().register(boolean.class, handler);
+        };
+    }
+
+    @Bean
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
-        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.POSTGRE_SQL));
         return interceptor;
     }
 

@@ -7,7 +7,7 @@ import com.cyt.center.module.portal.controller.admin.news.vo.PortalNewsApproveRe
 import com.cyt.center.module.portal.controller.admin.news.vo.PortalNewsPageReqVO;
 import com.cyt.center.module.portal.controller.admin.news.vo.PortalNewsSaveReqVO;
 import com.cyt.center.module.portal.dal.dataobject.news.PortalNewsDO;
-import com.cyt.center.module.portal.dal.mysql.news.PortalNewsMapper;
+import com.cyt.center.module.portal.dal.postgresql.news.PortalNewsMapper;
 import com.cyt.center.module.portal.service.support.PortalAccess;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import com.cyt.center.module.portal.service.support.PortalOperator;

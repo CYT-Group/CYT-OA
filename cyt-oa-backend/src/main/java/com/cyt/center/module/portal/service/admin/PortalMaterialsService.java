@@ -49,8 +49,8 @@ public class PortalMaterialsService {
         var holder = new GeneratedKeyHolder();
         jdbc.update(
                 c -> {
-                    var st = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-                    for (int i = 0; i < args.length; i++) st.setObject(i + 1, args[i]);
+                    var st = c.prepareStatement(sql, new String[]{"id"});
+                    for (int i = 0; i < args.length; i++) st.setObject(i + 1, com.cyt.center.core.config.PostgreSqlJdbcConfiguration.databaseValue(args[i]));
                     return st;
                 },
                 holder);
@@ -159,7 +159,7 @@ public class PortalMaterialsService {
     private Map<String,Object> summary(String type,boolean archived){
         String archive=archived?"IS NOT NULL":"IS NULL";
         Long products=jdbc.queryForObject("SELECT COUNT(*) FROM portal_material_products WHERE kind=? AND archived_at "+archive,Long.class,type);
-        var stock=jdbc.queryForMap("SELECT COUNT(*) AS skuCount,COALESCE(SUM(stock_qty),0) AS stockQty,COALESCE(SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END),0) AS outOfStockCount FROM portal_materials WHERE kind=? AND archived_at "+archive,type);
+        var stock=jdbc.queryForMap("SELECT COUNT(*) AS \"skuCount\",COALESCE(SUM(stock_qty),0) AS \"stockQty\",COALESCE(SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END),0) AS \"outOfStockCount\" FROM portal_materials WHERE kind=? AND archived_at "+archive,type);
         Long borrowed=type.equals("sample")?jdbc.queryForObject("SELECT COALESCE(SUM(COALESCE(i.approved_qty,i.quantity)-i.returned_quantity),0) FROM portal_material_apply_items i JOIN portal_material_applies a ON a.id=i.apply_id JOIN portal_materials m ON m.id=i.material_id WHERE a.apply_type='sample_borrow' AND a.status='borrowed' AND m.kind=? AND m.archived_at "+archive,Long.class,type):0L;
         return Map.of("productCount",products==null?0:products,"skuCount",stock.getOrDefault("skuCount",0),"stockQty",stock.getOrDefault("stockQty",0),"borrowedQty",borrowed==null?0:borrowed,"outOfStockCount",stock.getOrDefault("outOfStockCount",0));
     }
@@ -334,7 +334,7 @@ public class PortalMaterialsService {
         if (!values.isEmpty()
                 && jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM portal_materials WHERE product_id=? AND"
-                                    + " site=? AND variant_values=CAST(? AS JSON) AND archived_at"
+                                    + " site=? AND CAST(variant_values AS jsonb)=CAST(? AS jsonb) AND archived_at"
                                     + " IS NULL AND id<>?",
                                 Long.class,
                                 productId,
@@ -488,8 +488,8 @@ public class PortalMaterialsService {
                         jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM portal_materials WHERE id<>? AND product_id=?"
                                     + " AND site=? AND archived_at IS NULL AND"
-                                    + " JSON_LENGTH(variant_values)>0 AND variant_values=CAST(? AS"
-                                    + " JSON)",
+                                    + " (SELECT COUNT(*) FROM jsonb_object_keys(CAST(variant_values AS jsonb)))>0 AND CAST(variant_values AS jsonb)=CAST(? AS"
+                                    + " jsonb)",
                                 Long.class,
                                 sku.get("id"),
                                 sku.get("product_id"),
@@ -580,8 +580,8 @@ public class PortalMaterialsService {
         jdbc.update(
                 "INSERT INTO"
                     + " portal_material_site_owners(site,kind,owner_username,owner_name,updated_by,updated_by_name)"
-                    + " VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE"
-                    + " owner_username=VALUES(owner_username),owner_name=VALUES(owner_name),updated_by=VALUES(updated_by),updated_by_name=VALUES(updated_by_name),updated_at=NOW()",
+                    + " VALUES(?,?,?,?,?,?) ON CONFLICT (site,kind) DO UPDATE SET"
+                    + " owner_username=EXCLUDED.owner_username,owner_name=EXCLUDED.owner_name,updated_by=EXCLUDED.updated_by,updated_by_name=EXCLUDED.updated_by_name,updated_at=NOW()",
                 site,
                 type,
                 username,

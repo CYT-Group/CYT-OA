@@ -12,7 +12,7 @@ import com.cyt.center.module.oa.controller.admin.attendance.vo.OaAttendanceUpdat
 import com.cyt.center.module.oa.controller.admin.attendance.vo.OaAttendanceWeekReportReqVO;
 import com.cyt.center.module.oa.controller.admin.attendance.vo.OaAttendanceWeekReportRespVO;
 import com.cyt.center.module.oa.dal.dataobject.attendance.OaAttendanceDO;
-import com.cyt.center.module.oa.dal.mysql.attendance.OaAttendanceMapper;
+import com.cyt.center.module.oa.dal.postgresql.attendance.OaAttendanceMapper;
 import com.cyt.center.module.oa.enums.attendance.OaAttendanceStatusEnum;
 import com.cyt.center.module.oa.enums.attendance.OaAttendanceTypeEnum;
 import com.cyt.center.module.oa.framework.config.OaProperties;

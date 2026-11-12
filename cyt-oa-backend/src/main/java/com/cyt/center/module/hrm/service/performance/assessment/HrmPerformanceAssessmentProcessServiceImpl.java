@@ -18,11 +18,11 @@ import com.cyt.center.module.hrm.dal.dataobject.performance.assessment.HrmPerfor
 import com.cyt.center.module.hrm.dal.dataobject.performance.plan.HrmPerformancePlanDO;
 import com.cyt.center.module.hrm.dal.dataobject.performance.plan.HrmPerformancePlanDO.HandlerStage;
 import com.cyt.center.module.hrm.dal.dataobject.performance.plan.HrmPerformancePlanDO.ReviewStage;
-import com.cyt.center.module.hrm.dal.mysql.performance.assessment.HrmPerformanceAssessmentAppealRecordMapper;
-import com.cyt.center.module.hrm.dal.mysql.performance.assessment.HrmPerformanceAssessmentMapper;
-import com.cyt.center.module.hrm.dal.mysql.performance.assessment.HrmPerformanceAssessmentQuotaMapper;
-import com.cyt.center.module.hrm.dal.mysql.performance.assessment.HrmPerformanceAssessmentQuotaScoreMapper;
-import com.cyt.center.module.hrm.dal.mysql.performance.assessment.HrmPerformanceAssessmentStageMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.assessment.HrmPerformanceAssessmentAppealRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.assessment.HrmPerformanceAssessmentMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.assessment.HrmPerformanceAssessmentQuotaMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.assessment.HrmPerformanceAssessmentQuotaScoreMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.assessment.HrmPerformanceAssessmentStageMapper;
 import com.cyt.center.module.hrm.enums.MessageTemplateConstants;
 import com.cyt.center.module.hrm.enums.performance.assessment.HrmPerformanceAppealStatusEnum;
 import com.cyt.center.module.hrm.enums.performance.assessment.HrmPerformanceAppealRecordStatusEnum;

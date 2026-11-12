@@ -1,0 +1,20 @@
+package com.cyt.center.module.hrm.dal.postgresql.employee.experience;
+
+import com.cyt.center.framework.mybatis.core.mapper.BaseMapperX;
+import com.cyt.center.framework.mybatis.core.query.LambdaQueryWrapperX;
+import com.cyt.center.module.hrm.dal.dataobject.employee.experience.HrmEmployeeEducationExperienceDO;
+import org.apache.ibatis.annotations.Mapper;
+
+import java.util.List;
+
+@Mapper
+public interface HrmEmployeeEducationExperienceMapper extends BaseMapperX<HrmEmployeeEducationExperienceDO> {
+
+    default List<HrmEmployeeEducationExperienceDO> selectListByEmployeeId(Long employeeId) {
+        return selectList(new LambdaQueryWrapperX<HrmEmployeeEducationExperienceDO>()
+                .eq(HrmEmployeeEducationExperienceDO::getEmployeeId, employeeId)
+                .orderByAsc(HrmEmployeeEducationExperienceDO::getSort)
+                .orderByDesc(HrmEmployeeEducationExperienceDO::getId));
+    }
+
+}

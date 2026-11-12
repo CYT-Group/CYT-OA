@@ -2,7 +2,7 @@ package com.cyt.center.module.hrm.service.performance.assessment;
 
 import cn.hutool.core.collection.CollUtil;
 import com.cyt.center.module.hrm.dal.dataobject.performance.assessment.HrmPerformanceAssessmentActionRecordDO;
-import com.cyt.center.module.hrm.dal.mysql.performance.assessment.HrmPerformanceAssessmentActionRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.performance.assessment.HrmPerformanceAssessmentActionRecordMapper;
 import com.cyt.center.module.hrm.enums.performance.assessment.HrmPerformanceAssessmentActionTypeEnum;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;

@@ -3,7 +3,7 @@ package com.cyt.center.module.portal.service.celebrations;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.integration.WecomGatewayClient;
 import com.cyt.center.core.result.PageResult;
-import com.cyt.center.module.portal.dal.mysql.celebrations.PortalCelebrationRepository;
+import com.cyt.center.module.portal.dal.postgresql.celebrations.PortalCelebrationRepository;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import com.fasterxml.jackson.core.type.TypeReference;

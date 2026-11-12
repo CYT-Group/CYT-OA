@@ -1,4 +1,4 @@
-"""纯转换单元测试；不连接 PG/MySQL，也不调用 AI。"""
+"""纯转换单元测试；不连接数据库，也不调用 AI。"""
 import unittest
 from datetime import datetime, timezone
 from migrate_portal_hr_layout_jobs import local_time, transform

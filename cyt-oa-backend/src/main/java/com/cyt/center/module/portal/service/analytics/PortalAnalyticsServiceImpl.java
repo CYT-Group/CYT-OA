@@ -10,7 +10,7 @@ import com.cyt.center.module.portal.controller.admin.analytics.vo.PortalTrackReq
 import com.cyt.center.module.portal.controller.admin.analytics.vo.PortalUserHistoryReqVO;
 import com.cyt.center.module.portal.controller.admin.analytics.vo.PortalUserHistoryRespVO;
 import com.cyt.center.module.portal.dal.dataobject.pageview.PortalPageViewDO;
-import com.cyt.center.module.portal.dal.mysql.pageview.PortalPageViewMapper;
+import com.cyt.center.module.portal.dal.postgresql.pageview.PortalPageViewMapper;
 import com.cyt.center.module.portal.service.support.PortalOperator;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import jakarta.annotation.Resource;

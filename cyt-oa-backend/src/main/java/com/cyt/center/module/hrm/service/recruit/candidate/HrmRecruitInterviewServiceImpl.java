@@ -9,7 +9,7 @@ import com.cyt.center.module.hrm.controller.admin.recruit.vo.interview.HrmRecrui
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.candidate.HrmRecruitCandidateDO;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.candidate.HrmRecruitInterviewDO;
-import com.cyt.center.module.hrm.dal.mysql.recruit.candidate.HrmRecruitInterviewMapper;
+import com.cyt.center.module.hrm.dal.postgresql.recruit.candidate.HrmRecruitInterviewMapper;
 import com.cyt.center.module.hrm.enums.MessageTemplateConstants;
 import com.cyt.center.module.hrm.enums.employee.info.HrmEmployeeEntryStatusEnum;
 import com.cyt.center.module.hrm.enums.recruit.candidate.HrmRecruitCandidateStatusEnum;

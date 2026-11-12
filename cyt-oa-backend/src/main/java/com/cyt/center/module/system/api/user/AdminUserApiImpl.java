@@ -52,7 +52,7 @@ public class AdminUserApiImpl implements AdminUserApi {
         if (mobile == null || mobile.isBlank()) {
             return null;
         }
-        // MySQL 默认排序规则忽略大小写，取回后按原始手机号精确核对
+        // 取回后按原始手机号精确核对
         return users.selectList(new LambdaQueryWrapper<SysUser>()
                         .eq(SysUser::getMobile, mobile)
                         .orderByAsc(SysUser::getId))
@@ -77,7 +77,7 @@ public class AdminUserApiImpl implements AdminUserApi {
         for (SysDept dept : departments.selectList(new LambdaQueryWrapper<SysDept>()
                 .eq(SysDept::getLeaderUserid, leader.getWecomUserid())
                 .orderByAsc(SysDept::getId))) {
-            // MySQL 默认排序规则忽略大小写，取回后按原始 userid 精确核对
+            // 取回后按原始 userid 精确核对
             if (leader.getWecomUserid().equals(dept.getLeaderUserid())) {
                 deptIds.add(dept.getId());
             }

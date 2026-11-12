@@ -11,8 +11,8 @@ import com.cyt.center.module.oa.controller.admin.workreport.vo.OaWorkReportRespV
 import com.cyt.center.module.oa.controller.admin.workreport.vo.OaWorkReportSaveReqVO;
 import com.cyt.center.module.oa.dal.dataobject.workreport.OaWorkReportCommentDO;
 import com.cyt.center.module.oa.dal.dataobject.workreport.OaWorkReportDO;
-import com.cyt.center.module.oa.dal.mysql.workreport.OaWorkReportCommentMapper;
-import com.cyt.center.module.oa.dal.mysql.workreport.OaWorkReportMapper;
+import com.cyt.center.module.oa.dal.postgresql.workreport.OaWorkReportCommentMapper;
+import com.cyt.center.module.oa.dal.postgresql.workreport.OaWorkReportMapper;
 import com.cyt.center.module.oa.enums.workreport.OaWorkReportStatusEnum;
 import com.cyt.center.module.oa.enums.workreport.OaWorkReportTypeEnum;
 import com.cyt.center.module.oa.service.workreport.OaWorkReportService;

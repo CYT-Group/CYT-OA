@@ -5,7 +5,7 @@ import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.insurance.vo.monthrecord.HrmInsuranceMonthRecordCreateReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.monthrecord.HrmInsuranceMonthEmployeeRecordDO;
 import com.cyt.center.module.hrm.dal.dataobject.insurance.monthrecord.HrmInsuranceMonthRecordDO;
-import com.cyt.center.module.hrm.dal.mysql.insurance.monthrecord.HrmInsuranceMonthRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.insurance.monthrecord.HrmInsuranceMonthRecordMapper;
 import com.cyt.center.module.hrm.dal.redis.insurance.HrmInsuranceMonthRecordLockRedisDAO;
 import com.cyt.center.module.hrm.enums.insurance.employee.HrmInsuranceEmployeeStatusEnum;
 import com.cyt.center.module.hrm.enums.insurance.monthrecord.HrmInsuranceMonthStatusEnum;

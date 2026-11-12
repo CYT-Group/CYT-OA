@@ -2,7 +2,7 @@ package com.cyt.center.module.portal.service.contracts;
 
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.module.portal.controller.admin.contracts.PortalContractController;
-import com.cyt.center.module.portal.dal.mysql.contracts.PortalContractRepository;
+import com.cyt.center.module.portal.dal.postgresql.contracts.PortalContractRepository;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import lombok.RequiredArgsConstructor;

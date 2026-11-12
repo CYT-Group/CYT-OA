@@ -40,7 +40,7 @@ public class WorkspacePersonalService {
             var itemArgs=new ArrayList<Object>();itemArgs.add(raw.get("id"));
             String itemWhere="i.apply_id=?";
             if(approvals&&!allSites){itemWhere+=" AND EXISTS (SELECT 1 FROM portal_material_site_owners o WHERE o.kind=m.kind AND o.site=m.site AND o.owner_username=?)";itemArgs.add(identity.principal().username());}
-            out.put("items",PortalRows.camel(jdbc.queryForList("SELECT CAST(i.id AS CHAR) AS id,i.material_name,i.material_sku,i.spec,i.quantity,i.approved_qty,i.returned_quantity,m.site FROM portal_material_apply_items i LEFT JOIN portal_materials m ON m.id=i.material_id WHERE "+itemWhere+" ORDER BY i.id",itemArgs.toArray())));
+            out.put("items",PortalRows.camel(jdbc.queryForList("SELECT CAST(i.id AS TEXT) AS id,i.material_name,i.material_sku,i.spec,i.quantity,i.approved_qty,i.returned_quantity,m.site FROM portal_material_apply_items i LEFT JOIN portal_materials m ON m.id=i.material_id WHERE "+itemWhere+" ORDER BY i.id",itemArgs.toArray())));
             return out;
         }).toList();
     }

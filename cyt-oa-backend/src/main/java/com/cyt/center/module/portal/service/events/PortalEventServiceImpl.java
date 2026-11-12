@@ -5,7 +5,7 @@ import com.cyt.center.framework.common.util.json.JsonUtils;
 import com.cyt.center.module.portal.controller.admin.events.vo.PortalEventPageReqVO;
 import com.cyt.center.module.portal.controller.admin.events.vo.PortalEventSaveReqVO;
 import com.cyt.center.module.portal.dal.dataobject.events.PortalEventDO;
-import com.cyt.center.module.portal.dal.mysql.events.PortalEventMapper;
+import com.cyt.center.module.portal.dal.postgresql.events.PortalEventMapper;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;

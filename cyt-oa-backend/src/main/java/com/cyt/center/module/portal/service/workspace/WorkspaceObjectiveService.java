@@ -23,8 +23,8 @@ public class WorkspaceObjectiveService {
         var users=policies.scopeUsers("okr");
         String ownership=users.isEmpty()?"1=0":"owner_id IN ("+String.join(",",Collections.nCopies(users.size(),"?"))+")";
         var args=new ArrayList<Object>();args.add(selected);args.addAll(users);
-        if(alignment){ownership="("+ownership+" OR JSON_UNQUOTE(JSON_EXTRACT(payload,'$.scope'))='company' OR (JSON_UNQUOTE(JSON_EXTRACT(payload,'$.scope'))='department' AND dept_id=?))";args.add(identity.dept());}
-        return store.select("objective","JSON_UNQUOTE(JSON_EXTRACT(payload,'$.period'))=? AND ("+ownership+")",args).stream().map(this::view).toList();
+        if(alignment){ownership="("+ownership+" OR (CAST(payload AS jsonb)->>'scope')='company' OR ((CAST(payload AS jsonb)->>'scope')='department' AND dept_id=?))";args.add(identity.dept());}
+        return store.select("objective","(CAST(payload AS jsonb)->>'period')=? AND ("+ownership+")",args).stream().map(this::view).toList();
     }
     boolean visible(PortalWorkspaceStore.Row row,List<Long> users){
         if(users.contains(row.ownerId()))return true;

@@ -15,7 +15,7 @@ import com.cyt.center.module.hrm.controller.admin.attendance.vo.leave.HrmAttenda
 import com.cyt.center.module.hrm.controller.admin.employee.vo.employee.HrmEmployeeListReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.attendance.record.HrmAttendanceLeaveDO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
-import com.cyt.center.module.hrm.dal.mysql.attendance.record.HrmAttendanceLeaveMapper;
+import com.cyt.center.module.hrm.dal.postgresql.attendance.record.HrmAttendanceLeaveMapper;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;

@@ -5,7 +5,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.file.HrmEmployeeFileSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeFileDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeFileMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.HrmEmployeeFileMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

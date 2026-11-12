@@ -1,11 +1,11 @@
-"""B3 HR 文档 CMS 迁移：Portal Postgres → OA MySQL（主表 + 别名 + 入口绑定 + 发布版本 + 草稿版本）。
+"""B3 HR 文档 CMS 迁移：Portal Postgres → OA PostgreSQL（主表 + 别名 + 入口绑定 + 发布版本 + 草稿版本）。
 
 用法：
     python scripts/migrate_portal_hr_documents.py --dry-run   # 只报数，不写库
     python scripts/migrate_portal_hr_documents.py             # 真正写入
 
 行 id 一律原样保留：别名 / 入口绑定 / 版本快照都按 document_id 引用主表，重新编号等于把
-关系打断。MySQL 里已存在的 id 直接跳过，中途失败可重复执行接着跑。本模块 5 张表无外键依赖
+关系打断。PostgreSQL 里已存在的 id 直接跳过，中途失败可重复执行接着跑。本模块 5 张表无外键依赖
 其它批次，主表无前置。
 
 口径出处：docs/Portal管理面迁移契约.md §一「HR 文档 CMS」、§二「类型转换口径」、§四 批次 3。
@@ -27,11 +27,11 @@ import sys
 from datetime import datetime, timezone
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import portal_time as pt  # noqa: E402
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn  # noqa: E402
+from migrate_portal_identity import read_pg_dsn  # noqa: E402
 
 # 插入顺序即外键依赖顺序：先主表，再别名 / 入口绑定 / 发布版本 / 草稿版本（后四者 FK 引用主表）
 TABLES = [
@@ -62,7 +62,7 @@ def _jsonb(value):
 
 
 def _bool(value):
-    """PG boolean → tinyint(1)。"""
+    """Portal boolean → OA SMALLINT 0/1。"""
     if value is None:
         return None
     return 1 if value else 0
@@ -162,7 +162,7 @@ def clock(value, stats):
 
 
 def _write(cur, table, rows, dry_run, report, label):
-    """rows 是 (id, 列名字典) 的列表；MySQL 里已有的 id 跳过；500 行一批送（防 max_allowed_packet）。"""
+    """rows 是 (id, 列名字典) 的列表；PostgreSQL 里已有的 id 跳过；按 500 行分批写入，控制内存占用。"""
     cur.execute("select id from %s" % table)
     done = {r[0] for r in cur.fetchall()}
     todo = [row for rid, row in rows if rid not in done]
@@ -211,7 +211,7 @@ def preserve_orphan_snapshots(portal):
 def migrate(portal, dry_run):
     source_document_count = len(portal["portal_hr_documents"])
     portal, orphan_ids = preserve_orphan_snapshots(portal)
-    my = pymysql.connect(**read_mysql_conf())
+    my = connect_target(readonly=dry_run)
     cur = my.cursor()
     report = {}
     stats = {"utc_era": 0, "cutover_day": 0}
@@ -228,6 +228,7 @@ def migrate(portal, dry_run):
         if dry_run:
             my.rollback()
         else:
+            advance_target_sequences(my)
             my.commit()
     except Exception:
         my.rollback()  # 半途失败不留半套 HR 文档数据

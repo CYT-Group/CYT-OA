@@ -1,7 +1,7 @@
 package com.cyt.center.module.system.service;
 
 import com.baomidou.mybatisplus.core.MybatisConfiguration;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.DirectoryArchivePurgeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.info.DirectoryArchivePurgeMapper;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

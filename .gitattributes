@@ -1,3 +1,4 @@
 # 迁移 SQL 在 Windows/Linux 检出时保持一致；已执行文件不得修改。
-cyt-oa-backend/src/main/resources/db/migration/*.sql text eol=lf
+cyt-oa-backend/src/main/resources/db/postgresql/**/*.sql text eol=lf
+cyt-oa-backend/src/test/resources/db/*.sql text eol=lf
 *.sh text eol=lf

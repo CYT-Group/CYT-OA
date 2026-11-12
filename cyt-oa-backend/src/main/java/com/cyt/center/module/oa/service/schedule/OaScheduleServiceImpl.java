@@ -12,8 +12,8 @@ import com.cyt.center.module.oa.controller.admin.schedule.vo.OaSchedulePageReqVO
 import com.cyt.center.module.oa.controller.admin.schedule.vo.OaScheduleSaveReqVO;
 import com.cyt.center.module.oa.dal.dataobject.schedule.OaScheduleDO;
 import com.cyt.center.module.oa.dal.dataobject.schedule.OaScheduleParticipantDO;
-import com.cyt.center.module.oa.dal.mysql.schedule.OaScheduleMapper;
-import com.cyt.center.module.oa.dal.mysql.schedule.OaScheduleParticipantMapper;
+import com.cyt.center.module.oa.dal.postgresql.schedule.OaScheduleMapper;
+import com.cyt.center.module.oa.dal.postgresql.schedule.OaScheduleParticipantMapper;
 import com.cyt.center.module.oa.framework.config.OaProperties;
 import com.cyt.center.module.system.api.notify.NotifyMessageSendApi;
 import com.cyt.center.module.system.api.notify.dto.NotifySendSingleToUserReqDTO;

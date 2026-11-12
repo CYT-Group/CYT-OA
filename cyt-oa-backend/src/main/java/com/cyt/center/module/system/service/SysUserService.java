@@ -54,7 +54,7 @@ public class SysUserService {
         return user;
     }
 
-    /** MySQL 默认排序规则忽略大小写，取回后再按原始 userid 精确核对，避免绑定到另一个人的账号。 */
+    /** 按原始 userid 精确核对，避免绑定到另一个人的账号。 */
     public SysUser byWecomUserid(String wecomUserid) {
         return users.selectList(new LambdaQueryWrapper<SysUser>().eq(SysUser::getWecomUserid, wecomUserid))
                 .stream()
@@ -133,7 +133,7 @@ public class SysUserService {
                 .toList();
     }
 
-    /** 负责人 userid → 姓名；MySQL 排序规则不区分大小写，取回后按原值精确核对。 */
+    /** 负责人 userid → 姓名；按原值精确核对身份。 */
     public Map<String, String> namesByWecomUserids(Collection<String> userids) {
         List<String> wanted = userids.stream().filter(Objects::nonNull).filter(id -> !id.isBlank()).distinct().toList();
         if (wanted.isEmpty()) {

@@ -1,8 +1,8 @@
 package com.cyt.center.module.portal.service.resumes;
 
 import com.cyt.center.core.exception.BizException;
-import com.cyt.center.module.portal.dal.mysql.resumes.PortalResumeRepository;
-import com.cyt.center.module.portal.dal.mysql.resumes.PortalResumeInterviewRepository;
+import com.cyt.center.module.portal.dal.postgresql.resumes.PortalResumeRepository;
+import com.cyt.center.module.portal.dal.postgresql.resumes.PortalResumeInterviewRepository;
 import com.cyt.center.module.portal.service.support.PortalAudit;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import com.cyt.center.module.portal.service.admin.PortalRows;

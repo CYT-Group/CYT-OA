@@ -28,7 +28,7 @@ class MigrationTest(unittest.TestCase):
     def test_archive_time_is_utc_even_after_database_clock_cutover(self):
         original = datetime(2026, 10, 2, 2, 3, 4, 123456)
         row = converted("portal_materials", {"archived_at": original, "created_at": original},
-                        [("archived_at", "datetime"), ("created_at", "datetime")])
+                        [("archived_at", "timestamp without time zone"), ("created_at", "timestamp without time zone")])
         self.assertEqual(10, row["archived_at"].hour)
         self.assertEqual(123456, row["archived_at"].microsecond)
         self.assertEqual(original, row["created_at"])

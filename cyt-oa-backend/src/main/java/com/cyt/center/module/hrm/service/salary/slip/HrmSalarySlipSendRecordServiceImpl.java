@@ -17,7 +17,7 @@ import com.cyt.center.module.hrm.dal.dataobject.salary.monthrecord.HrmSalaryMont
 import com.cyt.center.module.hrm.dal.dataobject.salary.monthrecord.HrmSalaryMonthRecordDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.slip.HrmSalarySlipSendRecordDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.slip.HrmSalarySlipTemplateDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.slip.HrmSalarySlipSendRecordMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.slip.HrmSalarySlipSendRecordMapper;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import com.cyt.center.module.hrm.enums.salary.monthrecord.HrmSalaryMonthRecordStatusEnum;
 import jakarta.annotation.Resource;

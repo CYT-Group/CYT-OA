@@ -8,7 +8,7 @@ import com.cyt.center.module.hrm.controller.admin.salary.vo.group.HrmSalaryGroup
 import com.cyt.center.module.hrm.controller.admin.salary.vo.group.HrmSalaryGroupSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.dataobject.salary.config.HrmSalaryGroupDO;
-import com.cyt.center.module.hrm.dal.mysql.salary.config.HrmSalaryGroupMapper;
+import com.cyt.center.module.hrm.dal.postgresql.salary.config.HrmSalaryGroupMapper;
 import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import com.cyt.center.module.system.api.dept.DeptApi;
 import com.cyt.center.module.system.api.dept.dto.DeptRespDTO;

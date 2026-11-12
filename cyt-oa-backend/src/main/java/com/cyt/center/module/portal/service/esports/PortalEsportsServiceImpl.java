@@ -13,10 +13,10 @@ import com.cyt.center.module.portal.dal.dataobject.esports.PortalEsportsApproval
 import com.cyt.center.module.portal.dal.dataobject.esports.PortalEsportsBookingDO;
 import com.cyt.center.module.portal.dal.dataobject.esports.PortalEsportsBookingLogDO;
 import com.cyt.center.module.portal.dal.dataobject.esports.PortalEsportsSettingsDO;
-import com.cyt.center.module.portal.dal.mysql.esports.PortalEsportsApprovalStepMapper;
-import com.cyt.center.module.portal.dal.mysql.esports.PortalEsportsBookingLogMapper;
-import com.cyt.center.module.portal.dal.mysql.esports.PortalEsportsBookingMapper;
-import com.cyt.center.module.portal.dal.mysql.esports.PortalEsportsSettingsMapper;
+import com.cyt.center.module.portal.dal.postgresql.esports.PortalEsportsApprovalStepMapper;
+import com.cyt.center.module.portal.dal.postgresql.esports.PortalEsportsBookingLogMapper;
+import com.cyt.center.module.portal.dal.postgresql.esports.PortalEsportsBookingMapper;
+import com.cyt.center.module.portal.dal.postgresql.esports.PortalEsportsSettingsMapper;
 import com.cyt.center.module.portal.domain.PortalCapability;
 import com.cyt.center.module.portal.domain.esports.EsportsRules;
 import com.cyt.center.module.portal.service.support.PortalAccess;

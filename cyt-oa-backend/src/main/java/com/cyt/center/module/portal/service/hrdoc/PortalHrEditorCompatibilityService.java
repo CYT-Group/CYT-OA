@@ -1,8 +1,8 @@
 package com.cyt.center.module.portal.service.hrdoc;
 
 import com.cyt.center.core.exception.BizException;
-import com.cyt.center.module.portal.dal.mysql.hrdoc.PortalHrEditorRepository;
-import com.cyt.center.module.portal.dal.mysql.push.PortalContentPushRepository;
+import com.cyt.center.module.portal.dal.postgresql.hrdoc.PortalHrEditorRepository;
+import com.cyt.center.module.portal.dal.postgresql.push.PortalContentPushRepository;
 import com.cyt.center.module.portal.service.push.PortalContentPushDispatcher;
 import com.cyt.center.module.portal.service.support.PortalOperatorResolver;
 import lombok.RequiredArgsConstructor;

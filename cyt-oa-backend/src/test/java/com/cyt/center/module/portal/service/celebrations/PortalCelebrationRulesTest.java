@@ -1,6 +1,6 @@
 package com.cyt.center.module.portal.service.celebrations;
 
-import com.cyt.center.module.portal.dal.mysql.celebrations.PortalCelebrationRepository;
+import com.cyt.center.module.portal.dal.postgresql.celebrations.PortalCelebrationRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;

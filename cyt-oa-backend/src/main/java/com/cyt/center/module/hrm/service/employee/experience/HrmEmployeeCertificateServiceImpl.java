@@ -4,7 +4,7 @@ import com.cyt.center.module.hrm.service.employee.info.HrmEmployeeService;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.certificate.HrmEmployeeCertificateSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.experience.HrmEmployeeCertificateDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.experience.HrmEmployeeCertificateMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.experience.HrmEmployeeCertificateMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

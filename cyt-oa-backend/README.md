@@ -15,7 +15,7 @@
 ## 技术栈
 
 - Java 21、Spring Boot 3.3.2、Maven。
-- MyBatis Plus + MySQL 8，建表与种子数据在 `src/main/resources/db/`。
+- MyBatis Plus + PostgreSQL 17+，建表与种子数据在 `src/main/resources/db/postgresql/migration/`。
 - Sa-Token 身份认证与权限，Redis/Redisson 做会话与缓存。
 - Warm-Flow 1.8.9 审批流引擎，PDFBox 导出工作汇报。
 - springdoc-openapi 提供接口文档。
@@ -24,38 +24,38 @@
 
 ### 1. 准备环境
 
-安装 JDK 21、Maven 3.9+，并准备一个可写的 MySQL 8 与 Redis。数据库需先创建，例如 `cyt_oa_center`。
+安装 JDK 21、Maven 3.9+，并准备一个可写的 PostgreSQL 17+ 与 Redis。数据库需先创建，例如 `cyt_oa_center`。
 
 ### 2. 配置本机参数
 
-```sh
-cp src/main/resources/application-local.yml.example src/main/resources/application-local.yml
-```
-
-编辑该文件填写数据库口令、管理员 userid 等本机参数。`application-local.yml` 已被 Git 忽略，只提交 `.example`。配置项含义见[配置说明](docs/configuration.md)。
+准备并编辑 `src/main/resources/application-local.yml`，填写本地 PostgreSQL / Redis 连接、
+企微网关和管理员 userid。该文件已被 Git 忽略。生产参数单独填写到
+`src/main/resources/application-prod.properties`，通过 `prod` profile 加载。
+公共框架设置保留在 `application.yml`。配置项含义见[配置说明](docs/configuration.md)。
 
 ### 3. 建表与初始数据
 
-按顺序执行 `src/main/resources/db/` 下的脚本，`local-demo-seed.sql` 只在开发库执行：
+数据库统一使用 `src/main/resources/db/postgresql/migration/`。
+新建空数据库后，用 Flyway 执行该目录的全部版本：
 
-```text
-system-schema.sql → dict-seed.sql → permission-seed.sql → system-seed.sql
-→ oa-schema.sql → hrm-schema.sql → flow-schema.sql（配合 db/flow-def/）
-→ me-schema.sql → portal-identity-schema.sql → portal-content-schema.sql
-→ local-demo-seed.sql（仅本机演示）
+```sh
+flyway -url=jdbc:postgresql://127.0.0.1:5432/cyt_oa_center -user=cyt_oa \
+  -locations=filesystem:src/main/resources/db/postgresql/migration migrate
 ```
 
-人事工作区（招聘、入离职文书、合同模板、员工生命周期）的数据库升级与授权见[人事工作区](docs/hr-workspace.md)。
+口令通过 `FLYWAY_PASSWORD` 环境变量提供。也可在本机空测试库按版本顺序用
+`psql -v ON_ERROR_STOP=1 --single-transaction -f <文件>` 执行；长期开发和部署统一使用 Flyway。
+完整结构包含门户、人事工作区和企微花名册，种子包含字典、权限和开发管理员。
+本机演示数据单独放在 `db/postgresql/local-demo-seed.sql`，仅在开发库执行。
 
-已有数据库启用企微花名册同步前，需额外执行 `src/main/resources/db/wecom-hr-sync-schema.sql`。
-新库的 `hrm-schema.sql` 已包含该表；此升级脚本仅创建缺失的同步基线表，不修改员工日期。
-
-Portal 管理迁移的其他增量按[迁移说明](docs/portal-admin-migration.md)执行。启用「入口上线管理」前还需执行 `src/main/resources/db/portal-entry-rollout-schema.sql`；该脚本可重复执行且保留已有开关，默认全部开启。
+版本迁移负责结构和内置种子，业务数据通过相应导入流程写入。
+后续结构变更遵循[数据库变更规范](src/main/resources/db/postgresql/migration/README.md)；
+部署的空库初始化和后续升级见[部署说明](../deploy/test-server/README.md)。
 
 ### 4. 构建并启动
 
 ```sh
-mvn -DskipTests package
+mvn clean -DskipTests package
 java -jar target/cyt-oa-backend-1.0.0.jar
 ```
 
@@ -66,8 +66,11 @@ java -jar target/cyt-oa-backend-1.0.0.jar
 ```text
 src/main/java/com/cyt/center/core/      通用组件：配置、异常、结果封装、企微网关客户端
 src/main/java/com/cyt/center/module/    业务模块：auth、system、hrm、oa、bpm、portal、me
-src/main/resources/db/                  建表脚本、种子数据与流程定义
-src/main/resources/application.yml      默认配置，敏感值一律走环境变量或本机配置
+src/main/resources/db/postgresql/       PostgreSQL 版本迁移与本机演示数据
+src/main/resources/db/flow-def/         审批流程定义
+src/main/resources/application.yml      公共配置及环境变量映射
+src/main/resources/application-local.yml 本地连接与开发开关（Git 忽略）
+src/main/resources/application-prod.properties 生产连接与运行开关（Git 忽略）
 src/test/java/                          契约与集成检查
 scripts/                                Portal 数据搬迁与时间口径换算脚本
 docs/                                   配置与开发文档

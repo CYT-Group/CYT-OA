@@ -4,10 +4,14 @@
 .trae
 .local
 .screenshots
+.jenkins-build
 **/node_modules
 **/dist
 **/target
 **/target-parameter-check
+**/target-*-check
+**/__pycache__
+**/*.pyc
 **/*.log
 **/*.tsbuildinfo
 _*.txt

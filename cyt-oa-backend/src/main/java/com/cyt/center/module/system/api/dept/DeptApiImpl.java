@@ -171,7 +171,7 @@ public class DeptApiImpl implements DeptApi {
         if (userids.isEmpty()) {
             return result;
         }
-        // MySQL 默认排序规则忽略大小写，取回后按原始 userid 精确核对，避免把负责人算到同名的另一个人身上
+        // 取回后按原始 userid 精确核对，避免把负责人算到同名的另一个人身上
         for (SysUser user : users.selectList(new LambdaQueryWrapper<SysUser>()
                 .in(SysUser::getWecomUserid, userids)
                 .orderByAsc(SysUser::getId))) {

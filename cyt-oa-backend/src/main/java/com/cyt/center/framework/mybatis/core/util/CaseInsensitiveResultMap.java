@@ -8,7 +8,7 @@ import java.util.Locale;
  * key 大小写不敏感的 MyBatis 查询结果 Map
  *
  * 背景：使用 Map 接收查询结果时，key 为 JDBC 返回的列标签。PostgreSQL 等会将未加引号的列名、别名折叠为小写，
- * Oracle、达梦等会折叠为大写，导致 map.get("conversationId") 这类按固定 key 取值的代码，在 MySQL 以外的数据库取不到值。
+ * 这会导致 map.get("conversationId") 这类按固定 key 取值的代码取不到值。
  *
  * 实现：基于 {@link LinkedCaseInsensitiveMap}，get / containsKey / remove 时忽略 key 的大小写，
  * 同时保留原始的列标签作为 key（遍历、序列化时不变）。固定使用 {@link Locale#ROOT}，避免服务器默认 Locale（例如土耳其语）影响 key 的匹配。

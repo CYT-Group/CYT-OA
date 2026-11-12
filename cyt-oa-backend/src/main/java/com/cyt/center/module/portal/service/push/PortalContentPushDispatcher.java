@@ -1,7 +1,7 @@
 package com.cyt.center.module.portal.service.push;
 
 import com.cyt.center.core.integration.WecomGatewayClient;
-import com.cyt.center.module.portal.dal.mysql.push.PortalContentPushRepository;
+import com.cyt.center.module.portal.dal.postgresql.push.PortalContentPushRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

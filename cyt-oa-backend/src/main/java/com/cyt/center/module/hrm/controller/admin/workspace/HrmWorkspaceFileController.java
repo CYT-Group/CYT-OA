@@ -38,7 +38,7 @@ public class HrmWorkspaceFileController {
     @GetMapping("/resumes") @SaCheckPermission("hrm:recruit:candidate:query")
     public Result<?> resumes(@RequestParam long candidateId) {
         candidates.validateRecruitCandidateExists(candidateId);
-        return Result.success(jdbc.queryForList("SELECT id,filename,created_at AS createdAt FROM hrm_candidate_attachment WHERE candidate_id=? ORDER BY id DESC",candidateId));
+        return Result.success(jdbc.queryForList("SELECT id,filename,created_at AS \"createdAt\" FROM hrm_candidate_attachment WHERE candidate_id=? ORDER BY id DESC",candidateId));
     }
     @PostMapping("/resumes") @SaCheckPermission("hrm:recruit:candidate:update")
     @org.springframework.transaction.annotation.Transactional(rollbackFor=Exception.class)

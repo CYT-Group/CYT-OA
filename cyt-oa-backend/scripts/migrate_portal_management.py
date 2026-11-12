@@ -15,9 +15,9 @@ from urllib.parse import urlparse
 from urllib.request import urlopen
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn
+from migrate_portal_identity import read_pg_dsn
 import portal_time as pt
 
 TABLES = {
@@ -177,9 +177,9 @@ def migrate(tables, args):
         report["附件"] = copy_assets(tables, args)
         if report["附件"]["missing"] and args.require_all_assets:
             raise RuntimeError("存在缺失附件，未写数据库；请核对附件根目录或 GCS 桶")
-    mysql = pymysql.connect(**read_mysql_conf())
+    target = connect_target(readonly=args.dry_run)
     try:
-        with mysql.cursor() as cur:
+        with target.cursor() as cur:
             for table, columns in TABLES.items():
                 cur.execute("SELECT id FROM " + table)
                 done = {r[0] for r in cur.fetchall()}
@@ -198,7 +198,7 @@ def migrate(tables, args):
                             if not args.dry_run:
                                 cur.execute("UPDATE portal_celebration_settings SET " + ",".join(c + "=%s" for c in mutable) + " WHERE id=1 AND updated_by IS NULL", [values[c] for c in mutable])
                 if rows and not args.dry_run:
-                    sql = "INSERT INTO " + table + " (" + ",".join("`" + c + "`" for c in columns) + ") VALUES (" + ",".join(["%s"] * len(columns)) + ")"
+                    sql = "INSERT INTO " + table + " (" + ",".join('"' + c + '"' for c in columns) + ") VALUES (" + ",".join(["%s"] * len(columns)) + ")"
                     cur.executemany(sql, [[r[c] for c in columns] for r in rows])
                 # 附件补迁时同步改指针；只修改匹配原始 URL 的行，避免覆盖 OA 后续替换。
                 if args.copy_assets and table in ("portal_brand_docs", "portal_brand_doc_versions"):
@@ -214,7 +214,7 @@ def migrate(tables, args):
             if missing:
                 raise RuntimeError("庆祝偏好有未迁移身份，请先执行身份迁移（人数 %d）" % len(missing))
             if not args.dry_run:
-                cur.executemany("INSERT IGNORE INTO portal_celebration_preferences(user_id,opt_out) VALUES(%s,1)", [(users[r["username"]],) for r in tables["preferences"]])
+                cur.executemany("INSERT INTO portal_celebration_preferences(user_id,opt_out) VALUES(%s,1) ON CONFLICT DO NOTHING", [(users[r["username"]],) for r in tables["preferences"]])
             report["不参与庆祝偏好"] = len(tables["preferences"])
             cur.execute("SELECT source_log_id FROM portal_celebration_push_log WHERE source_log_id IS NOT NULL")
             logged = {r[0] for r in cur.fetchall()}
@@ -225,14 +225,15 @@ def migrate(tables, args):
                     for r in old_logs])
             report["庆祝历史推送视图"] = {"insert": len(old_logs)}
         if args.dry_run:
-            mysql.rollback()
+            target.rollback()
         else:
-            mysql.commit()
+            advance_target_sequences(target)
+            target.commit()
     except Exception:
-        mysql.rollback()
+        target.rollback()
         raise
     finally:
-        mysql.close()
+        target.close()
     return report
 
 

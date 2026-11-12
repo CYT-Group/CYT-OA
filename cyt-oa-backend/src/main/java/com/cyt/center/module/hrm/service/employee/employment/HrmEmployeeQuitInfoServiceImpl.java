@@ -4,7 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import com.cyt.center.framework.common.util.object.BeanUtils;
 import com.cyt.center.module.hrm.controller.admin.employee.vo.quitinfo.HrmEmployeeQuitInfoSaveReqVO;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeQuitInfoDO;
-import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeQuitInfoMapper;
+import com.cyt.center.module.hrm.dal.postgresql.employee.employment.HrmEmployeeQuitInfoMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

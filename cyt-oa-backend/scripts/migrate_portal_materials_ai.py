@@ -1,4 +1,4 @@
-"""物资台账和 AI 管理从 Portal PG 搬到 OA MySQL；保留原主键，已存在行跳过。
+"""物资台账和 AI 管理从 Portal PG 搬到 OA PostgreSQL；保留原主键，已存在行跳过。
 
 先执行 portal-materials-schema.sql / portal-ai-schema.sql，随后 --dry-run 核对，
 去掉 --dry-run 才写入。本脚本不修改源 PG、不解密或输出 API key。
@@ -11,9 +11,9 @@ import uuid
 from decimal import Decimal
 
 import asyncpg
-import pymysql
+from portal_target import connect_target, advance_target_sequences
 
-from migrate_portal_identity import read_mysql_conf, read_pg_dsn
+from migrate_portal_identity import read_pg_dsn
 import portal_time as pt
 
 TABLES = {
@@ -50,7 +50,7 @@ def converted(table, row, columns):
             if table == "portal_api_call_log":
                 utc = True
             value = pt.app_utc(value) if utc else pt.server_clock(value)
-        if data_type == "json" and value is not None and not isinstance(value, str):
+        if isinstance(value, (dict, list)):
             value = json.dumps(value, ensure_ascii=False)
         if isinstance(value, bool):
             value = int(value)
@@ -60,14 +60,14 @@ def converted(table, row, columns):
 
 async def migrate(dry_run):
     pg = await asyncpg.connect(read_pg_dsn())
-    target = pymysql.connect(**read_mysql_conf())
+    target = connect_target(readonly=dry_run)
     report = {}
     try:
         with target.cursor() as cur:
             for table, keys in TABLES.items():
                 cur.execute("SELECT COLUMN_NAME,DATA_TYPE FROM information_schema.columns "
-                            "WHERE table_schema=DATABASE() AND table_name=%s "
-                            "AND EXTRA NOT LIKE '%%GENERATED%%' ORDER BY ORDINAL_POSITION", (table,))
+                            "WHERE table_schema=current_schema() AND table_name=%s "
+                            "AND is_generated='NEVER' ORDER BY ORDINAL_POSITION", (table,))
                 columns = cur.fetchall()
                 if not columns:
                     raise RuntimeError(f"目标表 {table} 不存在，请先执行建表脚本")
@@ -78,7 +78,7 @@ async def migrate(dry_run):
                            if tuple(row[key] for key in keys) not in existing]
                 if pending and not dry_run:
                     names = list(pending[0])
-                    sql = "INSERT INTO " + table + " (" + ",".join("`" + x + "`" for x in names) + ") VALUES (" + ",".join(["%s"] * len(names)) + ")"
+                    sql = "INSERT INTO " + table + " (" + ",".join('"' + x + '"' for x in names) + ") VALUES (" + ",".join(["%s"] * len(names)) + ")"
                     for start in range(0, len(pending), 500):
                         cur.executemany(sql, [tuple(row[name] for name in names) for row in pending[start:start + 500]])
                 report[table] = {"source": len(records), "existing": len(records) - len(pending), "pending" if dry_run else "inserted": len(pending)}
@@ -91,14 +91,20 @@ async def migrate(dry_run):
                     grouped = table == "portal_material_products" or product_archives.get(product_id) == row["archived_at"]
                     identity = (f"product:{product_id}" if grouped else f"sku:{row['id']}") + ":" + row["archived_at"].isoformat()
                     batch = str(uuid.uuid5(uuid.NAMESPACE_URL, "cyt-portal-archive:" + identity))
-                    archived_at = pt.app_utc(row["archived_at"]).replace(microsecond=0)
-                    cur.execute("SELECT COUNT(*) FROM " + table + " WHERE id=%s AND archived_at=%s AND archive_group IS NULL", (row["id"], archived_at))
-                    matches = cur.fetchone()[0]
-                    archive_groups += matches
-                    if matches and not dry_run:
+                    archived_at = pt.app_utc(row["archived_at"])
+                    cur.execute("SELECT updated_at FROM " + table + " WHERE id=%s AND archived_at=%s AND archive_group IS NULL", (row["id"], archived_at))
+                    previous = cur.fetchone()
+                    archive_groups += previous is not None
+                    if previous is not None and not dry_run:
                         cur.execute("UPDATE " + table + " SET archive_group=%s WHERE id=%s AND archive_group IS NULL", (batch, row["id"]))
+                        # Adding migration metadata must not rewrite the imported business timestamp.
+                        # The first UPDATE invokes the normal touch trigger; explicitly restoring
+                        # the historical value is preserved by that trigger.
+                        cur.execute("UPDATE " + table + " SET updated_at=%s WHERE id=%s AND archive_group=%s",
+                                    (previous[0], row["id"], batch))
             report["archive_groups"] = archive_groups
             if not dry_run:
+                advance_target_sequences(target)
                 target.commit()
             else:
                 target.rollback()

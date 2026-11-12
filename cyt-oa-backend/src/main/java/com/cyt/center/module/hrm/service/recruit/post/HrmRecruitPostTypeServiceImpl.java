@@ -2,7 +2,7 @@ package com.cyt.center.module.hrm.service.recruit.post;
 
 import cn.hutool.core.collection.CollUtil;
 import com.cyt.center.module.hrm.dal.dataobject.recruit.post.HrmRecruitPostTypeDO;
-import com.cyt.center.module.hrm.dal.mysql.recruit.post.HrmRecruitPostTypeMapper;
+import com.cyt.center.module.hrm.dal.postgresql.recruit.post.HrmRecruitPostTypeMapper;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

@@ -34,7 +34,7 @@ public class WorkspaceRequestService {
         }else{
             where=users.isEmpty()?"1=0":"owner_id IN ("+String.join(",",Collections.nCopies(users.size(),"?"))+")";args.addAll(users);
         }
-        if(type!=null&&!type.isBlank()){if(!TYPES.containsKey(type))throw new BizException("申请类型无效");where+=" AND JSON_UNQUOTE(JSON_EXTRACT(payload,'$.type'))=?";args.add(type);}
+        if(type!=null&&!type.isBlank()){if(!TYPES.containsKey(type))throw new BizException("申请类型无效");where+=" AND (CAST(payload AS jsonb)->>'type')=?";args.add(type);}
         if(status!=null&&!status.isBlank()){oneOf(status,"draft","pending","approved","rejected","cancelled");where+=" AND status=?";args.add(status);}
         return store.select("request",where,args).stream().map(this::view).toList();
     }
@@ -84,7 +84,7 @@ public class WorkspaceRequestService {
     public void cancel(long id){identity.personal();var row=store.get("request",id,true);if(row.ownerId()!=identity.user()||!Set.of("draft","pending").contains(row.status()))throw AuthException.forbidden("只能撤销自己的草稿或审批中申请");jdbc.update("UPDATE portal_workspace_approval_steps SET status='cancelled' WHERE request_id=? AND status IN ('pending','waiting')",id);store.update(row,row.version(),row.title(),"cancelled",row.data(),null);}
     private void validateQuota(PortalWorkspaceStore.Row row){
         String kind=String.valueOf(row.data().get("leaveKind"));double allowance=((Number)policies.data("leave").get(kind)).doubleValue();
-        var existing=store.select("request","id<>? AND owner_id=? AND status IN ('pending','approved') AND JSON_UNQUOTE(JSON_EXTRACT(payload,'$.type'))='leave' AND JSON_UNQUOTE(JSON_EXTRACT(payload,'$.leaveKind'))=?",List.of(row.id(),row.ownerId(),kind));
+        var existing=store.select("request","id<>? AND owner_id=? AND status IN ('pending','approved') AND (CAST(payload AS jsonb)->>'type')='leave' AND (CAST(payload AS jsonb)->>'leaveKind')=?",List.of(row.id(),row.ownerId(),kind));
         var allocations=object(row.data().get("allocations"));
         for(var allocation:allocations.entrySet()){double used=0;for(var other:existing)used+=((Number)object(other.data().get("allocations")).getOrDefault(allocation.getKey(),0)).doubleValue();if(used+((Number)allocation.getValue()).doubleValue()>allowance+0.0001)throw new BizException(allocation.getKey()+" 年该假种余额不足（含审批中预占），剩余 "+Math.max(0,Math.round((allowance-used)*100)/100.0)+" 天");}
     }
