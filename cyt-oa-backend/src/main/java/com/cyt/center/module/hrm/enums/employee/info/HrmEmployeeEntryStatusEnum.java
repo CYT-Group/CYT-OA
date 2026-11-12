@@ -22,7 +22,8 @@ public enum HrmEmployeeEntryStatusEnum implements ArrayValuable<Integer> {
     ACTIVE(1, "在职"),
     PENDING_ENTRY(2, "待入职"),
     PENDING_LEAVE(3, "待离职"),
-    LEFT(4, "离职");
+    LEFT(4, "离职"),
+    ABANDONED_ENTRY(5, "放弃入职");
 
     public static final Integer[] ARRAYS = Arrays.stream(values())
             .map(HrmEmployeeEntryStatusEnum::getStatus).toArray(Integer[]::new);

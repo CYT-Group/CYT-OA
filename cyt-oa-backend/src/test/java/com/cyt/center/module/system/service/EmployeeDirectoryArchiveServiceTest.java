@@ -18,9 +18,7 @@ class EmployeeDirectoryArchiveServiceTest {
     }
     final HrmEmployeeMapper employees = mock(HrmEmployeeMapper.class);
     final HrmEmployeeChangeRecordMapper changes = mock(HrmEmployeeChangeRecordMapper.class);
-    final com.cyt.center.module.hrm.dal.mysql.employee.info.DirectoryArchivePurgeMapper purge =
-            mock(com.cyt.center.module.hrm.dal.mysql.employee.info.DirectoryArchivePurgeMapper.class);
-    final EmployeeDirectoryArchiveService service = new EmployeeDirectoryArchiveService(employees,changes,purge);
+    final EmployeeDirectoryArchiveService service = new EmployeeDirectoryArchiveService(employees,changes);
     @Test void createsAnIndependentArchiveWithoutInventingEmploymentDetails() {
         when(employees.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of());
         SysUser user=new SysUser();user.setId(7L);user.setName("Alice");user.setMainDeptId(1L);user.setEnabled(true);
@@ -61,29 +59,18 @@ class EmployeeDirectoryArchiveServiceTest {
         verify(employees).insert(inserted.capture()); assertEquals(8L, inserted.getValue().getUserId());
         verifyNoInteractions(changes);
     }
-    @Test void missingUsersPhysicallyDeleteArchivesAndOnlyAllowedDetails() {
-        when(purge.selectIdsByUserIds(List.of(7L))).thenReturn(List.of(42L, 43L));
-        when(purge.existingEmployeeTables()).thenReturn(List.of("hrm_employee_contact", "hrm_employee_wecom_sync", "portal_news"));
-        service.deleteByUserIds(List.of(7L));
-        var order = inOrder(purge);
-        order.verify(purge).selectIdsByUserIds(List.of(7L));
-        order.verify(purge).clearManagerReferences(List.of(42L, 43L));
-        order.verify(purge).existingEmployeeTables();
-        order.verify(purge).deleteDetails("hrm_employee_contact", List.of(42L, 43L));
-        order.verify(purge).deleteDetails("hrm_employee_wecom_sync", List.of(42L, 43L));
-        order.verify(purge).deleteArchives(List.of(42L, 43L));
-        order.verifyNoMoreInteractions();
+    @Test void emptySnapshotIdentityListDoesNotTouchHistoricalArchives() {
+        service.syncIdentities(List.of());
         verifyNoInteractions(employees, changes);
     }
-    @Test void detailFailureDoesNotProceedToDeletingArchiveRows() {
-        when(purge.selectIdsByUserIds(anyList())).thenReturn(List.of(42L));
-        when(purge.existingEmployeeTables()).thenReturn(List.of("hrm_employee_file"));
-        when(purge.deleteDetails(anyString(), anyList())).thenThrow(new IllegalStateException("write failed"));
-        assertThrows(IllegalStateException.class, () -> service.deleteByUserIds(List.of(7L)));
-        verify(purge, never()).deleteArchives(anyList());
-    }
-    @Test void emptyRemovalDoesNotTouchAnyArchives() {
-        service.deleteByUserIds(List.of());
-        verifyNoInteractions(employees, changes, purge);
+    @Test void disabledDirectoryIdentityDoesNotOverwriteHistoricalOffboarding() {
+        var old=new HrmEmployeeDO().setId(42L).setUserId(7L).setName("Alice").setEntryStatus(4)
+                .setLeaveTime(java.time.LocalDateTime.of(2020,1,1,0,0));
+        when(employees.selectList(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class))).thenReturn(List.of(old));
+        SysUser user=new SysUser();user.setId(7L);user.setName("Alice");user.setEnabled(false);user.setWecomStatus(5);
+        service.syncIdentity(user);
+        verify(employees,never()).delete(any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verify(employees,never()).update(isNull(),any(com.baomidou.mybatisplus.core.conditions.Wrapper.class));
+        verifyNoInteractions(changes);assertEquals(4,old.getEntryStatus());assertEquals(java.time.LocalDateTime.of(2020,1,1,0,0),old.getLeaveTime());
     }
 }

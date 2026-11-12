@@ -5,14 +5,14 @@
         <Button v-if="session.has('hrm:employee:export')" variant="outline" size="sm" @click="exportEmployees">导出花名册</Button>
         <Button v-if="session.has('hrm:employee:update') && session.has('hrm:contract-template:query')" size="sm" @click="router.push('/hr/employment?mode=onboard')">办理入职</Button>
         <Button
-          v-if="session.has('hrm:employee:query') && canEdit"
+          v-if="canSyncHr"
           variant="outline"
           size="sm"
-          :disabled="hrSyncing"
+          :disabled="hrSyncing || hrStatusLoading"
           @click="syncHr"
         >
           <LoaderCircle v-if="hrSyncing" class="size-3.5 animate-spin" />
-          {{ hrSyncing ? '正在读取企微花名册…' : '同步企微花名册' }}
+          {{ hrSyncing ? '企微花名册同步中…' : '同步企微花名册' }}
         </Button>
         <Button v-if="session.isAdmin" variant="outline" size="sm" @click="router.push('/org')">
           <Network class="size-3.5" />
@@ -22,9 +22,13 @@
     </PageHeader>
     <SegmentedTabs class="mt-4" :model-value="roster || (statusCategory === 2 ? 'probation' : 'all')" :items="[{ value: 'active', label: '在职员工' }, { value: 'probation', label: '试用员工' }, { value: 'left', label: '离职员工' }, { value: 'all', label: '全部档案' }]" @update:model-value="setRoster" />
 
-    <Callout v-if="hrSyncError" class="mt-4" tone="destructive" title="企微花名册同步失败">
+    <Callout v-if="hrSyncError" class="mt-4" tone="destructive" title="同步启动未确认">
       {{ hrSyncError }}
-      <template #action><Button variant="ghost" size="sm" :disabled="hrSyncing" @click="syncHr">重试同步</Button></template>
+      <template #action><Button variant="ghost" size="sm" :disabled="hrStatusLoading" @click="refreshHrSync">读取最新状态</Button></template>
+    </Callout>
+    <Callout v-if="hrStatusError" class="mt-4" tone="warning" title="同步记录未读取">
+      {{ hrStatusError }}
+      <template #action><Button variant="ghost" size="sm" :disabled="hrStatusLoading" @click="refreshHrSync">重新读取</Button></template>
     </Callout>
     <Callout v-if="departmentError" class="mt-4" tone="warning" title="部门选项未加载">
       {{ departmentError }}
@@ -32,31 +36,63 @@
     </Callout>
 
     <section
-      v-if="hrResult"
+      v-if="hrRun"
       class="mt-4 overflow-hidden rounded-xl border bg-card shadow-xs"
-      aria-label="企微花名册同步结果"
+      aria-label="企微花名册同步记录"
     >
-      <header class="flex items-start justify-between gap-3 border-b px-4 py-3">
-        <div>
-          <h2 class="text-sm font-semibold">
-            花名册同步：读取 {{ hrResult.scanned }} 人，更新 {{ hrResult.updatedFields }} 个日期字段
-          </h2>
-          <p class="mt-0.5 text-xs text-muted-foreground">
-            生日、入职日期以企微本次成功返回的值为准。
+      <header class="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+        <div class="min-w-0 w-full sm:w-auto sm:flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <LoaderCircle v-if="hrRun.status === 'running'" class="size-4 animate-spin text-primary" aria-hidden="true" />
+            <h2 class="text-sm font-semibold">{{ hrSyncTitle }}</h2>
+            <Badge :variant="hrSyncTone">{{ hrSyncStatusLabel }}</Badge>
+          </div>
+          <p class="mt-1 text-xs leading-6 text-muted-foreground">
+            {{ hrSyncStageLabel }}<template v-if="hrRun.actor"> · {{ hrRun.actor }}</template>
+            · {{ syncTime(hrRun.finishedAt || hrRun.createdAt) }}
           </p>
         </div>
-        <Button variant="ghost" size="sm" @click="hrResult = null">收起</Button>
+        <div class="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+          <Button variant="ghost" size="sm" :disabled="hrStatusLoading" @click="refreshHrSync">刷新记录</Button>
+          <Button variant="ghost" size="sm" :aria-expanded="hrSyncExpanded" @click="hrSyncExpanded = !hrSyncExpanded">{{ hrSyncExpanded ? '收起详情' : '展开详情' }}</Button>
+        </div>
       </header>
-      <div class="space-y-2 px-4 py-3">
-        <p v-for="f in hrResult.failures" :key="f.employeeId" class="text-xs text-destructive">
-          {{ f.name }}：{{ f.reason }}
+      <div v-if="hrSyncExpanded" class="space-y-4 border-t px-4 py-4">
+        <Callout v-if="hrRun.message" :tone="hrSyncCalloutTone">{{ hrRun.message }}</Callout>
+        <p v-if="hrRun.status === 'running'" class="text-xs leading-6 text-muted-foreground" role="status">
+          {{ hrRun.stage === 'directory' ? '正在读取真实企微成员并建立或更新关联档案，随后读取人事信息。' : '通讯录阶段已完成，正在读取生日、入职、员工状态、试用期与转正信息。' }}
+          可以离开页面，重新进入后会恢复同步记录。
         </p>
-        <p
-          v-if="!hrResult.failures.length"
-          class="text-xs text-muted-foreground"
-        >
-          已与企微最新返回的数据一致
-        </p>
+        <section v-if="hrRun.directory" aria-label="通讯录同步统计">
+          <h3 class="text-xs font-semibold">通讯录阶段</h3>
+          <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+            <div v-for="metric in directoryMetrics" :key="metric.label" class="rounded-lg bg-muted/45 p-3">
+              <dt class="text-xs text-muted-foreground">{{ metric.label }}</dt><dd class="mt-1 text-lg font-semibold tabular-nums">{{ metric.value ?? '—' }}</dd>
+            </div>
+          </dl>
+        </section>
+        <section v-if="hrResult" aria-label="人事同步统计">
+          <h3 class="text-xs font-semibold">人事阶段</h3>
+          <dl class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div v-for="metric in hrMetrics" :key="metric.label" class="rounded-lg bg-muted/45 p-3">
+              <dt class="text-xs text-muted-foreground">{{ metric.label }}</dt><dd class="mt-1 text-lg font-semibold tabular-nums">{{ metric.value ?? '—' }}</dd>
+            </div>
+          </dl>
+          <p class="mt-3 text-xs leading-6 text-muted-foreground">检查档案数为成功、失败与跳过之和；实际读取为发往企微人事接口的请求数。无法读取或未关联的本地档案会保留，不会因此自动归为离职。</p>
+        </section>
+        <details v-if="hrResult?.failures?.length" open class="rounded-lg border border-destructive/20 p-3">
+          <summary class="cursor-pointer text-xs font-semibold text-destructive">失败原因（{{ hrResult.failures.length }}）</summary>
+          <ul class="mt-3 max-h-64 space-y-2 overflow-auto text-xs leading-6"><li v-for="(item, index) in hrResult.failures" :key="`${item.employeeId}-${index}`">{{ syncEmployee(item) }}：{{ item.reason }}</li></ul>
+        </details>
+        <details v-if="hrResult?.skippedEmployees?.length" open class="rounded-lg border border-warning/25 p-3">
+          <summary class="cursor-pointer text-xs font-semibold text-warning">跳过原因（{{ hrResult.skippedEmployees.length }}）</summary>
+          <ul class="mt-3 max-h-64 space-y-2 overflow-auto text-xs leading-6"><li v-for="(item, index) in hrResult.skippedEmployees" :key="`${item.employeeId}-${index}`">{{ syncEmployee(item) }}：{{ item.reason }}</li></ul>
+        </details>
+        <details v-if="hrResult?.conflicts?.length" open class="rounded-lg border border-warning/25 p-3">
+          <summary class="cursor-pointer text-xs font-semibold text-warning">冲突明细（{{ hrResult.conflicts.length }}）</summary>
+          <ul class="mt-3 max-h-64 space-y-2 overflow-auto text-xs leading-6"><li v-for="(item, index) in hrResult.conflicts" :key="`${item.employeeId}-${item.field}-${index}`">{{ syncEmployee(item) }}：{{ syncConflict(item) }}</li></ul>
+        </details>
+        <p v-if="hrRun.status === 'success'" class="text-xs leading-6 text-muted-foreground">本次同步已完成，尝试读取的员工均处理成功。</p>
       </div>
     </section>
 
@@ -192,6 +228,7 @@
                 <Badge :variant="row.entryStatus === 1 ? 'success' : 'info'">
                   {{ entryLabels[row.entryStatus ?? 0] || '待完善' }}
                 </Badge>
+                <p v-if="hasValue(row.status)" class="mt-1 text-xs text-muted-foreground">{{ statusLabels[row.status ?? 0] || '用工状态待完善' }}</p>
               </td>
               <td v-if="optionalColumns.entryTime" class="num text-muted-foreground">
                 {{ hasValue(row.entryTime) ? date(row.entryTime) : '—' }}
@@ -244,7 +281,7 @@
           <h3 class="mt-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             企微资料
           </h3>
-          <p v-if="detail.userId" class="mt-1 text-xs text-muted-foreground">生日、入职日期在企微维护，同步后更新。</p>
+          <p v-if="detail.userId" class="mt-1 text-xs text-muted-foreground">生日、入职、任职与用工状态、试用期及转正信息按企微成功返回的值同步。</p>
           <dl class="mt-2 grid gap-x-6 gap-y-3 rounded-xl border bg-muted/20 p-4 sm:grid-cols-2">
             <div v-for="item in workFacts" :key="item.label">
               <dt class="text-[11px] text-muted-foreground">{{ item.label }}</dt>
@@ -306,7 +343,7 @@
             </div>
 
             <div v-if="showEmptyFields || hasValue(detail.status)" class="flex flex-col">
-              <Label>员工类型</Label>
+              <Label>用工状态</Label>
               <Select
                 v-model="form.status"
                 :options="statusFormOptions"
@@ -399,13 +436,14 @@
 
 <script setup lang="ts">
 import { History, LoaderCircle, Network, Search, Users } from '@lucide/vue'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EmployeeLifecycleActions from '../components/EmployeeLifecycleActions.vue'
 import { api } from '../lib/api'
 import { session } from '../lib/session'
 import { hrBase, textDownload, downloadHrFile } from '../lib/hr-workspace'
 import { useTableSort } from '../lib/useTableSort'
+import { createHrSyncTracker, type HrSyncConflict, type HrSyncIssue } from '../lib/hr-sync'
 import Avatar from '../ui/Avatar.vue'
 import Badge from '../ui/Badge.vue'
 import Button from '../ui/Button.vue'
@@ -439,6 +477,9 @@ interface Employee {
   status: number | null
   entryTime: string | null
   birthday: string | null
+  probation?: number | null
+  regularTime?: string | null
+  leaveTime?: string | null
   postLevel: string | null
   workCity: string | null
   workAddress: string | null
@@ -459,7 +500,7 @@ interface Change {
   remark: string
 }
 
-const entryLabels: Record<number, string> = { 0: '待完善', 1: '在职', 2: '待入职', 3: '待离职', 4: '离职' }
+const entryLabels: Record<number, string> = { 0: '待完善', 1: '在职', 2: '待入职', 3: '待离职', 4: '离职', 5: '放弃入职' }
 const statusLabels: Record<number, string> = {
   1: '正式',
   2: '试用',
@@ -547,6 +588,7 @@ const managers = ref<Employee[]>([]),
 const showEmptyFields = ref(false)
 const form = reactive<Record<string, string>>({})
 const canEdit = computed(() => session.has('hrm:employee:update'))
+const canSyncHr = computed(() => session.has('hrm:employee:query') && canEdit.value && session.has('system:directory:sync'))
 
 const entryFilterOptions = [
   { label: '全部任职状态', value: '' },
@@ -581,6 +623,11 @@ const workFacts = computed(() => {
     { label: '邮箱', value: d.email },
     { label: '主部门', value: d.deptName },
     { label: '岗位', value: d.postName },
+    { label: '任职状态', value: entryLabels[d.entryStatus ?? 0] || '待完善' },
+    ...(hasValue(d.status) ? [{ label: '用工状态', value: statusLabels[d.status ?? 0] || '待完善' }] : []),
+    ...(d.probation != null ? [{ label: '试用期', value: `${d.probation} 个月` }] : []),
+    ...(d.regularTime ? [{ label: '转正日期', value: d.regularTime.slice(0, 10) }] : []),
+    ...(d.leaveTime ? [{ label: '离职日期', value: d.leaveTime.slice(0, 10) }] : []),
     ...(d.userId ? [
       { label: '生日', value: d.birthday?.slice(0, 10) || '企微未提供' },
       { label: '入职日期', value: d.entryTime?.slice(0, 10) || '企微未提供' }
@@ -588,29 +635,45 @@ const workFacts = computed(() => {
   ].filter((item) => hasValue(item.value)) as { label: string; value: string }[]
 })
 
-interface HrResult {
-  scanned: number
-  updatedFields: number
-  failures: { employeeId: string; name: string; reason: string }[]
+let employeePageDisposed = false
+const syncBase = '/admin-api/hrm/employee/wecom'
+const hrSyncTracker = createHrSyncTracker({
+  canStart: () => canSyncHr.value,
+  start: () => api.post(`${syncBase}/sync`),
+  status: runId => api.get(`${syncBase}/sync-status`, runId == null ? undefined : { runId }),
+  onFinished: async () => {
+    if (employeePageDisposed) return
+    await Promise.allSettled([load(), loadDepartments()])
+    if (!employeePageDisposed && detail.value) await open(detail.value.id)
+  },
+})
+const { run: hrRun, syncing: hrSyncing, reading: hrStatusLoading, startError: hrSyncError, statusError: hrStatusError, refresh: refreshHrSync } = hrSyncTracker
+const hrResult = computed(() => hrRun.value?.result ?? null)
+const hrSyncExpanded = ref(true)
+const hrSyncTitle = computed(() => hrRun.value?.status === 'running' ? '企微花名册同步进行中' : hrRun.value?.status === 'partial' ? '企微花名册部分完成' : hrRun.value?.status === 'failed' ? '企微花名册同步未完成' : '企微花名册同步完成')
+const hrSyncStatusLabel = computed(() => hrRun.value ? ({ running: '同步中', success: '已完成', partial: '部分完成', failed: '失败' })[hrRun.value.status] : '')
+const hrSyncStageLabel = computed(() => hrRun.value ? ({ directory: '通讯录阶段', hr: '人事信息阶段', complete: '通讯录与人事阶段已结束' })[hrRun.value.stage] : '')
+const hrSyncTone = computed(() => hrRun.value?.status === 'partial' ? 'warning' : hrRun.value?.status === 'failed' ? 'destructive' : hrRun.value?.status === 'success' ? 'success' : 'info')
+const hrSyncCalloutTone = computed(() => hrRun.value?.status === 'partial' ? 'warning' : hrRun.value?.status === 'failed' ? 'destructive' : hrRun.value?.status === 'success' ? 'success' : 'info')
+const directoryMetrics = computed(() => {
+  const d = hrRun.value?.directory
+  return d ? [{ label: '新增人员', value: d.created }, { label: '更新人员', value: d.updated }, { label: '部门', value: d.departments }, { label: '关联冲突', value: d.conflicts }, { label: '目录未返回', value: d.missing }] : []
+})
+const hrMetrics = computed(() => {
+  const r = hrResult.value
+  return r ? [{ label: '检查档案', value: r.scanned }, { label: '实际读取', value: r.requested }, { label: '成功', value: r.succeeded }, { label: '失败', value: r.failed }, { label: '跳过', value: r.skipped }, { label: '未变化', value: r.unchanged }, { label: '更新员工', value: r.updatedEmployees }, { label: '更新字段', value: r.updatedFields }] : []
+})
+const syncTime = (value: string | null) => value ? value.replace('T', ' ').slice(0, 19) : '时间未提供'
+const syncEmployee = (item: HrSyncIssue | HrSyncConflict) => item.name || `档案 #${item.employeeId}`
+function syncConflict(item: HrSyncConflict) {
+  const labels: Record<string, string> = { birthday: '生日', entryTime: '入职日期', entryStatus: '任职状态', status: '用工状态', probation: '试用期', regularTime: '转正日期', leaveTime: '离职日期' }
+  const value = (raw: string | number | null | undefined) => raw == null || raw === '' ? '未提供' : item.field === 'entryStatus' ? entryLabels[Number(raw)] || String(raw) : item.field === 'status' ? statusLabels[Number(raw)] || String(raw) : String(raw)
+  return `${labels[item.field || ''] || item.field || '档案信息'}：${item.reason ? `${item.reason}；` : ''}本地 ${value(item.currentValue)}，企微 ${value(item.upstreamValue)}`
 }
-const hrSyncing = ref(false),
-  hrSyncError = ref(''),
-  hrResult = ref<HrResult | null>(null)
-
 async function syncHr() {
-  if (hrSyncing.value) return
-  hrSyncing.value = true
-  hrSyncError.value = ''
-  hrResult.value = null
-  try {
-    hrResult.value = await api.post<HrResult>('/admin-api/hrm/employee/wecom/sync', undefined, 220000)
-    await load()
-    if (detail.value) await open(detail.value.id)
-  } catch (e) {
-    hrSyncError.value = e instanceof Error ? e.message : '企微花名册同步失败'
-  } finally {
-    hrSyncing.value = false
-  }
+  if (!canSyncHr.value) return
+  hrSyncExpanded.value = true
+  await hrSyncTracker.start()
 }
 
 const unconfirmed = computed(() => !detail.value?.entryStatus)
@@ -782,6 +845,13 @@ watch(() => [route.query.roster, route.query.statusCategory, route.query.entrySt
 onMounted(() => {
   void load()
   void loadDepartments()
+  if (session.has('hrm:employee:query')) void refreshHrSync()
   if (route.query.employeeId) void open(String(route.query.employeeId))
+})
+onBeforeUnmount(() => {
+  employeePageDisposed = true
+  hrSyncTracker.dispose()
+  employeeListRequest++
+  managerRequest++
 })
 </script>

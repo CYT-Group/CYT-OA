@@ -5,6 +5,8 @@ import com.cyt.center.core.security.CurrentUser;
 import com.cyt.center.module.hrm.controller.admin.employee.WecomHrSyncController;
 import com.cyt.center.module.hrm.controller.admin.workspace.HrmWorkspaceController;
 import com.cyt.center.module.hrm.service.employee.info.WecomHrSyncService;
+import com.cyt.center.module.hrm.service.employee.info.WecomRosterSyncService;
+import com.cyt.center.core.security.Principal;
 import com.cyt.center.module.hrm.service.workspace.HrmWorkspaceService;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Bean;
@@ -31,7 +33,7 @@ class WebConfigControllerMappingTest {
     @Import(WebConfig.class)
     static class MappingConfiguration {
         @Bean CenterProperties properties(){return new CenterProperties();}
-        @Bean WecomHrSyncController wecomSync(){return new WecomHrSyncController(mock(WecomHrSyncService.class),mock(CurrentUser.class));}
+        @Bean WecomHrSyncController wecomSync(){return new WecomHrSyncController(mock(WecomHrSyncService.class),mock(WecomRosterSyncService.class),mock(CurrentUser.class));}
         @Bean HrmWorkspaceController hrWorkspace(){return new HrmWorkspaceController(mock(HrmWorkspaceService.class));}
     }
 
@@ -45,10 +47,10 @@ class WebConfigControllerMappingTest {
                 allPaths.addAll(info.getPatternValues());
                 if(handler.getBeanType()==WecomHrSyncController.class){
                     syncPaths.addAll(info.getPatternValues());
-                    assertEquals(Set.of(RequestMethod.POST),info.getMethodsCondition().getMethods());
+                    assertEquals(Set.of(handler.getMethod().getName().equals("status") ? RequestMethod.GET : RequestMethod.POST),info.getMethodsCondition().getMethods());
                 }
             });
-            assertEquals(Set.of("/admin-api/hrm/employee/wecom/sync","/admin-api/hrm/employee/wecom/confirm"),syncPaths);
+            assertEquals(Set.of("/admin-api/hrm/employee/wecom/sync","/admin-api/hrm/employee/wecom/confirm","/admin-api/hrm/employee/wecom/sync-status"),syncPaths);
             assertTrue(allPaths.contains("/admin-api/hrm/workspace/departments"));
             assertTrue(allPaths.stream().noneMatch(path->path.startsWith("/admin-api/admin-api/")),allPaths.toString());
         }
@@ -72,22 +74,44 @@ class WebConfigControllerMappingTest {
 
     @Test void syncAndConfirmStillRequireBothEmployeePermissions(){
         var service=mock(WecomHrSyncService.class);var current=mock(CurrentUser.class);
-        var controller=new WecomHrSyncController(service,current);
+        var roster=mock(WecomRosterSyncService.class);
+        when(current.require()).thenReturn(new Principal(7L,"admin","Tester",List.of("admin"),List.of("*:*:*")));
+        var controller=new WecomHrSyncController(service,roster,current);
         controller.sync();controller.confirm(new WecomHrSyncController.Confirm(42L,"birthday","2026-01-01","2026-01-02"));
         var permissions=inOrder(current);
         permissions.verify(current).requirePermission("hrm:employee:query");permissions.verify(current).requirePermission("hrm:employee:update");
+        permissions.verify(current).requirePermission("system:directory:sync");
         permissions.verify(current).requirePermission("hrm:employee:query");permissions.verify(current).requirePermission("hrm:employee:update");
-        verify(service).sync();verify(service).confirm(42L,"birthday","2026-01-01","2026-01-02");
+        verify(roster).start("manual","Tester#7");verify(service).confirm(42L,"birthday","2026-01-01","2026-01-02");
     }
 
     @Test void missingEitherPermissionStopsBeforeAnySyncOrConfirmation(){
         for(String permission:List.of("hrm:employee:query","hrm:employee:update")){
             var service=mock(WecomHrSyncService.class);var current=mock(CurrentUser.class);
+            var roster=mock(WecomRosterSyncService.class);
             doThrow(AuthException.forbidden("无权限")).when(current).requirePermission(permission);
-            var controller=new WecomHrSyncController(service,current);
+            var controller=new WecomHrSyncController(service,roster,current);
             assertThrows(AuthException.class,controller::sync);
             assertThrows(AuthException.class,()->controller.confirm(new WecomHrSyncController.Confirm(42L,"birthday","2026-01-01","2026-01-02")));
-            verifyNoInteractions(service);
+            verifyNoInteractions(service,roster);
         }
+    }
+
+    @Test void fullRosterSyncRequiresDirectoryPermissionBeforeStarting(){
+        var current=mock(CurrentUser.class);var roster=mock(WecomRosterSyncService.class);
+        doThrow(AuthException.forbidden("无权限")).when(current).requirePermission("system:directory:sync");
+        var controller=new WecomHrSyncController(mock(WecomHrSyncService.class),roster,current);
+        assertThrows(AuthException.class,controller::sync);
+        verifyNoInteractions(roster);
+    }
+
+    @Test void readingProgressRequiresEmployeeQueryPermission(){
+        var current=mock(CurrentUser.class);var roster=mock(WecomRosterSyncService.class);
+        var controller=new WecomHrSyncController(mock(WecomHrSyncService.class),roster,current);
+        controller.status("record-id");
+        verify(current).requirePermission("hrm:employee:query");verify(roster).status("record-id");
+        doThrow(AuthException.forbidden("无权限")).when(current).requirePermission("hrm:employee:query");
+        assertThrows(AuthException.class,()->controller.status(null));
+        verifyNoMoreInteractions(roster);
     }
 }

@@ -7,6 +7,8 @@ import com.cyt.center.core.exception.BizException;
 import com.cyt.center.core.integration.WecomGatewayClient;
 import com.cyt.center.module.system.mapper.SysDirectorySyncLogMapper;
 import com.cyt.center.module.system.model.entity.SysDirectorySyncLog;
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -16,6 +18,8 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,6 +51,11 @@ public class EnterpriseDirectorySyncService {
     public record SyncResult(int created, int updated, int departments, List<String> conflicts, List<String> missing) {
     }
 
+    /** 名单在成功落库后才返回，供串行的 HR 日期阶段排除本次未返回人员。 */
+    public record DirectoryOutcome(SyncResult result, Set<String> presentUserids) {
+        public DirectoryOutcome { presentUserids = Set.copyOf(presentUserids); }
+    }
+
     /** status 取 running / success / failed；running 时结果列还没有值。 */
     public record SyncRun(Long id, String triggerType, String actor, String status, Integer created, Integer updated,
                           Integer departments, Integer conflicts, Integer missing, String message, Long durationMs,
@@ -55,25 +64,57 @@ public class EnterpriseDirectorySyncService {
 
     /** 先落一条「运行中」的记录再立刻返回，页面按这条记录轮询进度。 */
     public SyncRun start(String triggerType, String actor) {
-        if (!running.compareAndSet(false, true)) {
-            throw new BizException("已有一次通讯录同步正在执行，请等待结束后再试");
+        acquire();
+        SysDirectorySyncLog row;
+        try { row = beginRun(triggerType, actor); }
+        catch (RuntimeException error) {
+            running.set(false);
+            log.error("通讯录同步运行记录创建失败", error);
+            throw new BizException("通讯录同步运行记录暂不可用，请稍后重试");
         }
+        long startedAt = System.nanoTime();
+        try {
+            executor.submit(() -> {
+                try { execute(row.getId(), triggerType, actor, startedAt); }
+                catch (RuntimeException alreadyLogged) { /* 运行记录已收尾，异步调用方轮询该记录。 */ }
+                finally { running.set(false); }
+            });
+        } catch (RuntimeException error) {
+            try { finish(row.getId(), false, null, "同步未能启动：" + error.getClass().getSimpleName(), startedAt); }
+            finally { running.set(false); }
+            log.error("企微通讯录同步启动失败 trigger={}, actor={}", triggerType, actor, error);
+            throw new BizException("通讯录同步启动失败，具体原因见同步记录");
+        }
+        return toRun(row);
+    }
+
+    /** 同步编排入口：与 /org 的异步入口共享锁、预检和运行日志，网络请求不包在数据库事务中。 */
+    public DirectoryOutcome syncNow(String triggerType, String actor) {
+        acquire();
+        try {
+            SysDirectorySyncLog row = beginRun(triggerType, actor);
+            return execute(row.getId(), triggerType, actor, System.nanoTime());
+        } catch (BizException error) {
+            throw error;
+        } catch (RuntimeException error) {
+            log.error("通讯录同步运行记录不可用", error);
+            throw new BizException("通讯录同步运行记录暂不可用，请稍后重试");
+        } finally { running.set(false); }
+    }
+
+    private void acquire() {
+        if (!running.compareAndSet(false, true))
+            throw new BizException("已有一次通讯录同步正在执行，请等待结束后再试");
+    }
+
+    private SysDirectorySyncLog beginRun(String triggerType, String actor) {
         SysDirectorySyncLog row = new SysDirectorySyncLog();
         row.setTriggerType(triggerType);
         row.setActor(actor == null ? "" : actor);
         row.setOk(null);
         row.setCreatedAt(LocalDateTime.now());
         syncLogs.insert(row);
-        long startedAt = System.nanoTime();
-        try {
-            executor.submit(() -> execute(row.getId(), triggerType, actor, startedAt));
-        } catch (RuntimeException error) {
-            finish(row.getId(), false, null, "同步未能启动：" + error.getClass().getSimpleName(), startedAt);
-            running.set(false);
-            log.error("企微通讯录同步启动失败 trigger={}, actor={}", triggerType, actor, error);
-            throw new BizException("通讯录同步启动失败，具体原因见同步记录");
-        }
-        return toRun(row);
+        return row;
     }
 
     /** 最近一次运行：页面用它判断是否还在跑，也用它显示「上次同步」。 */
@@ -97,24 +138,31 @@ public class EnterpriseDirectorySyncService {
         }
     }
 
-    private void execute(Long runId, String triggerType, String actor, long startedAt) {
+    private DirectoryOutcome execute(Long runId, String triggerType, String actor, long startedAt) {
         try {
-            SyncResult result = writer.apply(gateway.directory());
+            JsonNode snapshot = gateway.directory();
+            SyncResult result = writer.apply(snapshot);
+            Set<String> present = new LinkedHashSet<>();
+            snapshot.path("users").forEach(user -> present.add(user.path("userid").asText()));
             finish(runId, true, result, result.missing().isEmpty() ? ""
-                    : "已移除 " + result.missing().size() + " 个企微未返回的账号及关联员工档案", startedAt);
+                    : "本次未返回 " + result.missing().size() + " 个账号，已保留历史账号、员工档案和组织关联", startedAt);
             log.info("企微通讯录同步完成 trigger={}, actor={}, created={}, updated={}, departments={}, "
                             + "conflicts={}, missing={}", triggerType, actor, result.created(), result.updated(),
                     result.departments(), result.conflicts().size(), result.missing().size());
+            return new DirectoryOutcome(result, present);
         } catch (BizException error) {
             finish(runId, false, null, error.getMessage(), startedAt);
             log.warn("企微通讯录同步未成功 trigger={}, actor={}, message={}", triggerType, actor, error.getMessage());
+            throw error;
         } catch (RuntimeException error) {
             finish(runId, false, null, "同步异常：" + error.getClass().getSimpleName(), startedAt);
             log.error("企微通讯录同步出现未预期异常 trigger={}, actor={}", triggerType, actor, error);
-        } finally {
-            running.set(false);
+            throw new BizException("通讯录同步异常，具体原因见同步记录");
         }
     }
+
+    @PreDestroy
+    public void close() { executor.shutdownNow(); }
 
     public List<SyncRun> runs() {
         Page<SysDirectorySyncLog> page = syncLogs.selectPage(new Page<>(1, RUN_HISTORY),

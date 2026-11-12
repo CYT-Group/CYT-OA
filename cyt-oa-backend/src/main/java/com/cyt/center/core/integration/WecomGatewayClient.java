@@ -49,8 +49,9 @@ public class WecomGatewayClient {
     public JsonNode hrFields() { return call("wecom/hr/get-fields", Map.of(), Duration.ofSeconds(45)); }
 
     public JsonNode hrStaff(String userid, java.util.Collection<WecomHrDates.Field> fields) {
-        return call("wecom/hr/get-staff-info", Map.of("userid", userid, "fieldids",
-                fields.stream().map(f -> Map.of("fieldid", f.id(), "sub_idx", 0)).toList()), Duration.ofSeconds(45));
+        if (userid == null || userid.isBlank() || fields.isEmpty()) throw new BizException("企微花名册查询缺少员工或字段");
+        return call("wecom/hr/get-staff-info", Map.of("userid", userid, "get_all", false, "fieldids",
+                fields.stream().map(WecomHrDates.Field::id).distinct().map(id -> Map.of("fieldid", id, "sub_idx", 0)).toList()), Duration.ofSeconds(45));
     }
 
     public JsonNode call(String operationPath, Map<String, Object> params) {
@@ -78,13 +79,16 @@ public class WecomGatewayClient {
         try {
             HttpResponse<String> response = http.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             JsonNode envelope = parse(response.body());
-            String traceId = envelope == null ? response.headers().firstValue("X-Trace-Id").orElse("")
-                    : envelope.path("error").path("trace_id").asText("");
+            String traceId = safeIdentifier(envelope == null ? response.headers().firstValue("X-Trace-Id").orElse("")
+                    : envelope.path("error").path("trace_id").asText(response.headers().firstValue("X-Trace-Id").orElse("")));
             if (response.statusCode() < 200 || response.statusCode() >= 300 || envelope == null
                     || !envelope.path("ok").asBoolean(false)) {
                 // 不透传任意上游响应，避免把网关配置、请求参数或个人资料写进错误页。
-                String type = envelope == null ? "unknown" : envelope.path("error").path("type").asText("unknown");
-                throw new WecomGatewayException(type, traceId, "企微网关调用失败（HTTP " + response.statusCode() + "，"
+                String type = envelope == null ? "unknown" : safeIdentifier(envelope.path("error").path("type").asText("unknown"));
+                if (type.isEmpty()) type = "unknown";
+                String code = envelope == null ? "" : safeCode(envelope.path("error").path("code").asText(""));
+                if (code.isEmpty()) code = safeCode(type);
+                throw new WecomGatewayException(type, traceId, code, "企微网关调用失败（HTTP " + response.statusCode() + "，"
                         + type + "，追踪号 " + traceId + "），请检查网关密钥、操作授权和企微应用配置");
             }
             if (!envelope.path("data").isObject()) {
@@ -94,6 +98,11 @@ public class WecomGatewayClient {
                     && envelope.path("meta").path("mock").asBoolean(false)) {
                 throw new BizException("企微网关处于模拟模式，未写入任何通讯录或人事资料");
             }
+            if (operationPath.startsWith("wecom/hr/") && envelope.path("data").has("errcode")
+                    && envelope.path("data").path("errcode").asInt(-1) != 0) {
+                String code = safeCode(envelope.path("data").path("errcode").asText(""));
+                throw new WecomGatewayException("upstream_error", traceId, code, "企微人事接口未成功返回资料，请检查应用权限与员工账号");
+            }
             return envelope.path("data");
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
@@ -101,6 +110,15 @@ public class WecomGatewayClient {
         } catch (IOException error) {
             throw new BizException("企微网关连接失败或超时，请稍后重试");
         }
+    }
+
+    private static String safeIdentifier(String value) {
+        return value != null && value.matches("[A-Za-z0-9_.:-]{1,128}") ? value : "";
+    }
+
+    private static String safeCode(String value) {
+        if (value == null || !value.matches("(?:WECOM_)?\\d{1,10}")) return "";
+        return value.startsWith("WECOM_") ? value : "WECOM_" + value;
     }
 
     private JsonNode parse(String body) {

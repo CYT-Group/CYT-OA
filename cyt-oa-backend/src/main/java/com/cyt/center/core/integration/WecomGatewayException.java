@@ -11,11 +11,17 @@ public class WecomGatewayException extends BizException {
 
     private final String type;
     private final String traceId;
+    private final String code;
 
     public WecomGatewayException(String type, String traceId, String message) {
+        this(type, traceId, "", message);
+    }
+
+    public WecomGatewayException(String type, String traceId, String code, String message) {
         super(message);
         this.type = type == null || type.isBlank() ? "unknown" : type;
         this.traceId = traceId == null ? "" : traceId;
+        this.code = code == null ? "" : code;
     }
 
     public String type() {
@@ -25,6 +31,9 @@ public class WecomGatewayException extends BizException {
     public String traceId() {
         return traceId;
     }
+
+    /** 仅保存经过白名单校验的企微错误码，不包含上游原始正文。 */
+    public String code() { return code; }
 
     /** 同一请求号已经提交过了：原审批单在企微存在，应当回读而不是再发一单。 */
     public boolean isDuplicate() {

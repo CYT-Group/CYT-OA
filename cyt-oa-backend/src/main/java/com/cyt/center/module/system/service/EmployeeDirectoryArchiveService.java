@@ -5,8 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cyt.center.core.exception.BizException;
 import com.cyt.center.module.hrm.dal.dataobject.employee.info.HrmEmployeeDO;
 import com.cyt.center.module.hrm.dal.mysql.employee.info.HrmEmployeeMapper;
-import com.cyt.center.module.hrm.dal.mysql.employee.info.DirectoryArchivePurgeMapper;
-import org.springframework.transaction.annotation.Transactional;
 import com.cyt.center.module.system.model.entity.SysUser;
 import com.cyt.center.module.hrm.dal.dataobject.employee.employment.HrmEmployeeChangeRecordDO;
 import com.cyt.center.module.hrm.dal.mysql.employee.employment.HrmEmployeeChangeRecordMapper;
@@ -25,21 +23,6 @@ import java.time.LocalDateTime;
 public class EmployeeDirectoryArchiveService {
     private final HrmEmployeeMapper employees;
     private final HrmEmployeeChangeRecordMapper changes;
-    private final DirectoryArchivePurgeMapper archivePurge;
-
-    /** 按企微完整名单物理删除账号关联的档案与明细，包括过去已经逻辑删除的档案。 */
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteByUserIds(List<Long> userIds) {
-        if (userIds.isEmpty()) return;
-        List<Long> employeeIds = archivePurge.selectIdsByUserIds(userIds);
-        if (employeeIds.isEmpty()) return;
-        archivePurge.clearManagerReferences(employeeIds);
-        for (String table : archivePurge.existingEmployeeTables()) {
-            if (DirectoryArchivePurgeMapper.DETAIL_TABLES.contains(table))
-                archivePurge.deleteDetails(table, employeeIds);
-        }
-        archivePurge.deleteArchives(employeeIds);
-    }
 
     /** 一轮只查询一次档案；没有变化的身份不重复写库。调用方持有快照事务。 */
     public void syncIdentities(List<SysUser> users) {

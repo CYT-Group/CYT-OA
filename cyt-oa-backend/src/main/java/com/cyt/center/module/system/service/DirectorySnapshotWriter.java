@@ -54,12 +54,16 @@ public class DirectorySnapshotWriter {
             throw new BizException("企微通讯录结构不完整，未执行同步");
         }
         JsonNode counts = snapshot.path("counts");
-        if (counts.path("users").asInt(-1) != employeeRows.size()
-                || counts.path("departments").asInt(-1) != departmentRows.size()) {
+        if (!counts.path("users").isIntegralNumber() || !counts.path("users").canConvertToLong()
+                || !counts.path("departments").isIntegralNumber() || !counts.path("departments").canConvertToLong()
+                || counts.path("users").asLong(-1) != employeeRows.size()
+                || counts.path("departments").asLong(-1) != departmentRows.size()) {
             throw new BizException("企微通讯录数量校验失败，未执行同步");
         }
 
         Map<Long, SysDept> departmentMap = readDepartments(departmentRows);
+        // 在第一笔写入前检查全部成员，尾部坏行也不能产生部分账号变更。
+        List<Member> members = readMembers(employeeRows, departmentMap);
         List<SysUser> existing = users.selectList(null);
         Map<String, SysUser> byExternalId = new HashMap<>();
         Set<String> usernames = new HashSet<>();
@@ -86,32 +90,14 @@ public class DirectorySnapshotWriter {
         int created = 0;
         int updated = 0;
 
-        for (JsonNode row : employeeRows) {
-            String externalId = text(row, "userid");
-            String name = text(row, "name");
-            Integer status = row.path("status").isNumber() ? row.path("status").asInt() : null;
-            JsonNode departmentIds = row.path("department_ids");
-            if (externalId == null || externalId.isBlank() || externalId.length() > 128
-                    || !externalId.equals(externalId.trim()) || !seen.add(normalizeUserid(externalId))
-                    || name == null || name.isBlank() || status == null
-                    || !Set.of(1, 2, 4, 5).contains(status) || !departmentIds.isArray()) {
-                throw new BizException("企微成员数据无效或重复，整个同步已取消");
-            }
-            Set<Long> deptIds = new LinkedHashSet<>();
-            for (JsonNode id : departmentIds) {
-                Long deptId = id.isNumber() ? id.asLong() : null;
-                if (deptId == null || !departmentMap.containsKey(deptId)) {
-                    throw new BizException("成员引用了未知部门，整个同步已取消");
-                }
-                deptIds.add(deptId);
-            }
-            Long mainDeptId = row.path("main_department").isNumber() ? row.path("main_department").asLong() : null;
-            if (mainDeptId == null && !deptIds.isEmpty()) {
-                mainDeptId = deptIds.iterator().next();
-            }
-            if (mainDeptId != null && !deptIds.contains(mainDeptId)) {
-                throw new BizException("成员主部门不在归属部门中，整个同步已取消");
-            }
+        for (Member member : members) {
+            JsonNode row = member.source();
+            String externalId = member.userid();
+            String name = member.name();
+            int status = member.status();
+            Set<Long> deptIds = member.departmentIds();
+            Long mainDeptId = member.mainDepartment();
+            seen.add(normalizeUserid(externalId));
 
             SysUser current = byExternalId.get(normalizeUserid(externalId));
             if (current == null && usernames.contains(normalizeUserid(externalId))) {
@@ -166,11 +152,9 @@ public class DirectorySnapshotWriter {
             }
         }
 
-        // 企微完整快照为唯一成员来源；未关联企微的本地账号不在删除范围。
+        // 一次未返回可能只是应用可见范围变化：仅报告，不删除或改变历史账号与人事状态。
         List<SysUser> missingUsers = existing.stream().filter(user -> !blank(user.getWecomUserid())
                 && !seen.contains(normalizeUserid(user.getWecomUserid()))).toList();
-        missingUsers.stream()
-                .map(SysUser::getId).filter(memberships::containsKey).forEach(replaceIds::add);
         for (int offset = 0; offset < replaceIds.size(); offset += 500) {
             userDepartments.delete(new LambdaQueryWrapper<SysUserDept>().in(SysUserDept::getUserId,
                     replaceIds.subList(offset, Math.min(offset + 500, replaceIds.size()))));
@@ -184,12 +168,6 @@ public class DirectorySnapshotWriter {
         Set<Long> existingDeptIds = new HashSet<>();
         for (SysDept old : departments.selectList(null)) {
             existingDeptIds.add(old.getId());
-            if (!departmentMap.containsKey(old.getId())) {
-                SysDept deactivate = new SysDept();
-                deactivate.setId(old.getId());
-                deactivate.setActive(false);
-                departments.updateById(deactivate);
-            }
         }
         for (SysDept department : departmentMap.values()) {
             if (!existingDeptIds.contains(department.getId())) {
@@ -200,19 +178,42 @@ public class DirectorySnapshotWriter {
             }
         }
 
-        for (int offset = 0; offset < missingUsers.size(); offset += 500) {
-            List<SysUser> batch = missingUsers.subList(offset, Math.min(offset + 500, missingUsers.size()));
-            List<Long> ids = batch.stream().map(SysUser::getId).toList();
-            employeeArchives.deleteByUserIds(ids);
-            accountService.deleteDirectoryUsers(ids);
-            departments.update(null, new LambdaUpdateWrapper<SysDept>()
-                    .in(SysDept::getLeaderUserid, batch.stream().map(SysUser::getWecomUserid).toList())
-                    .set(SysDept::getLeaderUserid, null));
-            blocked.addAll(ids);
-        }
         List<String> missing = missingUsers.stream().map(SysUser::getWecomUserid).toList();
         afterCommit(blocked);
         return new EnterpriseDirectorySyncService.SyncResult(created, updated, departmentMap.size(), conflicts, missing);
+    }
+
+    private record Member(JsonNode source, String userid, String name, int status,
+                          Set<Long> departmentIds, Long mainDepartment) { }
+
+    private List<Member> readMembers(JsonNode rows, Map<Long, SysDept> departmentMap) {
+        var members = new ArrayList<Member>();
+        var seen = new HashSet<String>();
+        for (JsonNode row : rows) {
+            String userid = text(row, "userid"), name = text(row, "name");
+            JsonNode status = row.path("status"), ids = row.path("department_ids");
+            if (!row.path("userid").isTextual() || userid == null || userid.isBlank()
+                    || userid.length() > 128 || !userid.equals(userid.trim())
+                    || !seen.add(normalizeUserid(userid)) || !row.path("name").isTextual()
+                    || name == null || name.isBlank() || !status.isIntegralNumber() || !status.canConvertToInt()
+                    || !Set.of(1L, 2L, 4L, 5L).contains(status.asLong(-1)) || !ids.isArray()) {
+                throw new BizException("企微成员数据无效或重复，整个同步已取消");
+            }
+            var memberships = new LinkedHashSet<Long>();
+            for (JsonNode id : ids) {
+                if (!id.isIntegralNumber() || !id.canConvertToLong() || !departmentMap.containsKey(id.asLong()))
+                    throw new BizException("成员引用了未知部门，整个同步已取消");
+                memberships.add(id.asLong());
+            }
+            JsonNode main = row.path("main_department");
+            if (!main.isMissingNode() && !main.isNull() && (!main.isIntegralNumber() || !main.canConvertToLong()))
+                throw new BizException("成员主部门格式无效，整个同步已取消");
+            Long mainId = main.isIntegralNumber() ? Long.valueOf(main.asLong()) : memberships.stream().findFirst().orElse(null);
+            if (mainId != null && !memberships.contains(mainId))
+                throw new BizException("成员主部门不在归属部门中，整个同步已取消");
+            members.add(new Member(row, userid, name, status.asInt(), memberships, mainId));
+        }
+        return members;
     }
 
     private Map<Long, SysDept> readDepartments(JsonNode departmentRows) {
@@ -220,8 +221,8 @@ public class DirectorySnapshotWriter {
         LocalDateTime now = LocalDateTime.now();
         for (JsonNode row : departmentRows) {
             SysDept department = new SysDept();
-            department.setId(row.path("id").isNumber() ? row.path("id").asLong() : null);
-            department.setParentId(row.path("parent_id").isNumber() ? row.path("parent_id").asLong() : null);
+            department.setId(row.path("id").isIntegralNumber() && row.path("id").canConvertToLong() ? row.path("id").asLong() : null);
+            department.setParentId(row.path("parent_id").isIntegralNumber() && row.path("parent_id").canConvertToLong() ? row.path("parent_id").asLong() : null);
             department.setName(text(row, "name"));
             department.setPath(text(row, "path"));
             department.setSortOrder(row.path("order").isNumber() ? row.path("order").asLong() : 0L);
@@ -229,7 +230,7 @@ public class DirectorySnapshotWriter {
             department.setSyncedAt(now);
             // path 只是网关原样带过来的数据，展示名另有来源，不该因为缺它就整趟同步作废
             if (department.getId() == null || department.getId() <= 0 || department.getParentId() == null
-                    || blank(department.getName())
+                    || department.getParentId() < 0 || !row.path("name").isTextual() || blank(department.getName())
                     || departmentMap.put(department.getId(), department) != null) {
                 throw new BizException("企微部门数据无效，未执行同步");
             }
