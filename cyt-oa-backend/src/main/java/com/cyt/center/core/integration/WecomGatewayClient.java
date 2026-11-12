@@ -50,7 +50,7 @@ public class WecomGatewayClient {
 
     public JsonNode hrStaff(String userid, java.util.Collection<WecomHrDates.Field> fields) {
         if (userid == null || userid.isBlank() || fields.isEmpty()) throw new BizException("企微花名册查询缺少员工或字段");
-        return call("wecom/hr/get-staff-info", Map.of("userid", userid, "get_all", false, "fieldids",
+        return call("wecom/hr/get-staff-info", Map.of("userid", userid, "fieldids",
                 fields.stream().map(WecomHrDates.Field::id).distinct().map(id -> Map.of("fieldid", id, "sub_idx", 0)).toList()), Duration.ofSeconds(45));
     }
 

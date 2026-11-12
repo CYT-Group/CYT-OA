@@ -4,12 +4,18 @@ import com.cyt.center.framework.mybatis.core.mapper.BaseMapperX;
 import com.cyt.center.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.cyt.center.module.me.model.entity.Milestone;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
 public interface MilestoneMapper extends BaseMapperX<Milestone> {
+
+    /** 在派生提醒事务的第一次读取前锁定稳定的用户身份，空里程碑集合也能串行生成。 */
+    @Select("SELECT id FROM sys_user WHERE id = #{userId} FOR UPDATE")
+    Long lockUserForSync(@Param("userId") Long userId);
 
     default List<Milestone> selectListByUser(Long userId, int limit) {
         return selectListLimitN(new LambdaQueryWrapperX<Milestone>()
@@ -18,8 +24,12 @@ public interface MilestoneMapper extends BaseMapperX<Milestone> {
     }
 
     default Milestone selectByTypeAndDate(Long userId, String type, LocalDate date) {
-        return selectOne(Milestone::getUserId, userId, Milestone::getType, type,
-                Milestone::getMilestoneDate, date);
+        // 兼容历史并发产生的重复记录：按稳定身份复用最早一条，不删除历史或要求清库。
+        return selectFirstOne(new LambdaQueryWrapperX<Milestone>()
+                .eq(Milestone::getUserId, userId)
+                .eq(Milestone::getType, type)
+                .eq(Milestone::getMilestoneDate, date)
+                .orderByAsc(Milestone::getId));
     }
 
     default Long countByUser(Long userId) {

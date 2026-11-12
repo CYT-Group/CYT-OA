@@ -56,7 +56,8 @@ class WecomGatewayClientTest {
             client(server).hrStaff("employee",List.of(new WecomHrDates.Field(7,4),
                     new WecomHrDates.Field(904,3,2,Map.of("99","试用")),new WecomHrDates.Field(7,4)));
             assertEquals("employee",received.get().path("userid").asText());
-            assertFalse(received.get().path("get_all").asBoolean(true));
+            assertFalse(received.get().has("get_all"));
+            assertEquals(2,received.get().size());
             assertEquals(2,received.get().path("fieldids").size());
             assertEquals(904,received.get().path("fieldids").get(1).path("fieldid").asInt());
         } finally {server.stop(0);}

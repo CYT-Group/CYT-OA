@@ -130,6 +130,8 @@ public class MeReminderService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void sync(Long userId) {
+        // summary / overview 可能同时请求；数据库行锁持续到事务提交，保护所有先查后插的派生项。
+        milestones.lockUserForSync(userId);
         ReminderPreference preference = preferences(userId);
         cleanupApprovalReminders(userId);
         syncRhythmNodes(userId);
